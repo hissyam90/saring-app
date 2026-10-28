@@ -1,69 +1,217 @@
-import Image from "next/image";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BookOpen,
+  Eye,
+  ListChecks,
+  Lock,
+  ScanSearch,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+import { Checker } from "@/components/periksa/checker";
+
+const FEATURES = [
+  {
+    href: "/periksa",
+    icon: ScanSearch,
+    title: "Periksa",
+    description: "Pesan, nomor, dan tautan dalam satu ruang kerja.",
+  },
+  {
+    href: "/latihan",
+    icon: ShieldCheck,
+    title: "Latihan",
+    description: "Berlatih mengambil keputusan aman lewat 8 skenario.",
+  },
+  {
+    href: "/langkah",
+    icon: ListChecks,
+    title: "Langkah",
+    description: "Panduan tindakan terprioritas sesuai situasi Anda.",
+  },
+  {
+    href: "/pustaka",
+    icon: BookOpen,
+    title: "Pustaka",
+    description: "Panduan ringkas mengenali dan menghadapi penipuan.",
+  },
+];
+
+const PRINCIPLES = [
+  {
+    icon: Lock,
+    title: "Privasi dirancang sejak awal",
+    description:
+      "Analisis pesan dan tautan berjalan sepenuhnya di peramban Anda — tanpa akun dan tanpa mengirim konten ke server.",
+  },
+  {
+    icon: Eye,
+    title: "Dapat dijelaskan",
+    description:
+      "Setiap sinyal disertai alasan, bukti, dan langkah yang disarankan. Bukan kotak hitam.",
+  },
+  {
+    icon: Sparkles,
+    title: "Jujur soal ketidakpastian",
+    description:
+      "Tidak ada label “aman”. Saring menyajikan indikator, bukan keputusan atau tuduhan.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <>
+      <section className="border-b-2 border-ink bg-ink text-paper">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+          <p className="inline-flex items-center gap-2 border-2 border-ink bg-lime px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-ink">
+            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+            Pendamping kepercayaan digital
+          </p>
+          <h1 className="mt-4 max-w-2xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+            Berhenti sebentar. Periksa sinyalnya.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-3 max-w-xl text-base leading-7 text-paper/80">
+            Belum tentu penipuan. Belum tentu aman. Kenali tandanya sebelum
+            bertindak — mulai dari pesan, nomor, atau tautan yang Anda terima.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-ink">
+              Coba langsung
+            </h2>
+            <p className="mt-1 text-sm text-ink-muted">
+              Tiga mode pemeriksaan. Muat contoh fiktif atau masukkan data Anda
+              sendiri.
+            </p>
+          </div>
+          <Link
+            href="/periksa"
+            className="inline-flex items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink shadow-neo-sm transition-none hover:bg-lime"
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Buka halaman penuh
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
-      </main>
-    </div>
+        <Checker />
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <h2 className="text-2xl font-extrabold tracking-tight text-ink">
+          Bagian lain dari Saring
+        </h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((feature) => (
+            <Link
+              key={feature.href}
+              href={feature.href}
+              className="group border-2 border-ink bg-surface p-4 shadow-neo-sm transition-none hover:-translate-y-0.5 hover:bg-lime-soft active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+            >
+              <span className="flex h-9 w-9 items-center justify-center border-2 border-ink bg-lime text-ink">
+                <feature.icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <h3 className="mt-3 text-base font-bold text-ink">
+                {feature.title}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-ink-muted">
+                {feature.description}
+              </p>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink">
+                Buka
+                <ArrowRight
+                  className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t-2 border-ink bg-ink text-paper">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+          <h2 className="text-2xl font-extrabold tracking-tight">Prinsip kami</h2>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {PRINCIPLES.map((principle) => (
+              <div
+                key={principle.title}
+                className="border-2 border-paper/25 p-4"
+              >
+                <principle.icon className="h-6 w-6 text-lime" aria-hidden="true" />
+                <h3 className="mt-3 text-base font-bold">{principle.title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-paper/70">
+                  {principle.description}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-sm leading-6 text-paper/60">
+            Saring adalah alat bantu pengambilan keputusan, bukan pengganti
+            investigasi resmi, bank, penyedia layanan, atau aparat penegak
+            hukum. Sumber pelaporan resmi seperti OJK tersedia di halaman
+            Langkah.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <h2 className="text-2xl font-bold tracking-tight text-ink">
+          Empat cara Saring membantumu
+        </h2>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((feature) => (
+            <Link
+              key={feature.href}
+              href={feature.href}
+              className="group rounded-2xl border border-line bg-surface p-5 shadow-sm transition-colors hover:border-ink-soft"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-ink text-paper">
+                <feature.icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <h3 className="mt-4 text-base font-semibold text-ink">
+                {feature.title}
+              </h3>
+              <p className="mt-1.5 text-sm leading-6 text-ink-muted">
+                {feature.description}
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-warn">
+                Buka
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-ink text-paper">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+          <h2 className="text-2xl font-bold tracking-tight">Prinsip kami</h2>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {PRINCIPLES.map((principle) => (
+              <div
+                key={principle.title}
+                className="rounded-2xl border border-paper/10 p-5"
+              >
+                <principle.icon className="h-6 w-6 text-warn" aria-hidden="true" />
+                <h3 className="mt-3 text-base font-semibold">{principle.title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-paper/70">
+                  {principle.description}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-8 text-sm leading-6 text-paper/60">
+            Saring adalah alat bantu pengambilan keputusan, bukan pengganti
+            investigasi resmi, bank, penyedia layanan, atau aparat penegak
+            hukum. Sumber pelaporan resmi seperti OJK tersedia di halaman
+            Langkah.
+          </p>
+        </div>
+      </section>
+    </>
   );
 }

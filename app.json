@@ -1,0 +1,14 @@
+{
+  "name": "saring",
+  "description": "Saring — pendamping kepercayaan digital untuk mengenali penipuan daring (Next.js App Router, dijalankan sebagai server Node.js).",
+  "keywords": [
+    "nextjs",
+    "react",
+    "typescript",
+    "tailwindcss",
+    "keamanan-digital"
+  ],
+  "buildpacks": [
+    { "url": "heroku/nodejs" }
+  ]
+}
