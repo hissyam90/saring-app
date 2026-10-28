@@ -22,11 +22,11 @@ export function Footer() {
           <p className="text-xs font-semibold uppercase tracking-wider text-lime">
             Alat
           </p>
-          <ul className="mt-3 space-y-2 text-sm text-paper/70">
-            <li><Link href="/periksa" className="hover:text-lime hover:underline">Periksa pesan, nomor, dan tautan</Link></li>
-            <li><Link href="/latihan" className="hover:text-lime hover:underline">Latihan pengambilan keputusan</Link></li>
-            <li><Link href="/langkah" className="hover:text-lime hover:underline">Panduan langkah selanjutnya</Link></li>
-            <li><Link href="/pustaka" className="hover:text-lime hover:underline">Pustaka kepercayaan digital</Link></li>
+          <ul className="mt-2 space-y-0.5 text-sm text-paper/70">
+            <li><Link href="/periksa" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Periksa pesan, nomor, dan tautan</Link></li>
+            <li><Link href="/latihan" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Latihan pengambilan keputusan</Link></li>
+            <li><Link href="/langkah" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Panduan langkah selanjutnya</Link></li>
+            <li><Link href="/pustaka" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Pustaka kepercayaan digital</Link></li>
           </ul>
         </div>
 

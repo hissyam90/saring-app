@@ -1,8 +1,141 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">Arsitektur Saring</title><desc id="desc">Browser Saring dengan checker lokal, route URL server, dan provider PhishTank opsional.</desc>
-<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#171717} .box{stroke:#202020;stroke-width:3;rx:12} .label{font-size:22px;font-weight:700} .small{font-size:16px} .line{stroke:#202020;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#202020"/></marker></defs>
-<rect width="1200" height="620" fill="#f5f2ea"/><rect x="30" y="30" width="310" height="560" fill="#151b2b" class="box"/><text x="60" y="85" fill="#d8f36a" style="fill:#d8f36a;font-size:27px;font-weight:700">BROWSER</text><rect x="60" y="125" width="250" height="90" fill="#d8f36a" class="box"/><text x="185" y="165" text-anchor="middle" class="label">Saring UI</text><text x="185" y="192" text-anchor="middle" class="small">React state</text><rect x="60" y="260" width="250" height="115" fill="#fff" class="box"/><text x="185" y="302" text-anchor="middle" class="label">Checker</text><text x="185" y="331" text-anchor="middle" class="small">Pesan · Nomor · URL</text><text x="185" y="357" text-anchor="middle" class="small">heuristik lokal</text><rect x="60" y="420" width="250" height="115" fill="#fff" class="box"/><text x="185" y="463" text-anchor="middle" class="label">Fitur lain</text><text x="185" y="493" text-anchor="middle" class="small">Latihan · Langkah · Pustaka</text>
-<rect x="430" y="30" width="330" height="560" fill="#fff" class="box"/><text x="465" y="85" class="label">NEXT.JS APP ROUTER</text><rect x="465" y="135" width="260" height="100" fill="#eefbd0" class="box"/><text x="595" y="178" text-anchor="middle" class="label">lib/analysis</text><text x="595" y="207" text-anchor="middle" class="small">rule engine &amp; URL parsing</text><rect x="465" y="285" width="260" height="105" fill="#fff3cf" class="box"/><text x="595" y="330" text-anchor="middle" class="label">/api/url-reputation</text><text x="595" y="359" text-anchor="middle" class="small">consent + validasi</text><rect x="465" y="440" width="260" height="90" fill="#fde7e1" class="box"/><text x="595" y="492" text-anchor="middle" class="label">Server adapter</text>
-<rect x="850" y="120" width="300" height="130" fill="#fff3cf" class="box"/><text x="1000" y="165" text-anchor="middle" class="label">PhishTank</text><text x="1000" y="198" text-anchor="middle" class="small">opsional · belum smoke-tested</text><rect x="850" y="330" width="300" height="130" fill="#e8edf5" class="box"/><text x="1000" y="375" text-anchor="middle" class="label">CI / Deployment</text><text x="1000" y="408" text-anchor="middle" class="small">GitHub Actions · Heroku</text>
-<path d="M340 305H430" class="line"/><path d="M760 335H850" class="line"/><path d="M760 485H850" class="line"/><text x="395" y="292" class="small">client</text><text x="795" y="322" class="small">HTTPS</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 812" width="1000" height="812" role="img" aria-labelledby="diagTitle diagDesc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagTitle">Arsitektur Saring: pemeriksaan lokal di peramban dan intelijen URL opsional melalui server</title>
+  <desc id="diagDesc">Tiga lapisan: browser menjalankan Checker dan lib/analysis sepenuhnya lokal tanpa fetch; server Next.js menyediakan route /api/url-reputation dengan consent dan adapter PhishTank; layanan eksternal hanya PhishTank (opsional, butuh app key) serta handoff manual ke AduanNomor dan sumber OJK.</desc>
+
+  <style>
+    text{font-family:'Segoe UI',Arial,Helvetica,sans-serif;fill:#151b2b}
+    .grp{fill:#ffffff;stroke:#151b2b;stroke-width:3}
+    .hd{font-size:19px;font-weight:700;letter-spacing:.06em}
+    .ttl{font-size:17px;font-weight:700;text-anchor:middle}
+    .det{font-size:14px;text-anchor:middle;fill:#28334a}
+    .note{font-size:13px;fill:#5b5b5b}
+    .lg{font-size:14px;fill:#28334a}
+    .flow{stroke:#151b2b;stroke-width:3;fill:none;marker-end:url(#arw)}
+    .manual{stroke:#151b2b;stroke-width:3;fill:none;stroke-dasharray:9 7;marker-end:url(#arw)}
+    .cap{font-size:12px;fill:#5b5b5b}
+  </style>
+
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#151b2b"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="812" fill="#f5f2ea"/>
+
+  <text x="28" y="42" style="font-size:24px;font-weight:700">Arsitektur Saring</text>
+  <text x="28" y="64" class="note">Pemeriksaan berjalan lokal di peramban; hanya reputasi URL yang dapat keluar ke server — dan itu pun sesudah consent.</text>
+
+  <!-- 1. BROWSER -->
+  <rect x="28" y="86" width="470" height="424" class="grp"/>
+  <text x="48" y="116" class="hd">1 · BROWSER (KLIEN)</text>
+  <line x1="28" y1="130" x2="498" y2="130" stroke="#151b2b" stroke-width="2"/>
+
+  <rect x="48" y="144" width="430" height="46" fill="#eefbd0" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="173" class="ttl">Saring UI — App Router</text>
+
+  <rect x="48" y="204" width="430" height="58" fill="#d8f36a" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="228" class="ttl">Unified Checker</text>
+  <text x="263" y="249" class="det">Periksa Pesan · Nomor · Tautan</text>
+
+  <rect x="48" y="282" width="430" height="82" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="306" class="ttl">lib/analysis — murni, tanpa jaringan</text>
+  <text x="263" y="328" class="det">analyzeText · inspectLink · normalizePhone</text>
+  <text x="263" y="349" class="det">skor heuristik deterministik</text>
+
+  <rect x="48" y="378" width="430" height="44" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="406" class="ttl">Latihan · Langkah · Pustaka</text>
+
+  <text x="48" y="448" class="note">Pesan dan tautan tidak pernah dikirim ke server.</text>
+  <text x="48" y="468" class="note">Tanpa localStorage, cookie, akun, atau analitik.</text>
+  <text x="48" y="488" class="note">State hanya di memori React.</text>
+
+  <!-- 2. SERVER -->
+  <rect x="28" y="536" width="470" height="252" class="grp"/>
+  <text x="48" y="566" class="hd">2 · SERVER NEXT.JS</text>
+  <text x="478" y="566" text-anchor="end" class="cap">Node · Heroku</text>
+  <line x1="28" y1="580" x2="498" y2="580" stroke="#151b2b" stroke-width="2"/>
+
+  <rect x="48" y="594" width="430" height="52" fill="#fff3cf" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="616" class="ttl">POST /api/url-reputation</text>
+  <text x="263" y="636" class="det">wajib consent = true · validasi URL · no-store</text>
+
+  <rect x="48" y="660" width="430" height="52" fill="#fde7e1" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="682" class="ttl">lib/reputation/phishtank.ts</text>
+  <text x="263" y="702" class="det">adapter server · timeout 8 detik</text>
+
+  <text x="48" y="734" class="note">Kredensial hanya di server: PHISHTANK_APP_KEY (opsional).</text>
+  <text x="48" y="754" class="note">Tanpa database, tanpa auth, tanpa layanan berbayar.</text>
+  <text x="48" y="774" class="note">URL yang diperiksa tidak disimpan.</text>
+
+  <!-- 3. EXTERNAL -->
+  <rect x="536" y="86" width="416" height="300" class="grp"/>
+  <text x="556" y="116" class="hd">3 · LAYANAN EKSTERNAL</text>
+  <line x1="536" y1="130" x2="952" y2="130" stroke="#151b2b" stroke-width="2"/>
+
+  <rect x="556" y="144" width="376" height="66" fill="#fff3cf" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="744" y="170" class="ttl">PhishTank API</text>
+  <text x="744" y="192" class="det">opsional · butuh app key · rate limit</text>
+
+  <rect x="556" y="224" width="376" height="66" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="744" y="250" class="ttl">AduanNomor — Komdigi</text>
+  <text x="744" y="272" class="det">handoff manual · tanpa API publik</text>
+
+  <rect x="556" y="304" width="376" height="66" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="744" y="330" class="ttl">OJK — IASC · Kontak 157</text>
+  <text x="744" y="352" class="det">tautan resmi untuk pelaporan</text>
+
+  <!-- STATUS -->
+  <rect x="536" y="410" width="416" height="180" class="grp"/>
+  <text x="556" y="440" class="hd">STATUS HASIL URL</text>
+  <line x1="536" y1="454" x2="952" y2="454" stroke="#151b2b" stroke-width="2"/>
+
+  <rect x="558" y="468" width="11" height="11" fill="#f16b5b" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="478" class="lg">match — ada di database PhishTank</text>
+
+  <rect x="558" y="494" width="11" height="11" fill="#e4f2ea" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="504" class="lg">no-match — bukan bukti aman</text>
+
+  <rect x="558" y="520" width="11" height="11" fill="#fff3cf" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="530" class="lg">rate-limited (509) — coba lagi nanti</text>
+
+  <rect x="558" y="546" width="11" height="11" fill="#d8d1c2" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="556" class="lg">unavailable — layanan tidak terjangkau</text>
+
+  <text x="556" y="578" class="note">Kegagalan maupun no-match tidak ditampilkan sebagai “aman”.</text>
+
+  <!-- LEGEND -->
+  <rect x="536" y="610" width="416" height="178" class="grp"/>
+  <text x="556" y="640" class="hd">LEGENDA</text>
+  <line x1="536" y1="654" x2="952" y2="654" stroke="#151b2b" stroke-width="2"/>
+
+  <rect x="558" y="668" width="22" height="14" fill="#d8f36a" stroke="#151b2b" stroke-width="2"/>
+  <text x="590" y="680" class="lg">Komponen lokal di peramban</text>
+
+  <rect x="558" y="692" width="22" height="14" fill="#fff3cf" stroke="#151b2b" stroke-width="2"/>
+  <text x="590" y="704" class="lg">Komponen server / adapter</text>
+
+  <rect x="558" y="716" width="22" height="14" fill="#ffffff" stroke="#151b2b" stroke-width="2"/>
+  <text x="590" y="728" class="lg">Pihak ketiga / handoff manual</text>
+
+  <line x1="556" y1="748" x2="582" y2="748" class="flow"/>
+  <text x="590" y="753" class="lg">Aliran data otomatis</text>
+
+  <line x1="556" y1="770" x2="582" y2="770" class="manual"/>
+  <text x="590" y="775" class="lg">Pengguna membuka sumber sendiri</text>
+
+  <!-- FLOWS -->
+  <path d="M263 262 V280" class="flow"/>
+  <text x="272" y="276" class="cap">lokal</text>
+
+  <path d="M263 510 V534" class="flow"/>
+  <text x="272" y="528" class="cap">consent</text>
+
+  <path d="M498 247 H556" class="manual"/>
+
+  <path d="M498 686 H516 V334 H556" class="flow"/>
+  <text x="520" y="326" class="cap">HTTPS</text>
+
+  <path d="M932 177 H972 V506 H954" class="flow"/>
+  <text x="978" y="344" class="cap" transform="rotate(90 978 344)">respons</text>
+</svg>

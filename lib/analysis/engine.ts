@@ -5,9 +5,12 @@ import type {
   Finding,
   FindingCategory,
   Severity,
+  Verdict,
 } from "./types";
 import { DISCLAIMER, SEVERITY_WEIGHT } from "./types";
 import { extractUrls } from "./url";
+import { analyzeSocialEngineering } from "./socialEngineering";
+import { buildVerdict } from "./verdict";
 
 export const MAX_INPUT_LENGTH = 2500;
 
@@ -424,6 +427,7 @@ function buildResult(
   score: number,
   findings: Finding[],
   detectedUrls: DetectedUrl[],
+  verdict: Verdict,
 ): AnalysisResult {
   const classification = classify(score);
   const meta = CLASSIFICATIONS[classification];
@@ -436,8 +440,17 @@ function buildResult(
     score,
     findings,
     detectedUrls,
+    verdict,
   };
 }
+
+const EMPTY_VERDICT: Verdict = {
+  title: "Belum ada pesan untuk diperiksa",
+  summary: "Masukkan isi pesan terlebih dahulu.",
+  tone: "neutral",
+  actionSteps: [],
+  uncertainties: [],
+};
 
 export function analyzeText(text: string): AnalysisResult {
   const trimmed = text.trim();
@@ -448,6 +461,7 @@ export function analyzeText(text: string): AnalysisResult {
       0,
       [],
       [],
+      EMPTY_VERDICT,
     );
   }
   if (text.length > MAX_INPUT_LENGTH) {
@@ -457,12 +471,20 @@ export function analyzeText(text: string): AnalysisResult {
       0,
       [],
       [],
+      {
+        ...EMPTY_VERDICT,
+        title: "Pesan terlalu panjang",
+        summary: `Pangkas pesan hingga di bawah ${MAX_INPUT_LENGTH} karakter.`,
+      },
     );
   }
 
   idCounter = 0;
   const urls = extractUrls(trimmed);
+  const social = analyzeSocialEngineering(trimmed);
+
   const findings: Finding[] = [
+    ...social.findings,
     ...credentialRule(trimmed),
     ...accountThreatRule(trimmed),
     ...deadlinePressureRule(trimmed),
@@ -479,8 +501,10 @@ export function analyzeText(text: string): AnalysisResult {
     100,
     deduped.reduce((sum, f) => sum + SEVERITY_WEIGHT[f.severity], 0),
   );
+  const classification = classify(score);
+  const verdict = buildVerdict(deduped, social, classification);
 
-  return buildResult(true, [], score, deduped, urls);
+  return buildResult(true, [], score, deduped, urls, verdict);
 }
 
 export { DISCLAIMER };

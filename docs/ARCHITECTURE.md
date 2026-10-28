@@ -1,26 +1,12 @@
 # Arsitektur
 
-> **Status:** diagram di bawah menggambarkan implementasi saat ini. PhishTank adalah provider URL opsional melalui route server; tidak ada provider reputasi nomor aktif.
+> **Status:** seluruh isi dokumen ini menggambarkan implementasi yang ada di repositori. PhishTank adalah provider reputasi URL **opsional** melalui route server. Tidak ada provider reputasi nomor yang aktif.
 
-## Gambaran umum
+![Diagram arsitektur Saring: lapisan browser, server Next.js, dan layanan eksternal](assets/diagrams/system-overview.svg)
 
-```mermaid
-flowchart LR
-  U[Pengguna Indonesia] --> UI[Next.js App Router]
-  UI --> Shell[Nav + Footer]
-  UI --> Checker[Unified Checker]
-  Checker --> Msg[Analyzer lokal]
-  Checker --> Phone[Normalisasi nomor]
-  Checker --> URL[Heuristik URL]
-  URL --> API[Route /api/url-reputation]
-  API --> PT[PhishTank opsional]
-  UI --> Train[Latihan]
-  UI --> Guide[Langkah]
-  UI --> Lib[Pustaka]
-  CI[GitHub Actions] --> Build[Lint, typecheck, test, build, E2E]
-```
+Sumber diagram: [`assets/diagrams/system-overview.svg`](assets/diagrams/system-overview.svg).
 
-Diagram ini memisahkan analisis pesan/struktur URL yang lokal dari pemeriksaan reputasi URL yang hanya dilakukan setelah consent melalui route server. Implementasi: `components/periksa/*`, `lib/analysis/*`, `app/api/url-reputation/route.ts`, dan `lib/reputation/phishtank.ts`.
+Ringkasnya: **Checker** dan **`lib/analysis`** dieksekusi di peramban tanpa jaringan. Server Next.js hanya menangani `POST /api/url-reputation` (consent + validasi) yang memanggil adapter **PhishTank**. Sumber lain (AduanNomor, OJK) adalah *handoff* manual: pengguna menyalin data dan membuka situsnya sendiri.
 
 ## Gambaran umum
 
@@ -39,19 +25,31 @@ app/               rute & titik masuk
   not-found.tsx      halaman 404
 
 components/
-  nav.tsx           navigasi responsif (client)
+  nav.tsx           sidebar desktop + drawer mobile (client)
   footer.tsx        footer (server)
-  periksa/analyzer.tsx     formulir input + status (client)
-  periksa/result-view.tsx  tampilan hasil (presentational)
+  periksa/checker.tsx      segmented control 3 mode (client)
+  periksa/analyzer.tsx     mode pesan: input + status (client)
+  periksa/result-view.tsx  laporan hasil pesan (presentational)
+  periksa/phone-check.tsx  mode nomor: input + normalisasi (client)
+  periksa/phone-result.tsx tampilan hasil nomor (presentational)
+  periksa/link-check.tsx   mode tautan: heuristik + consent (client)
   latihan/simulator.tsx    simulator keputusan (client)
   langkah/guide.tsx        panduan tindakan (client)
   pustaka/library.tsx      pustaka + pencarian (client)
 
+app/api/url-reputation/route.ts   route server: consent + validasi + adapter
+
 lib/analysis/       logika domain MURNI (tanpa React, tanpa jaringan)
   types.ts          tipe & label (Severity, Finding, AnalysisResult, …)
-  url.ts            deteksi & inspeksi URL sebagai string
+  url.ts            ekstraksi & inspeksi URL sebagai string
+  link.ts           inspeksi tautan mendalam (userinfo, TLD, subdomain)
+  phone.ts          normalisasi nomor Indonesia → domestik & E.164
+  phoneReputation.ts status hasil nomor + jalur tanpa provider
   engine.ts         mesin aturan heuristik + klasifikasi
   index.ts          barrel export
+
+lib/reputation/
+  phishtank.ts      adapter server: timeout 8 dtk, status ternormalisasi
 
 data/               konten fiktif & edukasi yang ditinjau
   examples.ts       6 contoh pesan fiktif
@@ -106,12 +104,24 @@ Skor bukan probabilitas penipuan — hanya total bobot indikator.
 
 ## Komponen UI
 
-Komponen feature adalah *client components* (`"use client"`) yang memakai state
-lokal sederhana. `lib/analysis` diimpor sebagai modul murni; tidak ada
-pemanggilan jaringan di sisi klien. Halaman dan footer adalah server components.
+Komponen feature adalah *client components* (`"use client"`) dengan state lokal
+sederhana. `lib/analysis` adalah modul murni yang di-bundle ke klien.
+
+Satu-satunya pemanggilan jaringan dari klien adalah `POST /api/url-reputation`
+di `link-check.tsx`, dan hanya ketika pengguna mencentang consent. Mode pesan
+dan mode nomor tidak pernah memanggil jaringan.
 
 ## Pemeriksaan URL yang aman
 
-`extractUrls` hanya mengekstrak dan menginspeksi URL sebagai string (host,
-skema, penyingkat, alamat IP). Ia **tidak** melakukan fetch, redirect, atau
-unduhan. Temuan tautan hanya didasarkan pada indikator tekstual.
+Tiga tingkat yang dipisahkan dengan jelas:
+
+1. `extractUrls` / `inspectUrl` (`lib/analysis/url.ts`) — ekstraksi sederhana
+   untuk menemukan tautan di dalam pesan.
+2. `inspectLink` (`lib/analysis/link.ts`) — inspeksi struktural: skema,
+   userinfo, alamat IP, penyingkat, TLD tidak lazim, subdomain meniru merek.
+3. `lookupPhishTank` (`lib/reputation/phishtank.ts`) — reputasi eksternal,
+   hanya lewat route server dan hanya setelah consent.
+
+Ketiganya **tidak pernah** membuka, mengikuti redirect, mengunduh, atau
+menjalankan isi URL. Status eksternal dibedakan menjadi `match`, `no-match`,
+`rate-limited` (HTTP 509), dan `unavailable`; `no-match` bukan bukti aman.

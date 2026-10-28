@@ -7,7 +7,7 @@ import { Analyzer } from "./analyzer";
 import { PhoneCheck } from "./phone-check";
 import { LinkCheck } from "./link-check";
 
-type Mode = "message" | "number" | "link";
+type Mode = "message" | "phone" | "link";
 
 const TABS: { id: Mode; label: string; icon: LucideIcon; hint: string }[] = [
   {
@@ -16,7 +16,12 @@ const TABS: { id: Mode; label: string; icon: LucideIcon; hint: string }[] = [
     icon: MessageSquareText,
     hint: "Tempel pesan mencurigakan",
   },
-  { id: "number", label: "Periksa Nomor", icon: Phone, hint: "Normalisasi & arahkan ke sumber resmi" },
+  {
+    id: "phone",
+    label: "Periksa Nomor",
+    icon: Phone,
+    hint: "Nilai perilaku pengirim di Saring",
+  },
   { id: "link", label: "Periksa Tautan", icon: Link2, hint: "Inspeksi URL tanpa membukanya" },
 ];
 
@@ -28,9 +33,9 @@ export function Checker() {
       <div
         role="tablist"
         aria-label="Jenis pemeriksaan"
-        className="flex flex-col gap-2 sm:flex-row"
+        className="grid gap-2 border-2 border-ink bg-surface p-2 sm:grid-cols-3"
       >
-        {TABS.map((tab) => {
+        {TABS.map((tab, index) => {
           const active = mode === tab.id;
           return (
             <button
@@ -41,16 +46,31 @@ export function Checker() {
               aria-selected={active}
               aria-controls={`checker-panel-${tab.id}`}
               onClick={() => setMode(tab.id)}
-              className={`flex items-center gap-3 border-2 px-4 py-3 text-left transition-none ${
+              className={`flex min-h-16 items-center gap-3 border-2 px-3 py-2.5 text-left transition-none ${
                 active
-                  ? "border-ink bg-lime text-ink shadow-neo"
-                  : "border-ink bg-surface text-ink hover:bg-lime-soft"
+                  ? "border-ink bg-lime text-ink shadow-neo-sm"
+                  : "border-transparent bg-paper text-ink hover:border-ink hover:bg-lime-soft"
               }`}
             >
-              <tab.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <span>
-                <span className="block text-sm font-bold">{tab.label}</span>
-                <span className="block text-xs text-ink-soft">{tab.hint}</span>
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center border-2 border-ink ${
+                  active ? "bg-ink text-lime" : "bg-surface text-ink"
+                }`}
+              >
+                <tab.icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5">
+                  <span className="font-mono text-[10px] font-bold uppercase text-ink-muted">
+                    0{index + 1}
+                  </span>
+                  <span className="block text-sm font-bold leading-tight">
+                    {tab.label}
+                  </span>
+                </span>
+                <span className="mt-0.5 block text-xs leading-4 text-ink-soft">
+                  {tab.hint}
+                </span>
               </span>
             </button>
           );
@@ -65,7 +85,7 @@ export function Checker() {
       >
         {mode === "message" ? (
           <Analyzer />
-        ) : mode === "number" ? (
+        ) : mode === "phone" ? (
           <PhoneCheck />
         ) : (
           <LinkCheck />

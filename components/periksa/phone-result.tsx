@@ -1,121 +1,175 @@
 "use client";
 
-import { ArrowUpRight, Copy } from "lucide-react";
-import type { PhoneCheckResult } from "@/lib/analysis";
+import { ArrowUpRight, Copy, Info, ShieldAlert, TriangleAlert } from "lucide-react";
+import type { PhoneAssessment, VerificationLevel } from "@/lib/analysis";
+
+const LEVEL_STYLE: Record<
+  VerificationLevel,
+  { box: string; icon: typeof Info; iconColor: string }
+> = {
+  high: { box: "border-coral bg-coral-soft", icon: ShieldAlert, iconColor: "text-coral" },
+  medium: { box: "border-amber bg-amber-soft", icon: TriangleAlert, iconColor: "text-amber" },
+  low: { box: "border-ink bg-paper", icon: Info, iconColor: "text-ink-soft" },
+};
 
 export function PhoneResult({
-  result,
-  source,
+  national,
+  e164,
+  assessment,
   copied,
   onCopy,
+  officialSource,
 }: {
-  result: PhoneCheckResult;
-  source: { label: string; url: string; note: string };
+  national: string;
+  e164: string;
+  assessment: PhoneAssessment;
   copied: boolean;
   onCopy: () => void;
+  officialSource: { label: string; url: string; note: string };
 }) {
-  if (result.status === "invalid") {
-    return (
-      <div className="mt-5 border-2 border-coral bg-coral-soft p-4" role="alert">
-        <h3 className="text-sm font-bold text-coral">Format nomor tidak valid</h3>
-        <ul className="mt-2 grid gap-1 text-sm text-ink">
-          {result.errors.map((error) => (
-            <li key={error}>{error}</li>
+  const style = LEVEL_STYLE[assessment.level];
+  const Icon = style.icon;
+
+  return (
+    <section
+      aria-label="Hasil penilaian nomor"
+      className="mt-5 border-t-2 border-ink pt-5"
+    >
+      <div className={`border-2 ${style.box}`} role="status">
+        <div className="flex items-start gap-3 px-4 py-3.5">
+          <Icon
+            className={`mt-0.5 h-6 w-6 shrink-0 ${style.iconColor}`}
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+              Penilaian berdasarkan perilaku yang Anda laporkan
+            </p>
+            <h2 className="mt-0.5 text-lg font-extrabold leading-tight text-ink">
+              {assessment.levelLabel}
+            </h2>
+            <p className="mt-1.5 text-sm leading-6 text-ink-soft">
+              {assessment.summary}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 border-2 border-ink bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ink bg-paper px-3 py-2">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+            Nomor ternormalisasi
+          </h2>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex min-h-8 items-center gap-1.5 border-2 border-ink bg-surface px-2 py-1 text-[11px] font-bold text-ink hover:bg-lime"
+          >
+            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+            {copied ? "Tersalin" : "Salin"}
+          </button>
+        </div>
+        <dl className="grid gap-2 px-3 py-2.5 sm:grid-cols-2">
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+              Domestik
+            </dt>
+            <dd className="font-mono text-sm text-ink">{national}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+              Internasional (E.164)
+            </dt>
+            <dd className="font-mono text-sm text-ink">{e164}</dd>
+          </div>
+        </dl>
+      </div>
+
+      {assessment.indicators.length > 0 ? (
+        <>
+          <h2 className="mt-4 text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+            Perilaku yang Anda tandai ({assessment.indicators.length})
+          </h2>
+          <ul className="mt-2 grid gap-2.5">
+            {assessment.indicators.map((indicator, index) => (
+              <li key={indicator.id} className="border-2 border-ink bg-surface">
+                <div className="flex items-center gap-2 border-b-2 border-ink bg-paper px-3 py-2">
+                  <span className="flex h-5 min-w-5 items-center justify-center border border-ink bg-ink px-1 font-mono text-[10px] font-bold text-paper">
+                    {index + 1}
+                  </span>
+                  <h3 className="text-sm font-bold text-ink">{indicator.label}</h3>
+                </div>
+                <div className="px-3 py-2.5">
+                  <p className="text-sm leading-6 text-ink-soft">
+                    {indicator.explanation}
+                  </p>
+                  <p className="mt-1.5 text-sm leading-6 text-ink">
+                    <span className="font-semibold">Saran: </span>
+                    {indicator.step}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      <div className="mt-4 border-2 border-ink bg-ink text-paper">
+        <h2 className="border-b border-paper/20 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-lime">
+          Langkah berikutnya
+        </h2>
+        <ol className="grid gap-2 px-4 py-3.5">
+          {assessment.actionSteps.map((step, index) => (
+            <li key={step} className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border border-lime font-mono text-[10px] font-bold text-lime">
+                {index + 1}
+              </span>
+              <span className="text-sm leading-6 text-paper/90">{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div className="mt-3 border-2 border-ink bg-paper px-3 py-2.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+          Yang belum dapat dipastikan
+        </h2>
+        <ul className="mt-1.5 grid gap-1">
+          {assessment.uncertainties.map((item) => (
+            <li
+              key={item}
+              className="flex items-start gap-1.5 text-xs leading-5 text-ink-soft"
+            >
+              <span className="mt-1.5 h-1 w-1 shrink-0 bg-ink-muted" aria-hidden="true" />
+              <span>{item}</span>
+            </li>
           ))}
         </ul>
       </div>
-    );
-  }
 
-  return (
-    <div className="mt-5 grid gap-4">
-      <div className="border-2 border-ink bg-lime-soft p-4">
-        <h3 className="text-sm font-bold text-ink">Nomor telah dinormalisasi</h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
-              Domestik
-            </span>
-            <input
-              readOnly
-              value={result.national}
-              aria-label="Nomor ternormalisasi domestik"
-              className="mt-1 w-full border-2 border-ink bg-surface px-3 py-2 font-mono text-base text-ink"
-            />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">
-              Internasional (E.164)
-            </span>
-            <input
-              readOnly
-              value={result.e164}
-              aria-label="Nomor ternormalisasi internasional"
-              className="mt-1 w-full border-2 border-ink bg-surface px-3 py-2 font-mono text-base text-ink"
-            />
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onCopy}
-          className="mt-3 inline-flex h-10 items-center justify-center gap-2 border-2 border-ink bg-surface px-3 text-xs font-bold text-ink hover:bg-lime"
-        >
-          <Copy className="h-4 w-4" aria-hidden="true" />
-          {copied ? "Tersalin" : "Salin nomor"}
-        </button>
-      </div>
-
-      {result.status === "not-checked" ? (
-        <div className="border-2 border-ink bg-surface p-4">
-          <h3 className="text-sm font-bold text-ink">Lanjutkan ke sumber resmi</h3>
-          <p className="mt-1 text-sm leading-6 text-ink">
-            Nomor sudah dinormalisasi.{" "}
-            <span className="font-semibold">
-              Saring belum memeriksa reputasinya secara langsung.
-            </span>{" "}
-            Lanjutkan pemeriksaan melalui sumber resmi.
+      <details className="mt-3 border-2 border-ink bg-surface">
+        <summary className="min-h-11 cursor-pointer px-3 py-2.5 text-sm font-bold text-ink">
+          Opsional: cek juga di portal resmi
+        </summary>
+        <div className="border-t-2 border-ink px-3 py-2.5">
+          <p className="text-xs leading-5 text-ink-soft">
+            Saring tidak menerima hasil dari portal ini — Anda memeriksanya
+            sendiri di situs resmi.
           </p>
           <a
-            href={source.url}
+            href={officialSource.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-2 border-2 border-ink bg-ink px-4 py-2.5 text-sm font-bold text-paper transition-none hover:bg-ink-soft"
+            className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:bg-lime"
           >
-            Buka {source.label}
+            Buka {officialSource.label}
             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
           </a>
-          <p className="mt-2 text-xs leading-5 text-ink-muted">{source.note}</p>
-        </div>
-      ) : null}
-
-      {result.status === "no-record" ? (
-        <div className="border-2 border-ink bg-lime-soft p-4">
-          <p className="text-sm leading-6 text-ink">
-            Sumber tidak memiliki catatan untuk nomor ini.{" "}
-            <span className="font-semibold">
-              Ini bukan bukti bahwa nomor tersebut aman.
-            </span>
+          <p className="mt-2 text-xs leading-5 text-ink-muted">
+            {officialSource.note}
           </p>
         </div>
-      ) : null}
-
-      {result.status === "reported" ? (
-        <div className="border-2 border-coral bg-coral-soft p-4">
-          <p className="text-sm font-semibold text-coral">
-            Nomor memiliki catatan pelaporan di {result.source}.
-          </p>
-          <p className="mt-1 text-xs leading-5 text-ink">
-            Laporan bisa saja tidak terverifikasi atau sudah kedaluwarsa. Ini
-            bukan kesimpulan hukum terhadap pemilik nomor.
-          </p>
-        </div>
-      ) : null}
-
-      {result.status === "error" ? (
-        <div className="border-2 border-coral bg-coral-soft p-4" role="alert">
-          <p className="text-sm font-semibold text-coral">{result.message}</p>
-        </div>
-      ) : null}
-    </div>
+      </details>
+    </section>
   );
 }

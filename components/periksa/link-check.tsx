@@ -1,40 +1,78 @@
 "use client";
 
 import { useState } from "react";
-import { Eraser, Link2, Loader2, Lock, ScanSearch } from "lucide-react";
+import {
+  CircleAlert,
+  Eraser,
+  Link2,
+  Loader2,
+  RefreshCw,
+  ScanSearch,
+} from "lucide-react";
 import { inspectLink, SEVERITY_LABELS } from "@/lib/analysis";
 import type { LinkInspection, Severity } from "@/lib/analysis";
+import type { PhishTankLookup } from "@/lib/reputation/phishtank";
+import { PHISHTANK_STATUS_LABEL } from "@/lib/reputation/phishtank";
+
+const SEVERITY_CHIP: Record<Severity, string> = {
+  high: "border-coral bg-coral-soft text-ink",
+  medium: "border-amber bg-amber-soft text-ink",
+  low: "border-ink bg-paper text-ink-soft",
+};
 
 export function LinkCheck() {
   const [input, setInput] = useState("");
-  const [result, setResult] = useState<LinkInspection | null>(null);
-  const [lookup, setLookup] = useState<PhishTankResult | null>(null);
+  const [local, setLocal] = useState<LinkInspection | null>(null);
+  const [external, setExternal] = useState<PhishTankLookup | null>(null);
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
-  const handleClear = () => {
-    setInput("");
-    setResult(null);
-    setLookup(null);
-    setConsent(false);
-  };
-
-  const handleLookup = async () => {
-    const inspected = inspectLink(input);
-    setResult(inspected);
-    if (!inspected.isValid || !consent) return;
+  const runLookup = async (url: string) => {
     setLoading(true);
+    setRequestError(null);
     try {
       const response = await fetch("/api/url-reputation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: input.trim(), consent: true }),
+        body: JSON.stringify({ url, consent: true }),
       });
-      const payload = (await response.json()) as PhishTankResult & { error?: string };
-      setLookup(response.ok ? payload : { provider: "PhishTank", status: "unavailable", matched: false, verified: null, valid: null, checkedAt: new Date().toISOString(), message: payload.error ?? "Pemeriksaan tidak tersedia." });
+      const payload: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          payload && typeof payload === "object" && "error" in payload
+            ? String((payload as { error: unknown }).error)
+            : `Permintaan ditolak server (HTTP ${response.status}).`;
+        setExternal(null);
+        setRequestError(message);
+        return;
+      }
+      setExternal(payload as PhishTankLookup);
     } catch {
-      setLookup({ provider: "PhishTank", status: "unavailable", matched: false, verified: null, valid: null, checkedAt: new Date().toISOString(), message: "Pemeriksaan eksternal tidak tersedia." });
-    } finally { setLoading(false); }
+      setExternal(null);
+      setRequestError(
+        "Tidak dapat menghubungi server Saring. Periksa koneksi Anda lalu coba lagi.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheck = async () => {
+    const inspected = inspectLink(input);
+    setLocal(inspected);
+    setExternal(null);
+    setRequestError(null);
+    if (!inspected.isValid || !consent) return;
+    await runLookup(input.trim());
+  };
+
+  const handleClear = () => {
+    setInput("");
+    setLocal(null);
+    setExternal(null);
+    setConsent(false);
+    setRequestError(null);
   };
 
   return (
@@ -45,26 +83,16 @@ export function LinkCheck() {
           <h2 className="text-base font-bold">Periksa tautan</h2>
         </div>
         <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
-          Inspeksi teks · tanpa fetch
+          Inspeksi teks · tidak dibuka
         </span>
       </div>
 
       <div className="px-4 py-5 sm:px-5">
-        <div className="border-2 border-ink bg-lime-soft px-3 py-2.5">
-          <p className="flex items-start gap-2 text-xs leading-5 text-ink">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>
-              Tautan hanya diperiksa sebagai teks di peramban Anda — tidak pernah
-              dibuka, diunduh, atau dihubungi.
-            </span>
-          </p>
-        </div>
-
         <label
           htmlFor="link-input"
-          className="mt-4 block text-sm font-semibold text-ink"
+          className="block text-sm font-semibold text-ink"
         >
-          Tautan
+          Tautan yang dikirim pengirim
         </label>
         <input
           id="link-input"
@@ -72,18 +100,45 @@ export function LinkCheck() {
           inputMode="url"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="mis. https://situs.com atau bca-verifikasi.net/login"
+          placeholder="https://situs.com atau bit.ly/abc123"
           className="mt-2 w-full border-2 border-ink bg-paper px-3 py-3 font-mono text-sm text-ink placeholder:text-ink-muted/60"
         />
+        <p className="mt-1.5 text-xs text-ink-muted">
+          Tautan diperiksa sebagai teks. Saring tidak pernah membuka,
+          mengunduh, atau mengikuti tautan yang Anda masukkan.
+        </p>
+
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5 border-2 border-line bg-paper px-3 py-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => setConsent(event.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-ink"
+          />
+          <span>
+            <span className="block font-semibold text-ink">
+              Kirim URL ini ke PhishTank (opsional)
+            </span>
+            <span className="mt-0.5 block text-xs leading-4 text-ink-muted">
+              Hanya URL yang dikirim, melalui server Saring. Pesan dan nomor
+              telepon Anda tidak pernah dikirim.
+            </span>
+          </span>
+        </label>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={handleLookup}
-            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-ink shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+            onClick={handleCheck}
+            disabled={loading}
+            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-ink shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ScanSearch className="h-4 w-4" aria-hidden="true" />}
-            {loading ? "Memeriksa sumber…" : "Periksa tautan"}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <ScanSearch className="h-4 w-4" aria-hidden="true" />
+            )}
+            {loading ? "Memeriksa…" : "Periksa tautan"}
           </button>
           <button
             type="button"
@@ -94,32 +149,150 @@ export function LinkCheck() {
             Bersihkan
           </button>
         </div>
-        <label className="mt-4 flex items-start gap-2 text-xs leading-5 text-ink-soft">
-          <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-1 h-4 w-4 accent-lime" />
-          <span>Saya setuju URL ini dikirim ke PhishTank untuk pemeriksaan reputasi. Jangan kirim tautan pribadi yang memuat token, sesi, atau undangan rahasia.</span>
-        </label>
 
-        {result ? <LinkResult result={result} lookup={lookup} /> : null}
+        {local ? (
+          <LinkResult
+            local={local}
+            external={external}
+            requestError={requestError}
+            loading={loading}
+            consent={consent}
+            onRetry={() => runLookup(input.trim())}
+          />
+        ) : (
+          <div className="mt-5 border-2 border-dashed border-ink/40 bg-paper px-4 py-5">
+            <h3 className="text-sm font-bold text-ink">Hasil akan muncul di sini</h3>
+            <p className="mt-1 text-sm leading-6 text-ink-muted">
+              Inspeksi lokal selalu berjalan. Pemeriksaan reputasi eksternal
+              hanya dilakukan bila Anda mencentang persetujuan.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-const SEVERITY_CLASS: Record<Severity, string> = {
-  high: "border-coral bg-coral-soft text-coral",
-  medium: "border-amber bg-amber-soft text-amber",
-  low: "border-ink bg-paper text-ink-soft",
-};
+function ExternalPanel({
+  external,
+  requestError,
+  consent,
+  loading,
+  onRetry,
+}: {
+  external: PhishTankLookup | null;
+  requestError: string | null;
+  consent: boolean;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  const tone =
+    external?.status === "match"
+      ? "border-coral bg-coral-soft"
+      : external?.status === "no-match"
+        ? "border-ink bg-paper"
+        : "border-amber bg-amber-soft";
 
-type PhishTankResult = { provider: string; status: "match" | "no-match" | "rate-limited" | "unavailable"; matched: boolean; verified: boolean | null; valid: boolean | null; checkedAt: string; detailUrl?: string; message: string };
+  return (
+    <div className={`mt-4 border-2 ${tone}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/20 px-3 py-2">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+          Reputasi eksternal · PhishTank
+        </h3>
+        {external ? (
+          <span className="border border-ink bg-surface px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
+            {PHISHTANK_STATUS_LABEL[external.status]}
+          </span>
+        ) : null}
+      </div>
 
-function LinkResult({ result, lookup }: { result: LinkInspection; lookup: PhishTankResult | null }) {
-  if (!result.isValid) {
+      <div className="px-3 py-2.5">
+        {!external && !requestError ? (
+          <p className="text-sm leading-6 text-ink">
+            Belum diperiksa. Centang persetujuan di atas, lalu jalankan
+            pemeriksaan. Inspeksi lokal di atas tetap berlaku.
+          </p>
+        ) : null}
+
+        {requestError ? (
+          <p className="text-sm leading-6 text-ink">
+            <span className="font-semibold">Permintaan gagal: </span>
+            {requestError}
+          </p>
+        ) : null}
+
+        {external ? (
+          <p className="text-sm leading-6 text-ink">{external.message}</p>
+        ) : null}
+
+        {external ? (
+          <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
+            {external.usedKey ? "dengan app key" : "tanpa app key"} · dicek{" "}
+            {new Date(external.checkedAt).toLocaleString("id-ID")}
+            {external.httpStatus ? ` · HTTP ${external.httpStatus}` : ""}
+          </p>
+        ) : null}
+
+        {external?.detailUrl ? (
+          <a
+            href={external.detailUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block text-xs font-bold text-ink underline underline-offset-2"
+          >
+            Lihat detail di PhishTank
+          </a>
+        ) : null}
+
+        {consent ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={loading}
+            className="mt-3 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:bg-lime disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            )}
+            {loading
+              ? "Memeriksa…"
+              : external
+                ? "Coba periksa ulang"
+                : "Periksa sekarang"}
+          </button>
+        ) : (
+          <p className="mt-2 text-xs leading-5 text-ink-muted">
+            Persetujuan belum diberikan, jadi URL ini tidak dikirim ke PhishTank.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LinkResult({
+  local,
+  external,
+  requestError,
+  loading,
+  consent,
+  onRetry,
+}: {
+  local: LinkInspection;
+  external: PhishTankLookup | null;
+  requestError: string | null;
+  loading: boolean;
+  consent: boolean;
+  onRetry: () => void;
+}) {
+  if (!local.isValid) {
     return (
       <div className="mt-5 border-2 border-coral bg-coral-soft p-4" role="alert">
-        <h3 className="text-sm font-bold text-coral">Tautan tidak dapat diproses</h3>
+        <h3 className="text-sm font-bold text-ink">Tautan tidak dapat diproses</h3>
         <ul className="mt-2 grid gap-1 text-sm text-ink">
-          {result.errors.map((error) => (
+          {local.errors.map((error) => (
             <li key={error}>{error}</li>
           ))}
         </ul>
@@ -128,66 +301,103 @@ function LinkResult({ result, lookup }: { result: LinkInspection; lookup: PhishT
   }
 
   return (
-    <div className="mt-5 grid gap-4">
-      <div className="border-2 border-ink bg-surface p-4">
-        <h3 className="text-sm font-bold text-ink">Struktur yang dikenali</h3>
-        <dl className="mt-2 grid gap-1 font-mono text-xs text-ink-soft sm:grid-cols-2">
+    <div className="mt-5 border-t-2 border-ink pt-5">
+      <div className="border-2 border-ink bg-surface">
+        <h3 className="border-b-2 border-ink bg-paper px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+          Struktur tautan yang dikenali
+        </h3>
+        <dl className="grid gap-2 px-3 py-2.5 sm:grid-cols-3">
           <div>
-            <dt className="text-ink-muted">Host</dt>
-            <dd>{result.host || "—"}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+              Host
+            </dt>
+            <dd className="break-all font-mono text-xs text-ink">
+              {local.host || "—"}
+            </dd>
           </div>
           <div>
-            <dt className="text-ink-muted">Skema</dt>
-            <dd>{result.scheme || "—"}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+              Skema
+            </dt>
+            <dd className="font-mono text-xs text-ink">{local.scheme || "—"}</dd>
           </div>
           <div>
-            <dt className="text-ink-muted">Path</dt>
-            <dd className="break-all">{result.pathname || "—"}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+              Path
+            </dt>
+            <dd className="break-all font-mono text-xs text-ink">
+              {local.pathname || "—"}
+            </dd>
           </div>
         </dl>
       </div>
 
-      {result.findings.length > 0 ? (
-        <ul className="grid gap-3">
-          {result.findings.map((finding) => (
-            <li key={finding.signal} className="border-2 border-ink bg-surface p-4">
-              <div className="flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex items-baseline justify-between gap-2">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+          Indikator lokal
+        </h3>
+        <span className="font-mono text-[11px] text-ink-muted">
+          {local.findings.length} indikator
+        </span>
+      </div>
+
+      {local.findings.length > 0 ? (
+        <ul className="mt-2 grid gap-2.5">
+          {local.findings.map((finding, index) => (
+            <li key={finding.signal} className="border-2 border-ink bg-surface">
+              <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink bg-paper px-3 py-2">
+                <span className="flex h-5 min-w-5 items-center justify-center border border-ink bg-ink px-1 font-mono text-[10px] font-bold text-paper">
+                  {index + 1}
+                </span>
                 <span
-                  className={`inline-flex items-center border px-2 py-0.5 text-[11px] font-bold uppercase ${SEVERITY_CLASS[finding.severity]}`}
+                  className={`border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${SEVERITY_CHIP[finding.severity]}`}
                 >
                   {SEVERITY_LABELS[finding.severity]}
                 </span>
-                <h3 className="text-sm font-bold text-ink">{finding.title}</h3>
+                <h4 className="text-sm font-bold text-ink">{finding.title}</h4>
               </div>
-              <p className="mt-2 text-sm leading-6 text-ink-soft">
-                {finding.explanation}
-              </p>
-              <p className="mt-2 break-all rounded-sm bg-paper px-2 py-1 font-mono text-xs text-ink-soft">
-                {finding.evidence}
-              </p>
-              <p className="mt-2 text-sm text-ink">
-                <span className="font-semibold">Langkah:</span> {finding.nextStep}
-              </p>
+              <div className="px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+                  Bukti
+                </p>
+                <p className="mt-1 break-all border-l-4 border-ink bg-paper px-2.5 py-1.5 font-mono text-xs text-ink">
+                  {finding.evidence}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-ink-soft">
+                  {finding.explanation}
+                </p>
+                <p className="mt-1.5 flex items-start gap-1.5 text-sm leading-6 text-ink">
+                  <CircleAlert
+                    className="mt-1 h-3.5 w-3.5 shrink-0 text-coral"
+                    aria-hidden="true"
+                  />
+                  <span>{finding.nextStep}</span>
+                </p>
+              </div>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="border-2 border-ink bg-lime-soft p-4">
-          <p className="text-sm leading-6 text-ink">
-            Tidak ada indikator yang dikenali dari teks tautan ini. Ini bukan
-            jaminan bahwa tautan aman.
+        <div className="mt-2 border-2 border-ink bg-surface px-3 py-2.5">
+          <p className="text-sm leading-6 text-ink-soft">
+            Tidak ada indikator struktural yang cocok. Ini bukan jaminan bahwa
+            tautan aman.
           </p>
         </div>
       )}
 
-      <div className={`border-2 border-ink p-4 ${lookup?.status === "match" ? "bg-coral-soft" : "bg-paper"}`}>
-        <h3 className="text-sm font-bold text-ink">Reputasi eksternal</h3>
-        <p className="mt-1 text-sm leading-6 text-ink">{lookup ? lookup.message : "Belum diperiksa ke sumber eksternal. Centang persetujuan lalu jalankan pemeriksaan."}</p>
-        {lookup ? <p className="mt-2 text-xs text-ink-muted">Sumber: {lookup.provider} · Dicek: {new Date(lookup.checkedAt).toLocaleString("id-ID")}</p> : null}
-        {lookup?.detailUrl ? <a href={lookup.detailUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-semibold underline">Lihat detail PhishTank</a> : null}
-      </div>
-      <p className="border-2 border-ink bg-paper p-3 text-xs leading-5 text-ink-muted">
-        Heuristik lokal dan reputasi provider adalah sinyal, bukan bukti mutlak. No-match tidak berarti aman; URL tidak pernah dibuka atau diikuti.
+      <ExternalPanel
+        external={external}
+        requestError={requestError}
+        consent={consent}
+        loading={loading}
+        onRetry={onRetry}
+      />
+
+      <p className="mt-3 border-2 border-ink bg-paper px-3 py-2.5 text-xs leading-5 text-ink-muted">
+        Satu indikator saja tidak membuktikan tautan berbahaya. Sebaliknya,
+        “tidak ada kecocokan” di PhishTank hanya berarti URL ini tidak ada di
+        database mereka — bukan jaminan keamanan.
       </p>
     </div>
   );

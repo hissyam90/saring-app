@@ -170,8 +170,9 @@ export function Analyzer() {
               <button
                 key={example.id}
                 type="button"
+                title={example.note}
                 onClick={() => applyExample(example, false)}
-                className="border-2 border-ink bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-neo-sm transition-none hover:bg-lime active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                className="min-h-11 border-2 border-ink bg-surface px-3 py-2 text-xs font-semibold text-ink shadow-neo-sm transition-none hover:bg-lime active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               >
                 {example.label}
               </button>
@@ -189,6 +190,19 @@ export function Analyzer() {
         ) : null}
 
         {status === "done" && result ? <ResultView result={result} /> : null}
+
+        {status === "idle" ? (
+          <div className="border-2 border-dashed border-ink/40 bg-paper px-4 py-5">
+            <h3 className="text-sm font-bold text-ink">
+              Hasil akan muncul di sini
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-ink-muted">
+              Saring menyusun hasil menjadi tiga bagian: sinyal yang ditemukan
+              beserta kutipan buktinya, langkah yang bisa langsung Anda lakukan,
+              dan hal yang belum dapat dipastikan.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       <span aria-live="polite" className="sr-only">
