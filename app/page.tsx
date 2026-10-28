@@ -1,40 +1,41 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpen,
+  Banknote,
+  CircleAlert,
   Eye,
+  Key,
   ListChecks,
   Lock,
-  ScanSearch,
+  MousePointerClick,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { Checker } from "@/components/periksa/checker";
 
-const FEATURES = [
+const RECOVERY = [
   {
-    href: "/periksa",
-    icon: ScanSearch,
-    title: "Periksa",
-    description: "Pesan, nomor, dan tautan dalam satu ruang kerja.",
-  },
-  {
-    href: "/latihan",
-    icon: ShieldCheck,
-    title: "Latihan",
-    description: "Berlatih mengambil keputusan aman lewat 8 skenario.",
-  },
-  {
-    href: "/langkah",
+    href: "/langkah?kondisi=received-message",
     icon: ListChecks,
-    title: "Langkah",
-    description: "Panduan tindakan terprioritas sesuai situasi Anda.",
+    title: "Baru menerima pesan",
+    detail: "Verifikasi identitas tanpa menuduh.",
   },
   {
-    href: "/pustaka",
-    icon: BookOpen,
-    title: "Pustaka",
-    description: "Panduan ringkas mengenali dan menghadapi penipuan.",
+    href: "/langkah?kondisi=clicked-link",
+    icon: MousePointerClick,
+    title: "Terlanjur membuka tautan",
+    detail: "Langkah aman bila belum mengisi data.",
+  },
+  {
+    href: "/langkah?kondisi=entered-credentials",
+    icon: Key,
+    title: "Sudah memberi kode atau kata sandi",
+    detail: "Amankan akun dan cabut sesi lain.",
+  },
+  {
+    href: "/langkah?kondisi=transferred-money",
+    icon: Banknote,
+    title: "Sudah mentransfer uang",
+    detail: "Hubungi penyedia pembayaran dan simpan bukti.",
   },
 ];
 
@@ -64,7 +65,7 @@ const PRINCIPLES = [
     icon: Lock,
     title: "Privasi dirancang sejak awal",
     description:
-      "Analisis pesan dan tautan berjalan sepenuhnya di peramban Anda — tanpa akun dan tanpa mengirim konten ke server.",
+      "Analisis pesan dan tautan berjalan sepenuhnya di peramban Anda. tanpa akun dan tanpa mengirim konten ke server.",
   },
   {
     icon: Eye,
@@ -73,7 +74,7 @@ const PRINCIPLES = [
       "Setiap sinyal disertai alasan, bukti, dan langkah yang disarankan. Bukan kotak hitam.",
   },
   {
-    icon: Sparkles,
+    icon: CircleAlert,
     title: "Jujur soal ketidakpastian",
     description:
       "Tidak ada label “aman”. Saring menyajikan indikator, bukan keputusan atau tuduhan.",
@@ -115,7 +116,7 @@ export default function Home() {
                 Analisis lokal
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                 Hasil yang dijelaskan
               </span>
             </p>
@@ -180,31 +181,37 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <div className="flex items-baseline justify-between gap-3 border-b-2 border-ink pb-2">
+        <div className="border-b-2 border-ink pb-2">
           <h2 className="text-2xl font-black tracking-tight text-ink">
-            Bagian lain dari Saring
+            Kalau sudah terlanjur
           </h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
+            Pemeriksaan hanya langkah pertama. Pilih kondisi Anda untuk
+            mendapatkan urutan tindakan, bukti yang perlu disimpan, dan sumber
+            bantuan resmi.
+          </p>
         </div>
-        <ul className="mt-3 divide-y divide-line">
-          {FEATURES.map((feature) => (
-            <li key={feature.href}>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {RECOVERY.map((item) => (
+            <li key={item.href}>
               <Link
-                href={feature.href}
-                className="group flex items-center gap-4 py-3.5 transition-colors hover:bg-lime-soft"
+                href={item.href}
+                className="group flex h-full items-start gap-3 border-2 border-ink bg-surface px-3 py-3 transition-colors hover:bg-lime-soft"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-graphite text-lime">
-                  <feature.icon className="h-5 w-5" aria-hidden="true" />
-                </span>
+                <item.icon
+                  className="mt-0.5 h-4 w-4 shrink-0 text-ink"
+                  aria-hidden="true"
+                />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-bold text-ink">
-                    {feature.title}
+                  <span className="block text-sm font-bold leading-snug text-ink">
+                    {item.title}
                   </span>
-                  <span className="mt-0.5 block text-sm leading-6 text-ink-muted">
-                    {feature.description}
+                  <span className="mt-0.5 block text-xs leading-5 text-ink-muted">
+                    {item.detail}
                   </span>
                 </span>
                 <ArrowRight
-                  className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-hover:translate-x-1 group-hover:text-ink"
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-muted transition-transform group-hover:translate-x-1"
                   aria-hidden="true"
                 />
               </Link>

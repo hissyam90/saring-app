@@ -67,9 +67,9 @@ docs/               dokumentasi
 
 Inti produk adalah fungsi murni dan deterministik:
 
-- `analyzeText(text): AnalysisResult` — validasi input, jalankan 7 kategori
+- `analyzeText(text): AnalysisResult`. validasi input, jalankan 7 kategori
   aturan, kumpulkan temuan, hitung skor, dan pilih klasifikasi.
-- `extractUrls(text): DetectedUrl[]` — menemukan URL tanpa pernah mengaksesnya.
+- `extractUrls(text): DetectedUrl[]`. menemukan URL tanpa pernah mengaksesnya.
 
 Setiap aturan mengembalikan satu atau beberapa `Finding` berisi: `category`,
 `severity`, `title`, `explanation`, `evidence`, dan `nextStep`.
@@ -102,7 +102,7 @@ temuan (dibatasi 100), lalu dipetakan:
 - ≥ 25 → `needs-review` ("Perlu diperiksa lebih lanjut")
 - < 25 → `limited-signals` ("Sinyal yang ditemukan masih terbatas")
 
-Skor bukan probabilitas penipuan — hanya total bobot indikator.
+Skor bukan probabilitas penipuan. hanya total bobot indikator.
 
 ## Komponen UI
 
@@ -113,15 +113,47 @@ Satu-satunya pemanggilan jaringan dari klien adalah `POST /api/url-reputation`
 di `link-check.tsx`, dan hanya ketika pengguna mencentang consent. Mode pesan
 dan mode nomor tidak pernah memanggil jaringan.
 
+## Pustaka: indeks dan halaman artikel
+
+- `app/pustaka/page.tsx` memuat header lalu `<Library />`.
+- `components/pustaka/library.tsx` adalah client component: pencarian teks,
+  filter kategori, dan grid responsif (1 kolom mobile, 2 tablet, 3 desktop).
+  Kartu pertama ditampilkan lebih besar saat filter berada di keadaan awal.
+- `app/pustaka/[slug]/page.tsx` adalah server component dengan
+  `generateStaticParams` (14 halaman diprerender saat build),
+  `generateMetadata`, dan `notFound()` untuk slug tidak dikenal.
+  `params` dibaca sebagai Promise sesuai Next.js 16.
+- Konten berada di `data/resources.ts`. Tipe `ResourceArticle` memisahkan data
+  dari tampilan. `readingMinutes` menghitung estimasi dari jumlah kata nyata.
+
+## Latihan: bank skenario dan penilaian
+
+- `data/scenarios.ts` memuat `SCENARIOS` (18 objek), `SESSION_MODES`
+  (5/10/semua), `createRandom` (mulberry32), `pickSessionScenarios`, dan
+  `scoreSession`.
+- `components/latihan/simulator.tsx` mengelola fase `intro`, `question`, dan
+  `summary` dengan state lokal. Tidak ada persistensi.
+- Seed diturunkan dari mode sesi sehingga E2E dapat diandalkan.
+
+## Rencana tindakan
+
+- `data/guides.ts` memuat enam kondisi. Setiap kondisi punya `steps`
+  (prioritas), `evidenceChecklist`, `checks`, dan `resources`.
+- `app/langkah/page.tsx` membaca `searchParams` (Promise di Next.js 16) dan
+  meneruskan `initialSituation` ke `<Guide />`.
+- `components/langkah/guide.tsx` menampilkan lima bagian berurutan.
+- `components/periksa/result-view.tsx` menautkan ke
+  `/langkah?kondisi=received-message`.
+
 ## Pemeriksaan URL yang aman
 
 Tiga tingkat yang dipisahkan dengan jelas:
 
-1. `extractUrls` / `inspectUrl` (`lib/analysis/url.ts`) — ekstraksi sederhana
+1. `extractUrls` / `inspectUrl` (`lib/analysis/url.ts`). ekstraksi sederhana
    untuk menemukan tautan di dalam pesan.
-2. `inspectLink` (`lib/analysis/link.ts`) — inspeksi struktural: skema,
+2. `inspectLink` (`lib/analysis/link.ts`). inspeksi struktural: skema,
    userinfo, alamat IP, penyingkat, TLD tidak lazim, subdomain meniru merek.
-3. `lookupGoogleSafeBrowsing` (`lib/reputation/googleSafeBrowsing.ts`) — reputasi eksternal,
+3. `lookupGoogleSafeBrowsing` (`lib/reputation/googleSafeBrowsing.ts`). reputasi eksternal,
    hanya lewat route server dan hanya setelah consent. Respons dibaca sebagai
    protobuf oleh `lib/reputation/protobuf.ts`.
 

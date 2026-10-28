@@ -151,7 +151,7 @@ export function PhoneResult({
         </summary>
         <div className="border-t-2 border-ink px-3 py-2.5">
           <p className="text-xs leading-5 text-ink-soft">
-            Saring tidak menerima hasil dari portal ini — Anda memeriksanya
+            Saring tidak menerima hasil dari portal ini. Anda memeriksanya
             sendiri di situs resmi.
           </p>
           <a

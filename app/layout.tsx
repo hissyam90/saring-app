@@ -6,11 +6,11 @@ import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: {
-    default: "Saring — Pendamping Kepercayaan Digital",
+    default: "Saring. Pendamping Kepercayaan Digital",
     template: "%s · Saring",
   },
   description:
-    "Periksa pesan, nomor, dan tautan mencurigakan — lalu pahami langkah berikutnya. Seluruhnya berjalan di peramban Anda.",
+    "Periksa pesan, nomor, dan tautan mencurigakan. lalu pahami langkah berikutnya. Seluruhnya berjalan di peramban Anda.",
   keywords: [
     "penipuan daring",
     "phishing",
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
     "Indonesia",
   ],
   openGraph: {
-    title: "Saring — Pendamping Kepercayaan Digital",
+    title: "Saring. Pendamping Kepercayaan Digital",
     description:
-      "Kenali tanda-tanda penipuan daring sebelum bertindak. Periksa pesan, nomor, dan tautan — lalu pahami langkah selanjutnya.",
+      "Kenali tanda-tanda penipuan daring sebelum bertindak. Periksa pesan, nomor, dan tautan. lalu pahami langkah selanjutnya.",
     type: "website",
     locale: "id_ID",
   },

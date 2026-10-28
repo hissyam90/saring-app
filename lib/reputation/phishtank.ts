@@ -90,7 +90,7 @@ export async function lookupPhishTank(
     if (name === "TimeoutError" || name === "AbortError") {
       return base(
         "timeout",
-        "PhishTank tidak merespons dalam 8 detik. Ini bukan hasil “aman” — reputasi URL belum diperiksa.",
+        "PhishTank tidak merespons dalam 8 detik. Ini bukan hasil “aman”. reputasi URL belum diperiksa.",
         usedKey,
       );
     }

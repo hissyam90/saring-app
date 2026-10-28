@@ -31,7 +31,7 @@ const CLASSIFICATIONS: Record<
   "limited-signals": {
     label: "Sinyal yang ditemukan masih terbatas",
     description:
-      "Indikator bahaya yang dikenali masih sedikit. Ini bukan jaminan bahwa pesan aman — tetap waspada dan verifikasi bila ragu.",
+      "Indikator bahaya yang dikenali masih sedikit. Ini bukan jaminan bahwa pesan aman. tetap waspada dan verifikasi bila ragu.",
   },
 };
 
@@ -394,7 +394,7 @@ function riskyInstructionRule(text: string): Finding[] {
         "risky-instruction",
         "high",
         "Instruksi mengalihkan transaksi atau memotong verifikasi",
-        "Pesan mengarahkan Anda pindah ke kanal tidak resmi atau melewati verifikasi/escrow — langkah yang menyulitkan pelacakan dan pengembalian.",
+        "Pesan mengarahkan Anda pindah ke kanal tidak resmi atau melewati verifikasi/escrow. langkah yang menyulitkan pelacakan dan pengembalian.",
         "Tetap bertransaksi di dalam aplikasi/sistem resmi. Jangan pindah ke percakapan pribadi atas permintaan pengirim.",
         evidenceSnippet(text, match.index, match[0].length),
       ),

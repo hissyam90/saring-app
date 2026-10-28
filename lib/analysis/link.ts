@@ -260,7 +260,7 @@ export function inspectLink(raw: string): LinkInspection {
       "lookalike",
       "medium",
       "Domain menyerupai layanan resmi",
-      "Nama domain memadukan merek populer dengan kata kunci keamanan/klaim — pola umum halaman tiruan.",
+      "Nama domain memadukan merek populer dengan kata kunci keamanan/klaim. pola umum halaman tiruan.",
       host,
       "Bandingkan dengan alamat situs resmi sebelum memasukkan data apa pun.",
     );

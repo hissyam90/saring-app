@@ -4,7 +4,7 @@ import { Checker } from "@/components/periksa/checker";
 export const metadata: Metadata = {
   title: "Periksa pesan",
   description:
-    "Periksa pesan mencurigakan dan pahami sinyal bahaya yang terdeteksi — seluruhnya berjalan di peramban Anda.",
+    "Periksa pesan mencurigakan dan pahami sinyal bahaya yang terdeteksi. seluruhnya berjalan di peramban Anda.",
 };
 
 export default function PeriksaPage() {

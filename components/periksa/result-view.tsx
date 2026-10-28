@@ -1,6 +1,14 @@
+import Link from "next/link";
 import type { AnalysisResult, Finding, Severity } from "@/lib/analysis";
 import { CATEGORY_LABELS, DISCLAIMER } from "@/lib/analysis";
-import { CircleAlert, Info, ShieldAlert, TriangleAlert } from "lucide-react";
+import {
+  BookOpen,
+  CircleAlert,
+  Info,
+  ListChecks,
+  ShieldAlert,
+  TriangleAlert,
+} from "lucide-react";
 
 const ACCENT: Record<Severity, { bar: string; chip: string; label: string }> = {
   high: {
@@ -110,7 +118,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
 
   return (
     <section aria-label="Hasil pemeriksaan" className="border-t-2 border-ink pt-5">
-      {/* 1 — Keputusan sementara */}
+      {/* 1. Keputusan sementara */}
       <div className={`border-2 ${tone.wrapper}`}>
         <div className="flex items-start gap-3 px-4 py-4">
           <Icon className={`mt-0.5 h-6 w-6 shrink-0 ${tone.eyebrow}`} aria-hidden="true" />
@@ -130,7 +138,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
         <div className="border-t-2 border-ink/15 px-4 py-2.5">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-soft">
-              Indikator internal — bukan peluang penipuan
+              Indikator internal. bukan peluang penipuan
             </span>
             <span className="font-mono text-xs font-bold text-ink">
               {result.score}/100
@@ -153,7 +161,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
         </div>
       </div>
 
-      {/* 2 — Sinyal + bukti + alasan */}
+      {/* 2. Sinyal + bukti + alasan */}
       <div className="mt-6 flex items-baseline justify-between gap-2 border-b-2 border-ink pb-1.5">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink">
           Sinyal yang terdeteksi
@@ -178,7 +186,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
         </div>
       )}
 
-      {/* 3 — Langkah */}
+      {/* 3. Langkah */}
       {result.verdict.actionSteps.length > 0 ? (
         <div className="mt-5 bg-graphite text-paper">
           <div className="flex items-center gap-2 border-b border-white/15 px-4 py-2.5">
@@ -200,11 +208,11 @@ export function ResultView({ result }: { result: AnalysisResult }) {
         </div>
       ) : null}
 
-      {/* 4 — Tautan */}
+      {/* 4. Tautan */}
       {result.detectedUrls.length > 0 ? (
         <div className="mt-4 bg-surface">
           <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
-            Tautan terdeteksi — tidak dibuka
+            Tautan terdeteksi. tidak dibuka
           </h2>
           <ul className="mt-2 grid gap-1.5">
             {result.detectedUrls.map((url) => (
@@ -224,7 +232,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
         </div>
       ) : null}
 
-      {/* 5 — Batasan */}
+      {/* 5. Batasan */}
       <div className="mt-5 border-t border-line pt-3">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
           Yang belum dapat dipastikan
@@ -244,6 +252,24 @@ export function ResultView({ result }: { result: AnalysisResult }) {
           ))}
         </ul>
         <p className="mt-2 text-xs leading-5 text-ink-muted">{DISCLAIMER}</p>
+      </div>
+
+      {/* 6. Tindakan lanjutan */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href="/langkah?kondisi=received-message"
+          className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-lime px-4 py-2 text-sm font-bold text-ink"
+        >
+          <ListChecks className="h-4 w-4" aria-hidden="true" />
+          Susun rencana tindakan
+        </Link>
+        <Link
+          href="/pustaka"
+          className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-lime-soft"
+        >
+          <BookOpen className="h-4 w-4" aria-hidden="true" />
+          Baca panduan terkait
+        </Link>
       </div>
     </section>
   );

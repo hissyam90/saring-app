@@ -121,7 +121,7 @@ tetapi tidak diimpor oleh route maupun komponen. Alasan ditinggalkan: endpoint
 hampir selalu gagal bagi pengguna. Jangan menghidupkannya kembali tanpa
 credential valid.
 
-## AduanNomor — Komdigi
+## AduanNomor. Komdigi
 
 - URL resmi: https://aduannomor.id/
 - Tujuan: portal manual Komdigi untuk memeriksa/mengadukan nomor.
@@ -133,7 +133,7 @@ credential valid.
   pengguna. Portal resmi hanya tautan tambahan di dalam blok yang bisa dibuka.
 - Limitasi: Saring tidak menyatakan nomor terlapor, bersih, atau aman.
 
-## IASC — OJK
+## IASC. OJK
 
 - URL resmi: https://iasc.ojk.go.id/
 - Tujuan: rujukan pelaporan penipuan transaksi keuangan.

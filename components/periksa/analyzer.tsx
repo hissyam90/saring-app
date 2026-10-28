@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Eraser, Loader2, Lock, ScanSearch, Sparkles } from "lucide-react";
+import { Eraser, Loader2, Lock, RefreshCw, ScanSearch } from "lucide-react";
 import { analyzeText, MAX_INPUT_LENGTH } from "@/lib/analysis";
 import type { AnalysisResult } from "@/lib/analysis";
 import { EXAMPLES } from "@/data/examples";
@@ -156,7 +156,7 @@ export function Analyzer() {
             onClick={handleRandomExample}
             className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-surface px-4 text-sm font-semibold text-ink hover:bg-line"
           >
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Coba contoh lain
           </button>
         </div>

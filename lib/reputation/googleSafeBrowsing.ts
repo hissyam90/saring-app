@@ -4,7 +4,7 @@ import {
 } from "./protobuf";
 
 /**
- * Google Safe Browsing API v5 — provider reputasi URL utama Saring.
+ * Google Safe Browsing API v5. provider reputasi URL utama Saring.
  *
  * Kontrak sesuai dokumentasi resmi (diverifikasi 2026):
  *   GET https://safebrowsing.googleapis.com/v5/urls:search

@@ -4,7 +4,7 @@ import type { SocialAnalysis } from "./socialEngineering";
 const IDENTITY_UNCERTAIN = [
   "Isi pesan tidak dapat membuktikan identitas pengirim.",
   "Saring tidak memeriksa nomor pengirim maupun riwayatnya.",
-  "Niat pengirim tidak dapat dinilai hanya dari teks — yang bisa dinilai hanyalah pola pesannya.",
+  "Niat pengirim tidak dapat dinilai hanya dari teks. yang bisa dinilai hanyalah pola pesannya.",
 ];
 
 const FRIEND_MONEY_STEPS = [
@@ -32,7 +32,7 @@ export function buildVerdict(
     return {
       title: "Perlu verifikasi sebelum mengirim uang",
       summary:
-        "Pengirim mengaku sebagai orang yang Anda kenal tetapi memakai nomor baru, sekaligus meminta uang. Pola ini memerlukan verifikasi identitas lebih dulu — bukan berarti pengirim pasti penipu.",
+        "Pengirim mengaku sebagai orang yang Anda kenal tetapi memakai nomor baru, sekaligus meminta uang. Pola ini memerlukan verifikasi identitas lebih dulu. bukan berarti pengirim pasti penipu.",
       tone: "critical",
       actionSteps: FRIEND_MONEY_STEPS,
       uncertainties: IDENTITY_UNCERTAIN,

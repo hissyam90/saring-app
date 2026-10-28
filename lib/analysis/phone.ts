@@ -12,7 +12,7 @@ const SEPARATORS = /[\s().,;:_\-/\\]/g;
 /**
  * Menormalkan berbagai format nomor ponsel Indonesia menjadi bentuk
  * domestik (`08xx…`) dan E.164 (`+628xx…`). Tidak melakukan pengecekan
- * reputasi — hanya validasi dan normalisasi format.
+ * reputasi. hanya validasi dan normalisasi format.
  */
 export function normalizePhone(input: string): NormalizedPhone {
   const trimmed = input.trim();

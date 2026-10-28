@@ -9,14 +9,17 @@ export const metadata: Metadata = {
 
 export default function PustakaPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-ink">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
+          Pustaka
+        </p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight text-ink sm:text-4xl">
           Pustaka kepercayaan digital
         </h1>
-        <p className="mt-2 max-w-2xl text-ink-muted">
-          Kumpulan panduan ringkas dan dapat ditindaklanjuti. Mulai dari
-          mengenali bahasa manipulatif hingga menyimpan bukti untuk pelaporan.
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
+          Empat belas panduan tentang modus yang paling sering terjadi di
+          Indonesia, ditulis untuk dipakai, bukan sekadar dibaca.
         </p>
       </header>
       <Library />

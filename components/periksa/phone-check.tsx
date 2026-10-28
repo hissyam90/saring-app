@@ -119,7 +119,7 @@ export function PhoneCheck() {
             Apa yang dilakukan atau diminta pengirim?
           </legend>
           <p className="mt-0.5 text-xs text-ink-muted">
-            Pilih semua yang sesuai — pilihan inilah yang menentukan penilaian.
+            Pilih semua yang sesuai. pilihan inilah yang menentukan penilaian.
           </p>
           <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
             {PHONE_BEHAVIORS.map((behavior) => {

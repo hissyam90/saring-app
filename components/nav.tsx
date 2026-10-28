@@ -49,7 +49,7 @@ export function Nav() {
 
   return (
     <>
-      {/* Mobile top bar — identitas gelap yang sama dengan sidebar desktop */}
+      {/* Mobile top bar. identitas gelap yang sama dengan sidebar desktop */}
       <header className="sticky top-0 z-50 flex items-center justify-between border-b-2 border-lime bg-graphite px-4 py-3 text-paper lg:hidden">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center bg-lime text-ink">
@@ -121,7 +121,7 @@ export function Nav() {
         </div>
       ) : null}
 
-      {/* Desktop sidebar — graphite pekat, dipisah aksen lime dari area utama */}
+      {/* Desktop sidebar. graphite pekat, dipisah aksen lime dari area utama */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col bg-graphite text-paper lg:flex">
         <div className="border-b border-white/10 px-5 py-6">
           <Link href="/" className="flex items-center gap-3 text-paper">

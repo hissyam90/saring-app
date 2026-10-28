@@ -335,21 +335,21 @@ function LinkResult({
               Host
             </dt>
             <dd className="break-all font-mono text-xs text-ink">
-              {local.host || "—"}
+              {local.host || ", "}
             </dd>
           </div>
           <div>
             <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
               Skema
             </dt>
-            <dd className="font-mono text-xs text-ink">{local.scheme || "—"}</dd>
+            <dd className="font-mono text-xs text-ink">{local.scheme || ", "}</dd>
           </div>
           <div>
             <dt className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
               Path
             </dt>
             <dd className="break-all font-mono text-xs text-ink">
-              {local.pathname || "—"}
+              {local.pathname || ", "}
             </dd>
           </div>
         </dl>

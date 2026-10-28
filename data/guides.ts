@@ -17,6 +17,8 @@ export interface SafetyGuide {
   summary: string;
   steps: GuideStep[];
   evidenceChecklist: string[];
+  /** Akun, perangkat, atau transaksi yang perlu diperiksa. */
+  checks: string[];
   resources: OfficialResource[];
 }
 
@@ -27,12 +29,12 @@ export const OFFICIAL_RESOURCES = {
     note: "Portal OJK untuk melaporkan penipuan transaksi keuangan.",
   },
   kontak157: {
-    label: "Kontak 157 OJK — Portal Pengaduan",
+    label: "Kontak 157 OJK: Portal Pengaduan",
     url: "https://kontak157.ojk.go.id/appkpublicportal/Pengaduan",
     note: "Saluran pengaduan konsumen sektor jasa keuangan.",
   },
   ojk: {
-    label: "OJK — Otoritas Jasa Keuangan",
+    label: "OJK. Otoritas Jasa Keuangan",
     url: "https://www.ojk.go.id/",
     note: "Situs resmi informasi, edukasi, dan pengecekan legalitas.",
   },
@@ -57,6 +59,11 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       { priority: "lanjutan", text: "Simpan tangkapan layar dan catat nomor/akun pengirim sebagai bukti." },
     ],
     evidenceChecklist: [...COMMON_EVIDENCE, "Teks/tautan pesan (jangan diklik)"],
+    checks: [
+      "Apakah pengirim benar orang atau institusi yang diklaim?",
+      "Apakah Anda memang sedang menunggu pesan dari pihak tersebut?",
+      "Apakah ada permintaan uang, kode, atau data pribadi?",
+    ],
     resources: [OFFICIAL_RESOURCES.ojk],
   },
   {
@@ -72,6 +79,11 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       { priority: "lanjutan", text: "Aktifkan verifikasi dua langkah pada akun-akun penting." },
     ],
     evidenceChecklist: ["Tangkapan layar alamat/halaman yang terbuka", "Waktu kunjungan"],
+    checks: [
+      "Apakah halaman meminta login, unduhan, atau izin akses?",
+      "Apakah ada aplikasi baru yang terpasang tanpa Anda sadari?",
+      "Apakah riwayat peramban menunjukkan pengalihan ke situs lain?",
+    ],
     resources: [],
   },
   {
@@ -87,6 +99,12 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       { priority: "lanjutan", text: "Lapor ke penyedia layanan bila kamu tidak dapat mengakses akun." },
     ],
     evidenceChecklist: [...COMMON_EVIDENCE, "Bukti halaman login palsu bila ada"],
+    checks: [
+      "Riwayat login akun terkait, apakah ada perangkat atau lokasi asing?",
+      "Email dan nomor pemulihan, apakah masih milik Anda?",
+      "Perangkat yang masih memiliki sesi aktif.",
+      "Kata sandi yang sama dipakai di akun lain.",
+    ],
     resources: [OFFICIAL_RESOURCES.ojk],
   },
   {
@@ -103,6 +121,11 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       { priority: "lanjutan", text: "Buat laporan kepolisian bila diperlukan, dengan membawa seluruh bukti." },
     ],
     evidenceChecklist: ["Tanda terima/bukti transfer dan mutasi", "Nomor rekening tujuan", ...COMMON_EVIDENCE],
+    checks: [
+      "Status transaksi di aplikasi bank atau e-wallet.",
+      "Rekening tujuan, apakah masih bisa dilaporkan ke penyedia.",
+      "Metode pembayaran yang tersimpan, apakah perlu dihapus.",
+    ],
     resources: [OFFICIAL_RESOURCES.iasc, OFFICIAL_RESOURCES.kontak157, OFFICIAL_RESOURCES.ojk],
   },
   {
@@ -118,6 +141,12 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       { priority: "lanjutan", text: "Laporkan ke penyedia layanan dan simpan bukti pengambilalihan." },
     ],
     evidenceChecklist: ["Bukti login yang tidak dikenal", ...COMMON_EVIDENCE],
+    checks: [
+      "Perangkat yang masih login ke akun tersebut.",
+      "Email pemulihan dan nomor telepon pada pengaturan akun.",
+      "Pesan terkirim, apakah ada permintaan yang dikirim ke kontak Anda.",
+      "Aplikasi pihak ketiga yang memiliki izin akses.",
+    ],
     resources: [],
   },
   {
@@ -133,6 +162,11 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       { priority: "lanjutan", text: "Waspadai panggilan atau penawaran mencurigakan yang menyebut data pribadimu." },
     ],
     evidenceChecklist: [...COMMON_EVIDENCE, "Daftar dokumen yang pernah dibagikan"],
+    checks: [
+      "Dokumen apa saja yang sudah dibagikan dan kepada siapa.",
+      "Apakah nomor rekening atau data keuangan ikut terkirim.",
+      "Apakah ada pinjaman atau rekening baru atas nama Anda.",
+    ],
     resources: [OFFICIAL_RESOURCES.ojk],
   },
 ];

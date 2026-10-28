@@ -5,7 +5,7 @@ import type { Finding } from "./types";
  *
  * Prinsip: satu kata kunci tidak cukup. Sinyal individual (mis. "nomor baru")
  * sering muncul pada percakapan wajar. Yang layak diperiksa adalah
- * KOMBINASI-nya — mis. klaim nomor baru + permintaan uang + desakan waktu.
+ * KOMBINASI-nya. mis. klaim nomor baru + permintaan uang + desakan waktu.
  */
 
 interface Hit {
@@ -127,7 +127,7 @@ export function analyzeSocialEngineering(text: string): SocialAnalysis {
   const impersonationPattern =
     claimsNewNumber && (Boolean(s.moneyRequest) || blocksVerification);
 
-  // Klaim nomor baru saja bukan sinyal bahaya — banyak orang memang berganti
+  // Klaim nomor baru saja bukan sinyal bahaya. banyak orang memang berganti
   // nomor. Sinyal ini hanya dilaporkan bila muncul bersama permintaan uang
   // atau upaya menghalangi verifikasi.
   if (impersonationPattern) {
@@ -167,7 +167,7 @@ export function analyzeSocialEngineering(text: string): SocialAnalysis {
         "medium",
         "Desakan agar uang segera dikirim",
         "Ada tekanan waktu yang menyertai permintaan uang. Desakan seperti “hari ini”, “dulu”, atau “cepat” dirancang agar keputusan diambil sebelum sempat memeriksa identitas pengirim.",
-        "Beri diri Anda waktu. Setelah identitas terverifikasi, uang tetap bisa dikirim beberapa menit kemudian — tidak ada alasan sah yang menuntut transfer seketika.",
+        "Beri diri Anda waktu. Setelah identitas terverifikasi, uang tetap bisa dikirim beberapa menit kemudian. tidak ada alasan sah yang menuntut transfer seketika.",
         s.urgency.evidence,
       ),
     );

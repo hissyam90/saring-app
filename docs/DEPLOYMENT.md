@@ -1,4 +1,4 @@
-# Deployment — Heroku
+# Deployment. Heroku
 
 Target deployment adalah **Heroku** dengan **Node.js buildpack resmi**. Aplikasi
 berjalan sebagai server Node.js (bukan static export/`output: "export"`).
@@ -6,14 +6,14 @@ berjalan sebagai server Node.js (bukan static export/`output: "export"`).
 ## Konfigurasi yang sudah disiapkan
 
 - `package.json`
-  - `"build": "next build"` — dipanggil Heroku saat kompilasi.
-  - `"start": "next start"` — dipanggil saat runtime; `next start` membaca `PORT`
+  - `"build": "next build"`. dipanggil Heroku saat kompilasi.
+  - `"start": "next start"`. dipanggil saat runtime; `next start` membaca `PORT`
     dari environment Heroku.
-  - `"engines": { "node": "22.x" }` — mematok versi Node di Heroku.
-- `Procfile` — `web: npm start`.
-- `package-lock.json` — lockfile npm yang konsisten; Heroku memakai `npm ci`.
-- `app.json` — metadata & buildpack (`heroku/nodejs`) untuk dokumentasi/Review Apps.
-- `.gitignore` — sudah mengecualikan `.next/`, `.env*`, artefak Playwright, dsb.
+  - `"engines": { "node": "22.x" }`. mematok versi Node di Heroku.
+- `Procfile`. `web: npm start`.
+- `package-lock.json`. lockfile npm yang konsisten; Heroku memakai `npm ci`.
+- `app.json`. metadata & buildpack (`heroku/nodejs`) untuk dokumentasi/Review Apps.
+- `.gitignore`. sudah mengecualikan `.next/`, `.env*`, artefak Playwright, dsb.
 
 Tidak ada database, redis, atau add-on yang diperlukan.
 
@@ -69,7 +69,7 @@ GOOGLE_SAFE_BROWSING_API_KEY=<wajib untuk lookup reputasi; jangan commit>
 
    Output `heroku domains` menampilkan kolom **DNS Target** (mis. berbentuk
    `<app>-<hash>.herokudns.com`). Gunakan nilai itu persis seperti yang
-   ditampilkan — bukan contoh di dokumen ini.
+   ditampilkan. bukan contoh di dokumen ini.
 
 2. Di panel DNS **Name.com**, buatkan record:
 

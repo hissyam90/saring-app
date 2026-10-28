@@ -162,7 +162,7 @@ export function assessPhoneBehavior(
   const actionSteps: string[] = [];
   if (selected.includes("otp")) {
     actionSteps.push(
-      "Jangan memberikan OTP, PIN, atau kata sandi — sekarang maupun nanti.",
+      "Jangan memberikan OTP, PIN, atau kata sandi. sekarang maupun nanti.",
       "Jika kode sudah terlanjur dikirim, segera ganti kata sandi dan cabut sesi perangkat lain di aplikasi resmi.",
     );
   }

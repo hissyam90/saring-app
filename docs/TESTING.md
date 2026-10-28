@@ -15,10 +15,29 @@ flowchart LR
 |---|---|---|
 | Rule engine dan URL | `tests/unit/analysis.test.ts` | Lulus |
 | Normalisasi nomor | `tests/unit/phone.test.ts` | Lulus |
-| Google Safe Browsing adapter mock | `tests/unit/googleSafeBrowsing.test.ts` | Lulus; bukan live test |
-| Analyzer, simulator, guide | `tests/components/*.test.tsx` | Lulus |
-| Rute dan mobile | `tests/e2e/app.spec.ts` | 14 lulus, 2 dilewati |
-| Provider live | Belum ada | Menunggu credential/valid smoke test |
+| Google Safe Browsing adapter mock | `tests/unit/googleSafeBrowsing.test.ts` | Lulus; live diuji terpisah |
+| Decoder protobuf | `tests/unit/gsbProtobuf.test.ts` | Lulus, memakai byte nyata |
+| Data Pustaka (14 artikel) | `tests/unit/resources.test.ts` | Lulus |
+| Bank skenario dan skor | `tests/unit/scenarios.test.ts` | Lulus |
+| Grid Pustaka dan filter | `tests/components/library.test.tsx` | Lulus |
+| Simulator dan ringkasan | `tests/components/simulator.test.tsx` | Lulus |
+| Rencana tindakan | `tests/components/guide.test.tsx` | Lulus |
+| Analyzer dan mode checker | `tests/components/analyzer.test.tsx`, `checker-modes.test.tsx` | Lulus |
+| Rute, Pustaka, Latihan, Langkah, mobile | `tests/e2e/app.spec.ts` | Lulus |
+
+## Cakupan penting
+
+- **Pustaka**: 14 artikel dengan slug unik, isi substantif, estimasi waktu baca
+  yang mengikuti panjang teks, tautan terkait valid, dan seluruh sumber https.
+- **Latihan**: 18 skenario, tepat satu opsi bernilai 100 per skenario, mode sesi
+  memilih jumlah soal tanpa duplikasi, pengacak deterministik, dan `scoreSession`
+  mencakup poin penuh, poin parsial, 0 poin, ringkasan kategori, serta sesi kosong.
+- **Rencana tindakan**: lima bagian tampil untuk setiap kondisi, kondisi awal
+  dari `?kondisi=`, dan tidak ada janji pengembalian dana.
+- **Homepage**: section daftar fitur yang duplikat sudah dihapus dan diganti
+  bagian "Kalau sudah terlanjur". Footer memuat batasan, bukan mengulang
+  prinsip privasi.
+- **Mobile**: tidak ada overflow horizontal pada seluruh rute utama.
 
 ## Perintah
 
@@ -49,13 +68,13 @@ Menguji mesin aturan tanpa peramban:
 
 ### Komponen (`tests/components/`)
 
-- `simulator.test.tsx` — umpan balik bergantung pilihan; urutan lengkap ke ringkasan.
-- `guide.test.tsx` — setiap situasi menampilkan panduan yang sesuai; sumber OJK tampil.
-- `analyzer.test.tsx` — validasi input kosong; hasil tanpa menulis ke storage.
+- `simulator.test.tsx`. umpan balik bergantung pilihan; urutan lengkap ke ringkasan.
+- `guide.test.tsx`. setiap situasi menampilkan panduan yang sesuai; sumber OJK tampil.
+- `analyzer.test.tsx`. validasi input kosong; hasil tanpa menulis ke storage.
 
 ### End-to-end (`tests/e2e/`)
 
-- `app.spec.ts` — kelima rute dimuat langsung tanpa 404; alur analisis nyata;
+- `app.spec.ts`. kelima rute dimuat langsung tanpa 404; alur analisis nyata;
   kontrol & pemberitahuan tetap berfungsi di viewport seluler; menu seluler terbuka.
 
 Playwright menjalankan server produksi (`npm run build && npm run start`),

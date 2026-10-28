@@ -23,22 +23,23 @@ export function Footer() {
             Alat
           </p>
           <ul className="mt-2 space-y-0.5 text-sm text-paper/70">
-            <li><Link href="/periksa" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Periksa pesan, nomor, dan tautan</Link></li>
-            <li><Link href="/latihan" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Latihan pengambilan keputusan</Link></li>
-            <li><Link href="/langkah" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Panduan langkah selanjutnya</Link></li>
-            <li><Link href="/pustaka" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Pustaka kepercayaan digital</Link></li>
+            <li><Link href="/periksa" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Periksa</Link></li>
+            <li><Link href="/latihan" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Latihan</Link></li>
+            <li><Link href="/langkah" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Langkah</Link></li>
+            <li><Link href="/pustaka" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Pustaka</Link></li>
           </ul>
         </div>
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-lime">
-            Prinsip
+            Yang tidak bisa dilakukan Saring
           </p>
-          <p className="mt-3 text-sm leading-6 text-paper/70">
-            Privasi dirancang sejak awal: analisis pesan dan tautan berjalan
-            sepenuhnya di peramban Anda. Pemeriksaan nomor menyerahkan
-            verifikasi ke sumber resmi tanpa mengirim data secara otomatis.
-          </p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-paper/70">
+            <li>Tidak memastikan identitas pengirim pesan.</li>
+            <li>Tidak memeriksa reputasi nomor telepon.</li>
+            <li>Tidak menjamin dana kembali setelah transfer.</li>
+            <li>Tidak menggantikan laporan resmi ke bank atau kepolisian.</li>
+          </ul>
         </div>
       </div>
 
