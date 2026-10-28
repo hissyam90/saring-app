@@ -11,13 +11,13 @@ import {
 } from "lucide-react";
 import { inspectLink, SEVERITY_LABELS } from "@/lib/analysis";
 import type { LinkInspection } from "@/lib/analysis";
-import type { PhishTankLookup } from "@/lib/reputation/phishtank";
-import { PHISHTANK_STATUS_LABEL } from "@/lib/reputation/phishtank";
+import type { GsbLookup } from "@/lib/reputation/googleSafeBrowsing";
+import { GSB_STATUS_LABEL } from "@/lib/reputation/googleSafeBrowsing";
 
 export function LinkCheck() {
   const [input, setInput] = useState("");
   const [local, setLocal] = useState<LinkInspection | null>(null);
-  const [external, setExternal] = useState<PhishTankLookup | null>(null);
+  const [external, setExternal] = useState<GsbLookup | null>(null);
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export function LinkCheck() {
         setRequestError(message);
         return;
       }
-      setExternal(payload as PhishTankLookup);
+      setExternal(payload as GsbLookup);
     } catch {
       setExternal(null);
       setRequestError(
@@ -111,7 +111,7 @@ export function LinkCheck() {
           />
           <span>
             <span className="block font-semibold text-ink">
-              Kirim URL ini ke PhishTank (opsional)
+              Kirim URL ini ke Google Safe Browsing (opsional)
             </span>
             <span className="mt-0.5 block text-xs leading-4 text-ink-muted">
               Hanya URL yang dikirim, melalui server Saring. Pesan dan nomor
@@ -174,14 +174,14 @@ function ExternalPanel({
   loading,
   onRetry,
 }: {
-  external: PhishTankLookup | null;
+  external: GsbLookup | null;
   requestError: string | null;
   consent: boolean;
   loading: boolean;
   onRetry: () => void;
 }) {
   const accent =
-    external?.status === "match"
+    external?.status === "threat"
       ? "border-l-coral"
       : external?.status === "no-match"
         ? "border-l-ink-muted"
@@ -191,19 +191,19 @@ function ExternalPanel({
     <div className={`mt-5 border-l-4 bg-surface px-4 py-3.5 ${accent}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
-          Reputasi eksternal · PhishTank
+          Reputasi eksternal · Google Safe Browsing
         </h3>
         {external ? (
           <span
             className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-              external.status === "match"
+              external.status === "threat"
                 ? "bg-coral text-white"
                 : external.inconclusive
                   ? "bg-amber text-white"
                   : "bg-ink text-paper"
             }`}
           >
-            {PHISHTANK_STATUS_LABEL[external.status]}
+            {GSB_STATUS_LABEL[external.status]}
           </span>
         ) : null}
       </div>
@@ -227,23 +227,43 @@ function ExternalPanel({
           <p className="text-sm leading-6 text-ink">{external.message}</p>
         ) : null}
 
-        {external ? (
-          <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
-            {external.usedKey ? "dengan app key" : "tanpa app key"} · dicek{" "}
-            {new Date(external.checkedAt).toLocaleString("id-ID")}
-            {external.httpStatus ? ` · HTTP ${external.httpStatus}` : ""}
+        {external?.status === "threat" && external.threats.length > 0 ? (
+          <ul className="mt-2 grid gap-1">
+            {external.threats.map((threat) => (
+              <li
+                key={threat.url}
+                className="border-l-2 border-l-coral bg-coral-soft px-2.5 py-1.5"
+              >
+                <p className="text-xs font-bold text-ink">
+                  {threat.labels.join(", ") || threat.threatTypes.join(", ")}
+                </p>
+                <p className="break-all font-mono text-[10px] text-ink-soft">
+                  {threat.url}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {external?.attribution ? (
+          <p className="mt-2 text-[11px] leading-5 text-ink-muted">
+            <a
+              href={external.attribution.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-ink underline underline-offset-2"
+            >
+              {external.attribution.text}
+            </a>
           </p>
         ) : null}
 
-        {external?.detailUrl ? (
-          <a
-            href={external.detailUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-block text-xs font-bold text-ink underline underline-offset-2"
-          >
-            Lihat detail di PhishTank
-          </a>
+        {external ? (
+          <p className="mt-1.5 font-mono text-[10px] text-ink-muted">
+            dicek {new Date(external.checkedAt).toLocaleString("id-ID")}
+            {external.httpStatus ? ` · HTTP ${external.httpStatus}` : ""}
+            {external.cacheHit ? " · dari cache" : ""}
+          </p>
         ) : null}
 
         {consent ? (
@@ -266,7 +286,8 @@ function ExternalPanel({
           </button>
         ) : (
           <p className="mt-2 text-xs leading-5 text-ink-muted">
-            Persetujuan belum diberikan, jadi URL ini tidak dikirim ke PhishTank.
+            Persetujuan belum diberikan, jadi URL ini tidak dikirim ke Google
+            Safe Browsing.
           </p>
         )}
       </div>
@@ -283,7 +304,7 @@ function LinkResult({
   onRetry,
 }: {
   local: LinkInspection;
-  external: PhishTankLookup | null;
+  external: GsbLookup | null;
   requestError: string | null;
   loading: boolean;
   consent: boolean;
@@ -415,8 +436,9 @@ function LinkResult({
 
       <p className="mt-3 border-2 border-ink bg-paper px-3 py-2.5 text-xs leading-5 text-ink-muted">
         Satu indikator saja tidak membuktikan tautan berbahaya. Sebaliknya,
-        “tidak ada kecocokan” di PhishTank hanya berarti URL ini tidak ada di
-        database mereka — bukan jaminan keamanan.
+        &ldquo;tidak ada kecocokan&rdquo; di Google Safe Browsing hanya berarti
+        URL ini tidak termasuk daftar ancaman yang diketahui saat pemeriksaan,
+        bukan jaminan keamanan.
       </p>
     </div>
   );

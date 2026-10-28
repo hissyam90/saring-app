@@ -19,7 +19,7 @@ sequenceDiagram
   participant U as Pengguna
   participant B as Browser
   participant S as Next.js route
-  participant P as PhishTank
+  participant P as Google Safe Browsing
   U->>B: Masukkan URL + consent
   B->>B: inspectLink heuristik
   B->>S: POST URL reputasi

@@ -7,7 +7,7 @@ Saring membantu orang mengambil jeda saat menerima pesan, nomor, atau tautan men
 Tidak. Rule engine heuristik dapat menghasilkan false positive dan false negative. Skor adalah bobot indikator, bukan probabilitas.
 
 ## Bagaimana privasi dijaga?
-Pesan dan heuristik URL diproses lokal dan tidak disimpan. URL reputasi dapat dikirim ke PhishTank hanya setelah consent eksplisit melalui route server. Nomor hanya dinormalisasi lokal; portal AduanNomor dibuka manual.
+Pesan dan heuristik URL diproses lokal dan tidak disimpan. URL reputasi dapat dikirim ke Google Safe Browsing hanya setelah consent eksplisit melalui route server. Nomor hanya dinormalisasi lokal; portal AduanNomor dibuka manual.
 
 ## Mengapa tidak ada lookup nomor otomatis?
 Tidak ditemukan API publik resmi yang dapat diverifikasi dari AduanNomor. Saring tidak melakukan scraping atau mengarang reputasi.

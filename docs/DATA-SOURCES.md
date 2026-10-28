@@ -6,7 +6,8 @@
 |---|---|---|---|---|
 | Rule engine lokal | Sinyal bahasa pesan | Client-side | Tidak | Aktif dan diuji |
 | Heuristik URL | Struktur hostname/URL | Client-side | Tidak | Aktif dan diuji |
-| PhishTank | Catatan phishing komunitas | Route server `POST /api/url-reputation` | Opsional `PHISHTANK_APP_KEY` | Adapter aktif; **live test 28/10/2026: tanpa app key ditolak HTTP 403** |
+| Google Safe Browsing v5 | Reputasi URL | Route server `POST /api/url-reputation` | `GOOGLE_SAFE_BROWSING_API_KEY` (server) | **Provider utama.** Live test 28/10/2026: HTTP 200, no-match dan threat terbaca |
+| PhishTank | Catatan phishing komunitas | Tidak dipakai runtime | - | **Legacy.** Tanpa app key ditolak HTTP 403 |
 | AduanNomor | Pemeriksaan nomor manual | Link eksternal | Tidak | Manual, bukan API |
 | IASC/OJK | Pelaporan insiden | Link eksternal | Tidak | Rujukan manual |
 
@@ -17,36 +18,108 @@ flowchart TD
   Input --> Consent{Consent URL?}
   Consent -- Tidak --> NoLookup[Reputasi eksternal tidak dijalankan]
   Consent -- Ya --> Route[Route server]
-  Route --> PhishTank[PhishTank]
-  PhishTank --> States[Match / no-match / rate-limit / unavailable]
+  Route --> GSB[Google Safe Browsing v5]
+  GSB --> States[threat / no-match / unauthorized / quota / timeout / invalid]
 ```
 
 No-match bukan bukti aman.
 
-## PhishTank — hasil verifikasi live
+## Google Safe Browsing v5
 
-Diuji langsung pada 28 Oktober 2026 terhadap endpoint
-`https://checkurl.phishtank.com/checkurl/` **tanpa app key**:
+Dokumentasi resmi: <https://developers.google.com/safe-browsing/reference/rest/v5/urls/search>
 
-- Hasil: **HTTP 403 (Forbidden)**, bukan 509 dan bukan timeout.
-- Artinya: permintaan tanpa kredensial **ditolak**, sehingga pemeriksaan
-  reputasi tidak dapat berjalan sama sekali tanpa `PHISHTANK_APP_KEY`.
-- Konsekuensi desain: adapter memetakannya ke status `unauthorized`, menampilkan
-  alasan yang sebenarnya (HTTP 403 + perlunya app key), dan **tidak** menyebut
-  URL aman maupun tidak ditemukan.
+### Kontrak yang benar-benar dipakai
 
-Dokumentasi resmi menyebut app key opsional dengan batas lebih ketat. Pada
-praktiknya (minimal saat pengujian ini) akses tanpa key ditolak, jadi jangan
-mengandalkan lookup keyless untuk demo. Dengan app key, status yang mungkin
-tetap dibedakan menjadi `match`, `no-match`, `rate-limited`, `unauthorized`,
-`http-error`, `timeout`, dan `invalid-response`.
+Verifikasi dokumentasi menemukan bahwa v5 **berbeda dari v4**:
 
-Status `invalid-response` dipakai ketika respons tidak memuat `results` atau
-tidak memuat `in_database` yang jelas — kondisi ini **tidak** diperlakukan
-sebagai `no-match`, karena itu akan salah dibaca sebagai “tidak ditemukan”.
+- Metode **HTTP GET**, bukan POST.
+- Endpoint: `https://safebrowsing.googleapis.com/v5/urls:search`
+- Parameter query: `urls` (maksimal 50) dan `key`.
+- **Request body harus kosong.** Skema v4 (`threatInfo`, `threatEntries`) tidak
+  berlaku di v5.
+- Tanpa kecocokan: **HTTP 200** dengan daftar `threats` kosong, bukan 404.
 
-Adapter diuji dengan mock deterministik di `tests/unit/phishtank.test.ts`
-(13 kasus) sehingga CI tidak bergantung pada layanan eksternal.
+### Format respons: protobuf, bukan JSON
+
+Ini temuan penting dari pengujian langsung. Endpoint membalas
+`Content-Type: application/x-protobuf`. Parameter `alt=json` **ditolak** dengan
+`Unsupported Output Format`. Karena itu Saring membaca wire format protobuf
+sendiri di `lib/reputation/protobuf.ts` (tanpa dependency tambahan).
+
+Skema yang dipakai:
+
+```text
+SearchUrlsResponse { repeated ThreatUrl threats = 1; Duration cacheDuration = 2; }
+ThreatUrl          { string url = 1; repeated ThreatType threatTypes = 2; }
+Duration           { int64 seconds = 1; int32 nanos = 2; }
+```
+
+Nilai enum `ThreatType` yang terverifikasi dari respons nyata:
+`1 = MALWARE`, `2 = SOCIAL_ENGINEERING`. Nomor 3 dan 4 mengikuti enum resmi
+(`UNWANTED_SOFTWARE`, `POTENTIALLY_HARMFUL_APPLICATION`).
+
+Catatan: `url` yang dikembalikan Google berupa ekspresi host+path tanpa skema,
+bukan selalu identik dengan string yang dikirim.
+
+### Hasil live 28 Oktober 2026
+
+Dijalankan dari route Saring dengan `GOOGLE_SAFE_BROWSING_API_KEY` aktif:
+
+| Kasus | HTTP route | Status internal | Catatan |
+|---|---|---|---|
+| `https://example.com/` | 200 | `no-match` | Body protobuf 5 byte hanya berisi cacheDuration 300 detik |
+| URL uji resmi Google `.../MALWARE/URL/` | 200 | `threat` | `threatTypes: ["MALWARE"]`, atribusi ditampilkan |
+| Tanpa `consent: true` | 400 | ditolak | Tidak ada permintaan keluar |
+| `ftp://` dan URL rusak | 400 | ditolak | Validasi sebelum lookup |
+
+Permintaan kedua untuk URL yang sama mengembalikan `cacheHit: true` tanpa
+memanggil Google lagi.
+
+### Status yang dibedakan
+
+`threat`, `no-match`, `not-configured`, `unauthorized` (400 `API_KEY_INVALID`,
+401, 403), `quota-exceeded` (429), `timeout`, `http-error`, `invalid-response`.
+
+Status selain `threat` dan `no-match` ditandai `inconclusive: true`, sehingga UI
+tidak boleh menarik kesimpulan apa pun darinya.
+
+### Cache
+
+`cacheDuration` dari Google dipakai sebagai TTL (dibatasi 30 detik sampai 24
+jam). Cache disimpan di memori proses, maksimal 500 entri. Ini mengurangi
+pemakaian kuota dan sesuai instruksi dokumentasi bahwa klien harus menghormati
+`cacheDuration`.
+
+### Kuota dan biaya
+
+Dokumentasi Google menyatakan Safe Browsing gratis untuk penggunaan
+nonkomersial. Saring tidak mengaktifkan billing, tidak memakai free trial
+berbayar, dan tidak menambahkan metode pembayaran. API key hanya dibaca di
+server melalui `GOOGLE_SAFE_BROWSING_API_KEY`, tidak pernah dikirim ke klien.
+Bila key tidak tersedia, statusnya `not-configured` dan inspeksi lokal tetap
+berjalan.
+
+### Atribusi
+
+Bila ada kecocokan ancaman, UI menampilkan **"Advisory provided by Google"**
+dengan tautan ke <https://developers.google.com/safe-browsing/> sesuai
+ketentuan dokumentasi.
+
+### Pengujian
+
+- `tests/unit/googleSafeBrowsing.test.ts`: 18 kasus termasuk request shape,
+  threat, no-match, body kosong, 400/403/429/500, timeout, gangguan jaringan,
+  JSON rusak, skema salah, kebocoran key, dan cache.
+- `tests/unit/gsbProtobuf.test.ts`: decoder diuji memakai **byte nyata** hasil
+  panggilan live, sehingga pemetaan enum dan cacheDuration tervalidasi.
+
+## PhishTank (legacy, tidak dipakai runtime)
+
+Adapter masih ada di `lib/reputation/phishtank.ts` sebagai rujukan sejarah,
+tetapi tidak diimpor oleh route maupun komponen. Alasan ditinggalkan: endpoint
+`checkurl` menolak permintaan tanpa app key dengan HTTP 403, sehingga lookup
+hampir selalu gagal bagi pengguna. Jangan menghidupkannya kembali tanpa
+credential valid.
 
 ## AduanNomor — Komdigi
 

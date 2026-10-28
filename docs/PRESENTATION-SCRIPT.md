@@ -18,7 +18,7 @@
 - **Aksi:** masukkan `+62 812-3456-7890`, klik **Periksa nomor**, salin nomor, lalu tunjuk **Buka AduanNomor — Komdigi**.
 - **Narasi:** “Saring memvalidasi dan menormalisasi format. Belum ada provider reputasi nomor gratis yang terverifikasi, jadi kami tidak memalsukan hasil.”
 - **Aksi:** klik tab **Periksa Tautan**, masukkan `https://bit.ly/contoh-login`, centang consent, lalu klik **Periksa tautan**.
-- **Narasi:** “Heuristik lokal ditampilkan bersama status PhishTank. URL tidak pernah dibuka; no-match bukan bukti aman. Pada demo tanpa credential, tampilkan state provider tidak tersedia secara jujur.”
+- **Narasi:** “Heuristik lokal ditampilkan bersama status Google Safe Browsing. URL tidak pernah dibuka; no-match bukan bukti aman. Pada demo tanpa credential, tampilkan state provider tidak tersedia secara jujur.”
 
 ## 5:00–6:30 — Latihan
 

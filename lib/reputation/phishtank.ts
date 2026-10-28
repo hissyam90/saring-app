@@ -1,3 +1,13 @@
+/**
+ * LEGACY. Adapter PhishTank tidak lagi dipakai di jalur runtime sejak
+ * Google Safe Browsing v5 menjadi provider utama (`googleSafeBrowsing.ts`).
+ *
+ * Alasan ditinggalkan: endpoint checkurl menolak permintaan tanpa app key
+ * dengan HTTP 403, sehingga lookup hampir selalu gagal bagi pengguna.
+ *
+ * File ini disimpan sebagai rujukan sejarah dan tidak diimpor oleh route
+ * maupun komponen. Jangan menghidupkannya kembali tanpa credential valid.
+ */
 export type PhishTankStatus =
   | "match"
   | "no-match"

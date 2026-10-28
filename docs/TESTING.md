@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-  Unit[Unit: engine, URL, nomor, PhishTank mock] --> Quality[Quality gate]
+  Unit[Unit: engine, URL, nomor, Google Safe Browsing mock] --> Quality[Quality gate]
   Components[Komponen React] --> Quality
   E2E[Playwright desktop + mobile] --> Quality
   Quality --> Build[Production build]
@@ -15,7 +15,7 @@ flowchart LR
 |---|---|---|
 | Rule engine dan URL | `tests/unit/analysis.test.ts` | Lulus |
 | Normalisasi nomor | `tests/unit/phone.test.ts` | Lulus |
-| PhishTank adapter mock | `tests/unit/phishtank.test.ts` | Lulus; bukan live test |
+| Google Safe Browsing adapter mock | `tests/unit/googleSafeBrowsing.test.ts` | Lulus; bukan live test |
 | Analyzer, simulator, guide | `tests/components/*.test.tsx` | Lulus |
 | Rute dan mobile | `tests/e2e/app.spec.ts` | 14 lulus, 2 dilewati |
 | Provider live | Belum ada | Menunggu credential/valid smoke test |

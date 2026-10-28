@@ -95,7 +95,9 @@ test("link mode keeps local findings without consent", async ({ page }) => {
     timeout: 5000,
   });
   await expect(page.getByText(/Tautan pendek \(shortened URL\)/)).toBeVisible();
-  await expect(page.getByText("Reputasi eksternal · PhishTank")).toBeVisible();
+  await expect(
+    page.getByText("Reputasi eksternal · Google Safe Browsing"),
+  ).toBeVisible();
 });
 
 test("no horizontal overflow on mobile after redesign", async ({ page }, testInfo) => {

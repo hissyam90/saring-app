@@ -6,14 +6,14 @@
 |---|---|---|---|
 | Pesan | Browser | Tidak | Memori React saja |
 | URL heuristik | Browser | Tidak | Memori React saja |
-| URL reputasi | Route server setelah consent | PhishTank | Tidak disimpan oleh aplikasi |
+| URL reputasi | Route server setelah consent | Google Safe Browsing | Tidak disimpan oleh aplikasi |
 | Nomor | Browser | Tidak pada mode saat ini | Memori React saja |
 
 ```mermaid
 flowchart LR
   B[Browser] -->|Pesan & heuristik URL| Local[Modul lokal]
   B -->|URL + consent| S[Next.js route server]
-  S -->|URL reputasi| P[PhishTank]
+  S -->|URL reputasi| P[Google Safe Browsing]
   Env[Environment variable server] -.-> S
   S -->|status terbatas| B
 ```

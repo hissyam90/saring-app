@@ -4,7 +4,7 @@
 > Belum tentu penipuan. Belum tentu aman. Kenali tandanya sebelum bertindak.
 
 Saring adalah aplikasi web yang membantu anak muda Indonesia mengenali pesan
-penipuan daring, memeriksa sinyal URL dengan opsi reputasi PhishTank setelah
+penipuan daring, memeriksa sinyal URL dengan opsi reputasi Google Safe Browsing setelah
 consent, menormalisasi nomor, berlatih mengambil keputusan yang lebih aman, dan
 memahami langkah selanjutnya — tanpa akun dan tanpa layanan AI eksternal.
 
@@ -110,15 +110,14 @@ flowchart LR
   Checker --> URL[Heuristik URL]
   URL --> Consent[Consent]
   Consent --> Route[Server route]
-  Route --> PT[PhishTank opsional]
+  Route --> PT[Google Safe Browsing opsional]
   App --> Training[Latihan]
   App --> Guide[Langkah]
   App --> Library[Pustaka]
   CI[GitHub Actions] --> App
 ```
 
-Pesan dan heuristik URL berjalan lokal. Lookup URL ke PhishTank hanya terjadi setelah persetujuan eksplisit; nomor belum memiliki provider reputasi gratis yang diaktifkan.
-
+Pesan dan heuristik URL berjalan lokal. Lookup URL ke Google Safe Browsing hanya terjadi setelah persetujuan eksplisit; nomor belum memiliki provider reputasi gratis yang diaktifkan.
 
 ```
 app/            rute dan titik masuk aplikasi (App Router)
@@ -174,7 +173,7 @@ pengingat:
 |---|---|---|---|
 | Pesan | Browser | Tidak | Memori sementara |
 | URL heuristik | Browser | Tidak | Memori sementara |
-| URL reputasi | Route server setelah consent | PhishTank | Tidak disimpan aplikasi |
+| URL reputasi | Route server setelah consent | Google Safe Browsing | Tidak disimpan aplikasi |
 | Nomor | Browser | Tidak pada mode default | Memori sementara |
 
 
@@ -242,9 +241,9 @@ arahkan DNS mengikuti **target yang diberikan Heroku** untuk aplikasi tersebut
 
 - Mesin ini berbasis **aturan heuristik keyboard** — bukan detektor penipuan
   yang menyeluruh. Ia dapat melewatkan pola baru atau menandai pesan sah.
-- Pemeriksaan tautan memakai heuristik lokal dan dapat mengirim URL ke PhishTank
-  hanya setelah consent. Lookup eksternal belum diuji live pada workspace ini;
-  kegagalan/no-match bukan bukti aman.
+- Pemeriksaan tautan memakai heuristik lokal dan dapat mengirim URL ke Google Safe Browsing
+  hanya setelah consent. Respons Google dibaca sebagai protobuf; `no-match` bukan bukti aman,
+  dan kegagalan provider tidak menghapus hasil lokal.
 - Hasil adalah **dukungan keputusan**, bukan bukti kesalahan atau jaminan aman.
 - Panduan laporan bersifat umum dan tidak menggantikan investigasi resmi.
 

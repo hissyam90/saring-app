@@ -47,13 +47,13 @@ membaca `PORT` yang disetel Heroku secara otomatis.
 
 ## Variabel lingkungan
 
-Tanpa credential, aplikasi tetap berjalan dengan analisis lokal dan status reputasi URL yang tidak tersedia. Untuk lookup PhishTank opsional, set Config Var server-side:
+Tanpa credential, aplikasi tetap berjalan dengan analisis lokal dan status reputasi URL `not-configured`. Untuk lookup Google Safe Browsing, set Config Var server-side:
 
 ```text
-PHISHTANK_APP_KEY=<opsional; jangan commit>
+GOOGLE_SAFE_BROWSING_API_KEY=<wajib untuk lookup reputasi; jangan commit>
 ```
 
-`PHISHTANK_APP_KEY` tidak memakai prefix `NEXT_PUBLIC_`. Lookup keyless memiliki batas lebih ketat. Jangan mengaktifkan billing atau memasukkan credential ke frontend.
+`GOOGLE_SAFE_BROWSING_API_KEY` tidak memakai prefix `NEXT_PUBLIC_`. Tanpa key, pemeriksaan reputasi tidak berjalan sama sekali; UI menampilkan status belum dikonfigurasi dan hasil lokal tetap tampil. Jangan mengaktifkan billing atau memasukkan credential ke frontend.
 
 ## Custom domain (Name.com)
 

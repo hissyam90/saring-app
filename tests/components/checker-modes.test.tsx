@@ -62,7 +62,9 @@ describe("LinkCheck", () => {
       screen.getByLabelText("Tautan yang dikirim pengirim"),
       "https://bit.ly/contoh-login",
     );
-    await user.click(screen.getByLabelText(/Kirim URL ini ke PhishTank/));
+    await user.click(
+      screen.getByLabelText(/Kirim URL ini ke Google Safe Browsing/),
+    );
     await user.click(screen.getByRole("button", { name: "Periksa tautan" }));
 
     // Local analysis must still be present.
@@ -72,7 +74,9 @@ describe("LinkCheck", () => {
 
     // External failure is shown without erasing local findings.
     expect(screen.getByText(/Permintaan gagal/)).toBeInTheDocument();
-    expect(screen.getByText("Reputasi eksternal · PhishTank")).toBeInTheDocument();
+    expect(
+      screen.getByText("Reputasi eksternal · Google Safe Browsing"),
+    ).toBeInTheDocument();
   });
 
   it("does not call the provider without consent", async () => {

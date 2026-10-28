@@ -1,17 +1,67 @@
 import { NextResponse } from "next/server";
-import { lookupPhishTank } from "@/lib/reputation/phishtank";
+import { lookupGoogleSafeBrowsing } from "@/lib/reputation/googleSafeBrowsing";
+
+const NO_STORE = { "Cache-Control": "no-store" } as const;
 
 export async function POST(request: Request) {
+  let body: { url?: unknown; consent?: unknown };
+
   try {
-    const body = (await request.json()) as { url?: unknown; consent?: unknown };
-    if (body.consent !== true) return NextResponse.json({ error: "Persetujuan diperlukan sebelum URL dikirim ke PhishTank." }, { status: 400 });
-    if (typeof body.url !== "string" || body.url.length > 2048) return NextResponse.json({ error: "URL tidak valid." }, { status: 400 });
-    let parsed: URL;
-    try { parsed = new URL(body.url); } catch { return NextResponse.json({ error: "URL tidak dapat diurai." }, { status: 400 }); }
-    if (!/^https?:$/.test(parsed.protocol)) return NextResponse.json({ error: "Hanya URL http/https yang didukung." }, { status: 400 });
-    const result = await lookupPhishTank(parsed.toString(), process.env.PHISHTANK_APP_KEY);
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    body = (await request.json()) as { url?: unknown; consent?: unknown };
   } catch {
-    return NextResponse.json({ error: "Permintaan pemeriksaan tidak dapat diproses." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Permintaan tidak dapat dibaca." },
+      { status: 400, headers: NO_STORE },
+    );
   }
+
+  // Consent wajib eksplisit sebelum URL dikirim ke pihak ketiga.
+  if (body.consent !== true) {
+    return NextResponse.json(
+      {
+        error:
+          "Persetujuan diperlukan sebelum URL dikirim ke Google Safe Browsing.",
+      },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  if (typeof body.url !== "string" || body.url.length === 0) {
+    return NextResponse.json(
+      { error: "URL tidak boleh kosong." },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  if (body.url.length > 2048) {
+    return NextResponse.json(
+      { error: "URL terlalu panjang (maksimal 2048 karakter)." },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(body.url);
+  } catch {
+    return NextResponse.json(
+      { error: "URL tidak dapat diurai." },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  if (!/^https?:$/.test(parsed.protocol)) {
+    return NextResponse.json(
+      { error: "Hanya URL http dan https yang didukung." },
+      { status: 400, headers: NO_STORE },
+    );
+  }
+
+  // Key hanya dibaca di server. Tidak pernah dikirim ke klien.
+  const result = await lookupGoogleSafeBrowsing(
+    parsed.toString(),
+    process.env.GOOGLE_SAFE_BROWSING_API_KEY,
+  );
+
+  return NextResponse.json(result, { headers: NO_STORE });
 }

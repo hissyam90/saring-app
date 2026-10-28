@@ -1,12 +1,12 @@
 # Arsitektur
 
-> **Status:** seluruh isi dokumen ini menggambarkan implementasi yang ada di repositori. PhishTank adalah provider reputasi URL **opsional** melalui route server. Tidak ada provider reputasi nomor yang aktif.
+> **Status:** seluruh isi dokumen ini menggambarkan implementasi yang ada di repositori. **Google Safe Browsing v5** adalah provider reputasi URL melalui route server. Tidak ada provider reputasi nomor yang aktif.
 
 ![Diagram arsitektur Saring: lapisan browser, server Next.js, dan layanan eksternal](assets/diagrams/system-overview.svg)
 
 Sumber diagram: [`assets/diagrams/system-overview.svg`](assets/diagrams/system-overview.svg).
 
-Ringkasnya: **Checker** dan **`lib/analysis`** dieksekusi di peramban tanpa jaringan. Server Next.js hanya menangani `POST /api/url-reputation` (consent + validasi) yang memanggil adapter **PhishTank**. Sumber lain (AduanNomor, OJK) adalah *handoff* manual: pengguna menyalin data dan membuka situsnya sendiri.
+Ringkasnya: **Checker** dan **`lib/analysis`** dieksekusi di peramban tanpa jaringan. Server Next.js hanya menangani `POST /api/url-reputation` (consent + validasi) yang memanggil adapter **Google Safe Browsing v5**. Sumber lain (AduanNomor, OJK) adalah *handoff* manual: pengguna menyalin data dan membuka situsnya sendiri.
 
 ## Gambaran umum
 
@@ -49,7 +49,9 @@ lib/analysis/       logika domain MURNI (tanpa React, tanpa jaringan)
   index.ts          barrel export
 
 lib/reputation/
-  phishtank.ts      adapter server: timeout 8 dtk, status ternormalisasi
+  googleSafeBrowsing.ts  adapter server GSB v5: status, cache, atribusi
+  protobuf.ts            decoder wire format untuk respons x-protobuf
+  phishtank.ts           LEGACY, tidak dipakai runtime
 
 data/               konten fiktif & edukasi yang ditinjau
   examples.ts       6 contoh pesan fiktif
@@ -119,8 +121,9 @@ Tiga tingkat yang dipisahkan dengan jelas:
    untuk menemukan tautan di dalam pesan.
 2. `inspectLink` (`lib/analysis/link.ts`) — inspeksi struktural: skema,
    userinfo, alamat IP, penyingkat, TLD tidak lazim, subdomain meniru merek.
-3. `lookupPhishTank` (`lib/reputation/phishtank.ts`) — reputasi eksternal,
-   hanya lewat route server dan hanya setelah consent.
+3. `lookupGoogleSafeBrowsing` (`lib/reputation/googleSafeBrowsing.ts`) — reputasi eksternal,
+   hanya lewat route server dan hanya setelah consent. Respons dibaca sebagai
+   protobuf oleh `lib/reputation/protobuf.ts`.
 
 Ketiganya **tidak pernah** membuka, mengikuti redirect, mengunduh, atau
 menjalankan isi URL. Status eksternal dibedakan menjadi `match`, `no-match`,
