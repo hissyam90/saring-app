@@ -10,15 +10,9 @@ import {
   ScanSearch,
 } from "lucide-react";
 import { inspectLink, SEVERITY_LABELS } from "@/lib/analysis";
-import type { LinkInspection, Severity } from "@/lib/analysis";
+import type { LinkInspection } from "@/lib/analysis";
 import type { PhishTankLookup } from "@/lib/reputation/phishtank";
 import { PHISHTANK_STATUS_LABEL } from "@/lib/reputation/phishtank";
-
-const SEVERITY_CHIP: Record<Severity, string> = {
-  high: "border-coral bg-coral-soft text-ink",
-  medium: "border-amber bg-amber-soft text-ink",
-  low: "border-ink bg-paper text-ink-soft",
-};
 
 export function LinkCheck() {
   const [input, setInput] = useState("");
@@ -186,21 +180,29 @@ function ExternalPanel({
   loading: boolean;
   onRetry: () => void;
 }) {
-  const tone =
+  const accent =
     external?.status === "match"
-      ? "border-coral bg-coral-soft"
+      ? "border-l-coral"
       : external?.status === "no-match"
-        ? "border-ink bg-paper"
-        : "border-amber bg-amber-soft";
+        ? "border-l-ink-muted"
+        : "border-l-amber";
 
   return (
-    <div className={`mt-4 border-2 ${tone}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/20 px-3 py-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+    <div className={`mt-5 border-l-4 bg-surface px-4 py-3.5 ${accent}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
           Reputasi eksternal · PhishTank
         </h3>
         {external ? (
-          <span className="border border-ink bg-surface px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
+          <span
+            className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              external.status === "match"
+                ? "bg-coral text-white"
+                : external.inconclusive
+                  ? "bg-amber text-white"
+                  : "bg-ink text-paper"
+            }`}
+          >
             {PHISHTANK_STATUS_LABEL[external.status]}
           </span>
         ) : null}
@@ -344,41 +346,58 @@ function LinkResult({
       {local.findings.length > 0 ? (
         <ul className="mt-2 grid gap-2.5">
           {local.findings.map((finding, index) => (
-            <li key={finding.signal} className="border-2 border-ink bg-surface">
-              <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink bg-paper px-3 py-2">
-                <span className="flex h-5 min-w-5 items-center justify-center border border-ink bg-ink px-1 font-mono text-[10px] font-bold text-paper">
-                  {index + 1}
+            <li
+              key={finding.signal}
+              className={`border-l-4 bg-surface px-4 py-3.5 ${
+                finding.severity === "high"
+                  ? "border-l-coral"
+                  : finding.severity === "medium"
+                    ? "border-l-amber"
+                    : "border-l-ink-muted"
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[11px] font-bold text-ink-muted">
+                  {String(index + 1).padStart(2, "0")}
                 </span>
                 <span
-                  className={`border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${SEVERITY_CHIP[finding.severity]}`}
+                  className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    finding.severity === "high"
+                      ? "bg-coral text-white"
+                      : finding.severity === "medium"
+                        ? "bg-amber text-white"
+                        : "bg-ink text-paper"
+                  }`}
                 >
                   {SEVERITY_LABELS[finding.severity]}
                 </span>
-                <h4 className="text-sm font-bold text-ink">{finding.title}</h4>
+                <h4 className="text-[15px] font-bold text-ink">{finding.title}</h4>
               </div>
-              <div className="px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-                  Bukti
-                </p>
-                <p className="mt-1 break-all border-l-4 border-ink bg-paper px-2.5 py-1.5 font-mono text-xs text-ink">
+
+              <figure className="mt-2.5">
+                <figcaption className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+                  Bagian URL
+                </figcaption>
+                <blockquote className="break-all border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-paper">
                   {finding.evidence}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-ink-soft">
-                  {finding.explanation}
-                </p>
-                <p className="mt-1.5 flex items-start gap-1.5 text-sm leading-6 text-ink">
-                  <CircleAlert
-                    className="mt-1 h-3.5 w-3.5 shrink-0 text-coral"
-                    aria-hidden="true"
-                  />
-                  <span>{finding.nextStep}</span>
-                </p>
-              </div>
+                </blockquote>
+              </figure>
+
+              <p className="mt-2.5 text-sm leading-6 text-ink-soft">
+                {finding.explanation}
+              </p>
+              <p className="mt-1.5 flex items-start gap-2 border-t border-line pt-2.5 text-sm leading-6 text-ink">
+                <CircleAlert
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <span>{finding.nextStep}</span>
+              </p>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="mt-2 border-2 border-ink bg-surface px-3 py-2.5">
+        <div className="mt-2 border-l-4 border-l-ink-muted bg-surface px-4 py-3.5">
           <p className="text-sm leading-6 text-ink-soft">
             Tidak ada indikator struktural yang cocok. Ini bukan jaminan bahwa
             tautan aman.

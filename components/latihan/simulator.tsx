@@ -48,7 +48,7 @@ export function Simulator() {
   const renderSummary = () => {
     const safest = answers.filter((answer) => answer.option.isSafest).length;
     return (
-      <div className="rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="border border-line bg-surface shadow-sm">
         <div className="border-b border-line px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-ink">Ringkasan latihan</h2>
           <p className="mt-1 text-sm text-ink-muted">
@@ -61,7 +61,7 @@ export function Simulator() {
             {answers.map((answer) => (
               <li
                 key={answer.scenario.id}
-                className="rounded-xl border border-line bg-surface p-4"
+                className="border border-line bg-surface p-4"
               >
                 <div className="flex items-start gap-3">
                   {answer.option.isSafest ? (
@@ -86,7 +86,7 @@ export function Simulator() {
               </li>
             ))}
           </ul>
-          <p className="mt-4 rounded-lg bg-paper px-4 py-3 text-xs leading-5 text-ink-muted">
+          <p className="mt-4 bg-paper px-4 py-3 text-xs leading-5 text-ink-muted">
             Skor ini hanya menggambarkan latihan ini dan bukan ukuran kemampuan
             keamanan digitalmu di dunia nyata, ataupun jaminan keamanan di masa
             depan.
@@ -94,7 +94,7 @@ export function Simulator() {
           <button
             type="button"
             onClick={restart}
-            className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-semibold text-paper transition-colors hover:bg-ink-soft"
+            className="mt-5 inline-flex h-11 items-center justify-center gap-2 bg-ink px-5 text-sm font-semibold text-paper transition-colors hover:bg-ink-soft"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
             Ulangi latihan
@@ -107,7 +107,7 @@ export function Simulator() {
   if (finished) return renderSummary();
 
   return (
-    <div className="rounded-2xl border border-line bg-surface shadow-sm">
+    <div className="border border-line bg-surface shadow-sm">
       <div className="border-b border-line px-4 py-4 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-ink">{scenario.title}</h2>
@@ -130,7 +130,7 @@ export function Simulator() {
 
         <p className="mt-4 text-sm leading-6 text-ink-muted">{scenario.setup}</p>
 
-        <div className="mt-3 rounded-xl border border-line bg-paper px-4 py-3">
+        <div className="mt-3 border border-line bg-paper px-4 py-3">
           <p className="text-sm leading-6 text-ink">{scenario.message}</p>
         </div>
 
@@ -147,7 +147,7 @@ export function Simulator() {
                   type="button"
                   onClick={() => choose(option)}
                   disabled={selected !== null}
-                  className={`rounded-xl border px-4 py-3 text-left text-sm leading-6 transition-colors disabled:cursor-default ${
+                  className={`border px-4 py-3 text-left text-sm leading-6 transition-colors disabled:cursor-default ${
                     isChosen
                       ? "border-ink bg-ink text-paper"
                       : "border-line bg-surface text-ink hover:border-ink-soft"
@@ -162,7 +162,7 @@ export function Simulator() {
 
         {chosen ? (
           <div
-            className={`mt-4 rounded-xl border p-4 ${
+            className={`mt-4 border p-4 ${
               chosen.isSafest
                 ? "border-safe/30 bg-safe-soft"
                 : "border-coral/30 bg-coral-soft"
@@ -186,7 +186,7 @@ export function Simulator() {
             <button
               type="button"
               onClick={next}
-              className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-semibold text-paper transition-colors hover:bg-ink-soft"
+              className="mt-4 inline-flex h-11 items-center justify-center gap-2 bg-ink px-5 text-sm font-semibold text-paper transition-colors hover:bg-ink-soft"
             >
               {index + 1 >= SCENARIOS.length
                 ? "Lihat ringkasan"

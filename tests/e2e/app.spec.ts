@@ -26,9 +26,21 @@ test("analyzer produces an explainable result", async ({ page }) => {
     .getByLabel("Pesan yang ingin diperiksa")
     .fill("Segera kirim kode OTP Anda atau akun Anda akan diblokir dalam 24 jam.");
   await page.getByRole("button", { name: "Periksa pesan" }).click();
+
+  // Keputusan sementara yang dapat ditindaklanjuti.
   await expect(
-    page.getByRole("heading", { name: "Banyak sinyal bahaya" }),
-  ).toBeVisible({ timeout: 5000 });
+    page.getByRole("heading", { name: "Jangan bagikan kode rahasia apa pun" }),
+  ).toBeVisible({ timeout: 8000 });
+
+  // Sinyal, kutipan bukti, dan klasifikasi tetap tersaji.
+  await expect(
+    page.getByRole("heading", { name: "Sinyal yang terdeteksi" }),
+  ).toBeVisible();
+  await expect(page.getByText("Kutipan dari pesan").first()).toBeVisible();
+  await expect(page.getByText(/Banyak sinyal bahaya/).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Langkah yang disarankan" }),
+  ).toBeVisible();
 });
 
 test("notification and controls stay usable on mobile", async ({ page }, testInfo) => {
@@ -60,7 +72,7 @@ test("homepage surfaces the friend-money verification verdict", async ({ page })
   await expect(
     page.getByRole("heading", { name: "Yang belum dapat dipastikan" }),
   ).toBeVisible();
-  await expect(page.getByText("Bukti dari teks").first()).toBeVisible();
+  await expect(page.getByText("Kutipan dari pesan").first()).toBeVisible();
 });
 
 test("phone mode gives an in-site assessment", async ({ page }) => {

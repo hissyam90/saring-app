@@ -3,18 +3,29 @@
 @theme {
   --color-ink: #151b2b;
   --color-ink-soft: #28334a;
-  --color-ink-muted: #646464;
+  --color-ink-muted: #5c6373;
   --color-paper: #f5f2ea;
   --color-surface: #ffffff;
   --color-line: #d8d1c2;
+
+  /* Sidebar gelap khusus navigasi (dipisah dari hero) */
+  --color-graphite: #111827;
+  --color-graphite-soft: #1c2637;
+
+  /* Hero terang agar kontras dengan sidebar */
+  --color-hero: #edf5b6;
+  --color-hero-edge: #dbe89a;
+
   --color-lime: #d8f36a;
+  --color-lime-deep: #b9dd35;
   --color-lime-soft: #eefbd0;
-  --color-amber: #c88b18;
+  --color-amber: #a9660c;
   --color-amber-soft: #fff3cf;
-  --color-warn: #c88b18;
+  --color-warn: #a9660c;
   --color-warn-soft: #fff3cf;
-  --color-coral: #f16b5b;
+  --color-coral: #c03a28;
   --color-coral-soft: #fde7e1;
+  --color-ink-coral: #7d1f12;
   --color-safe: #1d7a54;
   --color-safe-soft: #e4f2ea;
 
@@ -24,10 +35,11 @@
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas,
     "Segoe UI Mono", monospace;
 
-  --shadow-neo: 3px 3px 0 0 #12203a;
-  --shadow-neo-sm: 2px 2px 0 0 #12203a;
-  --shadow-neo-lg: 7px 7px 0 0 #12203a;
-  --shadow-neo-lime: 3px 3px 0 0 #c8f04d;
+  --shadow-neo: 3px 3px 0 0 #151b2b;
+  --shadow-neo-sm: 2px 2px 0 0 #151b2b;
+  --shadow-neo-lg: 7px 7px 0 0 #151b2b;
+  --shadow-neo-xl: 10px 10px 0 0 #151b2b;
+  --shadow-neo-lime: 3px 3px 0 0 #b9dd35;
 }
 
 :root {

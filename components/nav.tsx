@@ -22,22 +22,6 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/pustaka", label: "Pustaka", icon: BookOpen },
 ];
 
-function Brand() {
-  return (
-    <Link href="/" className="flex items-center gap-3">
-      <span className="flex h-10 w-10 items-center justify-center border-2 border-ink bg-lime shadow-neo-sm">
-        <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-      </span>
-      <span className="leading-tight">
-        <span className="block text-lg font-extrabold tracking-tight">Saring</span>
-        <span className="block text-[11px] uppercase tracking-wider text-ink-muted">
-          kepercayaan digital
-        </span>
-      </span>
-    </Link>
-  );
-}
-
 export function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -65,16 +49,26 @@ export function Nav() {
 
   return (
     <>
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b-2 border-ink bg-paper px-4 py-3 lg:hidden">
-        <span className="text-ink">
-          <Brand />
-        </span>
+      {/* Mobile top bar — identitas gelap yang sama dengan sidebar desktop */}
+      <header className="sticky top-0 z-50 flex items-center justify-between border-b-2 border-lime bg-graphite px-4 py-3 text-paper lg:hidden">
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center bg-lime text-ink">
+            <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="leading-tight">
+            <span className="block text-base font-extrabold tracking-tight">
+              Saring
+            </span>
+            <span className="block text-[10px] uppercase tracking-wider text-paper/50">
+              kepercayaan digital
+            </span>
+          </span>
+        </Link>
         <button
           ref={menuButtonRef}
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-11 w-11 items-center justify-center border-2 border-ink bg-lime text-ink shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+          className="inline-flex h-11 w-11 items-center justify-center bg-lime text-ink active:bg-lime-deep"
           aria-expanded={open}
           aria-label={open ? "Tutup menu" : "Buka menu"}
         >
@@ -96,79 +90,107 @@ export function Nav() {
             onClick={() => setOpen(false)}
           />
           <div
-            className="absolute inset-y-0 right-0 flex w-72 flex-col gap-1 border-l-2 border-ink bg-paper p-4"
+            className="absolute inset-y-0 right-0 flex w-72 flex-col gap-1 bg-graphite p-4 text-paper"
             role="dialog"
             aria-modal="true"
             aria-label="Menu navigasi"
           >
-            {LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 border-2 px-3 py-3 text-sm font-semibold transition-none ${
-                  isActive(link.href)
-                    ? "border-ink bg-lime text-ink shadow-neo"
-                    : "border-transparent text-ink-soft hover:border-ink hover:text-ink"
-                }`}
-              >
-                <link.icon className="h-5 w-5" aria-hidden="true" />
-                {link.label}
-              </Link>
-            ))}
-            <p className="mt-4 border-t-2 border-line px-3 pt-4 text-xs leading-5 text-ink-muted">
-              Pemrosesan lokal di peramban. Tanpa akun, tanpa pengiriman data.
+            {LINKS.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center gap-3 px-3 py-3 text-sm font-semibold ${
+                    active
+                      ? "bg-lime text-ink"
+                      : "text-paper/70 hover:bg-white/10 hover:text-paper"
+                  }`}
+                >
+                  <link.icon className="h-5 w-5" aria-hidden="true" />
+                  {link.label}
+                </Link>
+              );
+            })}
+            <p className="mt-3 border-t border-white/15 px-3 pt-3 text-xs leading-5 text-paper/50">
+              Pesan &amp; tautan dianalisis di peramban Anda.
             </p>
           </div>
         </div>
       ) : null}
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r-2 border-ink bg-ink text-paper lg:flex">
-        <div className="px-5 py-6">
+      {/* Desktop sidebar — graphite pekat, dipisah aksen lime dari area utama */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col bg-graphite text-paper lg:flex">
+        <div className="border-b border-white/10 px-5 py-6">
           <Link href="/" className="flex items-center gap-3 text-paper">
-            <span className="flex h-10 w-10 items-center justify-center border-2 border-ink bg-lime text-ink shadow-neo-lime">
+            <span className="flex h-10 w-10 items-center justify-center bg-lime text-ink">
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
             </span>
             <span className="leading-tight">
               <span className="block text-lg font-extrabold tracking-tight">
                 Saring
               </span>
-              <span className="block text-[11px] uppercase tracking-wider text-paper/50">
+              <span className="block text-[11px] uppercase tracking-wider text-paper/65">
                 pendamping kepercayaan digital
               </span>
             </span>
           </Link>
         </div>
 
-        <nav className="flex-1 px-3" aria-label="Navigasi utama">
-          <ul className="flex flex-col gap-1.5">
-            {LINKS.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className={`flex items-center gap-3 border-2 px-3 py-2.5 text-sm font-semibold transition-none ${
-                    isActive(link.href)
-                      ? "border-ink bg-lime text-ink shadow-neo-lime"
-                      : "border-transparent text-paper/70 hover:bg-paper/10 hover:text-paper"
-                  }`}
-                >
-                  <link.icon className="h-5 w-5" aria-hidden="true" />
-                  {link.label}
-                </Link>
-              </li>
-            ))}
+        <nav className="flex-1 px-3 py-5" aria-label="Navigasi utama">
+          <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-paper/60">
+            Ruang kerja
+          </p>
+          <ul className="flex flex-col gap-1">
+            {LINKS.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`group relative flex items-center gap-3 py-2.5 pl-3 pr-2 text-sm font-semibold transition-colors ${
+                      active
+                        ? "bg-lime text-ink"
+                        : "text-paper/70 hover:bg-white/[0.07] hover:text-paper"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`absolute inset-y-0 left-0 w-1 ${
+                        active ? "bg-ink" : "bg-transparent group-hover:bg-lime/60"
+                      }`}
+                    />
+                    <link.icon className="h-5 w-5" aria-hidden="true" />
+                    <span className="flex-1">{link.label}</span>
+                    {active ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-ink/80">
+                        aktif
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
-        <div className="border-t border-paper/15 px-5 py-4">
-          <p className="text-xs leading-5 text-paper/60">
+        <div className="border-t border-white/10 px-5 py-4">
+          <p className="text-xs font-semibold leading-5 text-paper/80">
             Berhenti sebentar. Periksa sinyalnya.
           </p>
-          <p className="mt-2 text-[11px] leading-4 text-paper/40">
-            Analisis berjalan di peramban Anda.
+          <p className="mt-1.5 text-[11px] leading-4 text-paper/60">
+            Pesan &amp; tautan dianalisis di peramban Anda.
           </p>
         </div>
+
+        {/* Pemisah kontras antara sidebar dan area utama */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-[3px] bg-lime"
+        />
       </aside>
     </>
   );

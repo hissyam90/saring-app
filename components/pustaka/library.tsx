@@ -36,13 +36,13 @@ export function Library() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Cari topik, misalnya: OTP, lowongan, tautan…"
-          className="w-full rounded-xl border border-line bg-surface py-3 pl-10 pr-3 text-sm text-ink placeholder:text-ink-muted/60"
+          className="w-full border border-line bg-surface py-3 pl-10 pr-3 text-sm text-ink placeholder:text-ink-muted/60"
           aria-label="Cari topik pustaka"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+        <p className="mt-6 border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
           Tidak ada topik yang cocok dengan pencarianmu.
         </p>
       ) : (
@@ -52,7 +52,7 @@ export function Library() {
             return (
               <li
                 key={article.id}
-                className="overflow-hidden rounded-xl border border-line bg-surface"
+                className="overflow-hidden border border-line bg-surface"
               >
                 <button
                   type="button"
@@ -102,7 +102,7 @@ export function Library() {
                     </div>
 
                     {article.checklist ? (
-                      <div className="mt-4 rounded-xl border border-line bg-paper p-4">
+                      <div className="mt-4 border border-line bg-paper p-4">
                         <h3 className="text-sm font-semibold text-ink">
                           Daftar periksa
                         </h3>

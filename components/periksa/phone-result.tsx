@@ -91,15 +91,10 @@ export function PhoneResult({
             Perilaku yang Anda tandai ({assessment.indicators.length})
           </h2>
           <ul className="mt-2 grid gap-2.5">
-            {assessment.indicators.map((indicator, index) => (
-              <li key={indicator.id} className="border-2 border-ink bg-surface">
-                <div className="flex items-center gap-2 border-b-2 border-ink bg-paper px-3 py-2">
-                  <span className="flex h-5 min-w-5 items-center justify-center border border-ink bg-ink px-1 font-mono text-[10px] font-bold text-paper">
-                    {index + 1}
-                  </span>
-                  <h3 className="text-sm font-bold text-ink">{indicator.label}</h3>
-                </div>
-                <div className="px-3 py-2.5">
+            {assessment.indicators.map((indicator) => (
+              <li key={indicator.id} className="border-l-4 border-l-ink bg-surface px-4 py-3">
+                <h3 className="text-[15px] font-bold text-ink">{indicator.label}</h3>
+                <div className="mt-1.5">
                   <p className="text-sm leading-6 text-ink-soft">
                     {indicator.explanation}
                   </p>
@@ -114,14 +109,17 @@ export function PhoneResult({
         </>
       ) : null}
 
-      <div className="mt-4 border-2 border-ink bg-ink text-paper">
-        <h2 className="border-b border-paper/20 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-lime">
-          Langkah berikutnya
-        </h2>
+      <div className="mt-4 bg-graphite text-paper">
+        <div className="flex items-center gap-2 border-b border-white/15 px-4 py-2.5">
+          <span className="h-2 w-2 bg-lime" aria-hidden="true" />
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-lime">
+            Langkah berikutnya
+          </h2>
+        </div>
         <ol className="grid gap-2 px-4 py-3.5">
           {assessment.actionSteps.map((step, index) => (
-            <li key={step} className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border border-lime font-mono text-[10px] font-bold text-lime">
+            <li key={step} className="flex items-start gap-3">
+              <span className="mt-0.5 w-4 shrink-0 font-mono text-xs font-bold text-lime">
                 {index + 1}
               </span>
               <span className="text-sm leading-6 text-paper/90">{step}</span>

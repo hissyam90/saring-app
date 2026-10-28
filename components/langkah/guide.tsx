@@ -24,9 +24,9 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 const PRIORITY_META: Record<StepPriority, { label: string; className: string }> = {
-  segera: { label: "Segera", className: "bg-coral-soft text-coral" },
-  penting: { label: "Penting", className: "bg-warn-soft text-warn" },
-  lanjutan: { label: "Lanjutan", className: "bg-line text-ink-muted" },
+  segera: { label: "Segera", className: "bg-coral text-white" },
+  penting: { label: "Penting", className: "bg-amber text-white" },
+  lanjutan: { label: "Lanjutan", className: "bg-ink text-paper" },
 };
 
 export function Guide() {
@@ -49,7 +49,7 @@ export function Guide() {
                 type="button"
                 onClick={() => setSelectedId(item.id)}
                 aria-pressed={active}
-                className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-medium transition-colors lg:shrink ${
+                className={`flex shrink-0 items-center gap-2 border px-3 py-3 text-left text-sm font-medium transition-colors lg:shrink ${
                   active
                     ? "border-ink bg-ink text-paper"
                     : "border-line bg-surface text-ink-soft hover:border-ink-soft"
@@ -63,10 +63,10 @@ export function Guide() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="border border-line bg-surface shadow-sm">
         <div className="border-b border-line px-4 py-4 sm:px-6">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-paper">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-ink text-paper">
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
@@ -83,7 +83,7 @@ export function Guide() {
               return (
                 <li
                   key={`${guide.id}-${index}`}
-                  className="rounded-xl border border-line bg-surface p-4"
+                  className="border border-line bg-surface p-4"
                 >
                   <div className="flex items-start gap-3">
                     <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-paper text-xs font-bold text-ink-soft">
@@ -103,7 +103,7 @@ export function Guide() {
             })}
           </ol>
 
-          <div className="mt-6 rounded-xl border border-line bg-paper p-4">
+          <div className="mt-6 border border-line bg-paper p-4">
             <h3 className="text-sm font-semibold text-ink">Simpan bukti yang perlu</h3>
             <ul className="mt-2 grid gap-1.5">
               {guide.evidenceChecklist.map((item) => (
@@ -125,7 +125,7 @@ export function Guide() {
                       href={resource.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex items-start gap-2 rounded-lg border border-line bg-surface px-3 py-2.5 text-sm transition-colors hover:border-ink-soft"
+                      className="group flex items-start gap-2 border border-line bg-surface px-3 py-2.5 text-sm transition-colors hover:border-ink-soft"
                     >
                       <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
                       <span>
@@ -143,7 +143,7 @@ export function Guide() {
             </div>
           ) : null}
 
-          <p className="mt-4 rounded-lg bg-paper px-4 py-3 text-xs leading-5 text-ink-muted">
+          <p className="mt-4 bg-paper px-4 py-3 text-xs leading-5 text-ink-muted">
             Panduan ini bersifat umum dan tidak menggantikan investigasi resmi,
             bantuan profesional, atau penanganan langsung dari bank, penyedia
             layanan, maupun aparat penegak hukum.
