@@ -175,6 +175,30 @@ test("analyzer produces an explainable result", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("skip link terlihat saat fokus dan memindahkan fokus ke konten utama", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const skip = page.getByRole("link", { name: "Lompat ke konten utama" });
+
+  // `sr-only` tetap dianggap "visible" oleh Playwright karena kotaknya ada,
+  // jadi ukuran kotak yang dipakai sebagai bukti: sebelum fokus hanya 1px.
+  const before = await skip.boundingBox();
+  expect(before, "skip link harus ada di DOM").not.toBeNull();
+  expect(before!.width).toBeLessThanOrEqual(2);
+
+  await page.keyboard.press("Tab");
+  await expect(skip).toBeFocused();
+
+  const after = await skip.boundingBox();
+  expect(after!.width, "skip link harus melebar saat fokus").toBeGreaterThan(40);
+  expect(after!.height).toBeGreaterThan(20);
+
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/#konten-utama$/);
+  await expect(page.locator("#konten-utama")).toBeFocused();
+});
+
 test("notification and controls stay usable on mobile", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "mobile viewport only");
   await page.goto("/periksa");

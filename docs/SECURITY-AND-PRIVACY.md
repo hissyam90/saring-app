@@ -298,20 +298,30 @@ lintas instance (bukan in-memory). Bila penyimpanan gagal, request **ditolak**
 kira-kira satu permintaan per detik per pengguna), tetapi tetap dibatasi agar
 tidak dapat dipakai sebagai jalur penulisan tak terbatas.
 
-## Tema otomatis
+## Tema tampilan
 
-Saring **tidak** memiliki kontrol tema manual. Warna mengikuti
-`prefers-color-scheme` sepenuhnya melalui CSS (token `--color-*` di
-`app/globals.css` ditimpa di dalam `@layer base` pada media query gelap).
+Saring memiliki **tiga pilihan tema**: Ikuti sistem (default), Terang, dan
+Gelap. Kontrolnya ada di navbar (sidebar desktop dan menu navigasi ponsel).
 
-- Tidak ada tombol tema, tidak ada nilai di `localStorage`, dan tidak ada kolom
-  tema di database.
-- Tidak mungkin terjadi hydration mismatch atau kilatan tema salah, karena
-  pilihan tema tidak pernah diputuskan oleh JavaScript.
-- `color-scheme: light dark` dipasang pada `:root` agar kontrol bawaan peramban
-  (scrollbar, input) ikut menyesuaikan.
+- Preferensi disimpan **hanya di `localStorage`** peramban dengan kunci
+  `saring.theme`. Tidak ada cookie tema, tidak ada permintaan jaringan, dan
+  tidak ada kolom tema di PostgreSQL — pilihan ini murni preferensi tampilan
+  perangkat, bukan data akun.
+- Nilai `system` tidak diterjemahkan JavaScript: CSS yang memutuskan lewat
+  `prefers-color-scheme`, sehingga perubahan preferensi sistem langsung berlaku
+  tanpa reload.
+- Pilihan manual (Terang/Gelap) menang atas preferensi sistem melalui selektor
+  `:root[data-theme="dark"]` (di luar media query) dan media query yang
+  mengecualikan `[data-theme="light"]`.
+- Atribut `data-theme` dipasang skrip sebaris `beforeInteractive` sebelum
+  first-paint, sehingga tidak ada kilatan tema yang salah. Skrip itu hanya
+  menulis atribut pada `<html>`, bukan state React, sehingga tidak terjadi
+  hydration mismatch (`suppressHydrationWarning` hanya dipasang pada `<html>`
+  untuk perbedaan atribut yang memang disengaja).
+- `color-scheme` ikut disetel per mode agar kontrol bawaan peramban (scrollbar,
+  input) menyesuaikan.
 
-### Pasangan token (kontras terjaga di kedua tema)
+### Pasangan token (kontras terjaga di ketiga mode)
 
 Kesalahan yang paling mudah terjadi adalah memakai token **permukaan** sebagai
 warna teks: `text-paper` di atas `bg-graphite` benar pada light mode, tetapi

@@ -26,8 +26,15 @@ import { ArticleImage, MediaEmbed } from "./article-media";
  * sehingga tampilan pratinjau identik dengan halaman publik.
  */
 
+/**
+ * Gaya tautan dalam teks panjang.
+ *
+ * Warna memakai token `link` (bukan `ink`) supaya tautan tetap berbeda dari teks
+ * isi tanpa bergantung pada warna saja: garis bawah coral tetap ada sebagai
+ * penanda kedua (WCAG 1.4.1).
+ */
 const LINK_CLASS =
-  "font-semibold text-ink underline decoration-coral decoration-2 underline-offset-2 hover:bg-lime-soft";
+  "font-semibold text-link underline decoration-coral decoration-2 underline-offset-2 hover:bg-lime-soft hover:text-link-hover";
 
 const BLOCK_CLASS = {
   h2: "mt-6 text-lg font-bold leading-snug tracking-tight text-ink first:mt-0",

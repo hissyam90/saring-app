@@ -137,8 +137,9 @@ hanya diperlukan untuk menulis.
   kontribusi) ke akun; tersimpan lintas perangkat dan sesi.
 - **Notifikasi** dalam aplikasi: balasan baru, artikel disetujui/perlu
   perbaikan/ditolak, dan keputusan revisi. Tanpa email, SMS, atau WebSocket.
-- **Tema otomatis**: tampilan mengikuti preferensi terang/gelap sistem perangkat
-  (tanpa tombol tema dan tanpa menyimpan pilihan).
+- **Tema tampilan**: Ikuti sistem / Terang / Gelap, dengan kontrol di navbar.
+  Pilihan manual disimpan hanya di `localStorage` peramban dan tetap berlaku
+  setelah reload.
 - **CAPTCHA**: registrasi, login, diskusi, balasan, artikel, dan laporan memakai
   Cloudflare Turnstile yang diverifikasi di server (Siteverify).
 

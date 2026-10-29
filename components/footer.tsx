@@ -12,7 +12,7 @@ export function Footer() {
             </span>
             <span className="text-lg font-extrabold tracking-tight">Saring</span>
           </div>
-          <p className="mt-3 max-w-xs text-sm leading-6 text-graphite-ink/75">
+          <p className="mt-3 max-w-xs text-sm leading-6 text-graphite-muted">
             Berhenti sebentar. Periksa sinyalnya. Pendamping kepercayaan digital
             untuk mengenali penipuan daring.
           </p>
@@ -22,7 +22,7 @@ export function Footer() {
           <p className="text-xs font-semibold uppercase tracking-wider text-lime">
             Alat
           </p>
-          <ul className="mt-2 space-y-0.5 text-sm text-graphite-ink/75">
+          <ul className="mt-2 space-y-0.5 text-sm text-graphite-muted">
             <li><Link href="/periksa" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Periksa</Link></li>
             <li><Link href="/latihan" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Latihan</Link></li>
             <li><Link href="/langkah" className="inline-flex min-h-6 items-center py-1 hover:text-lime hover:underline">Langkah</Link></li>
@@ -34,7 +34,7 @@ export function Footer() {
           <p className="text-xs font-semibold uppercase tracking-wider text-lime">
             Yang tidak bisa dilakukan Saring
           </p>
-          <ul className="mt-2 space-y-1 text-sm leading-6 text-graphite-ink/75">
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-graphite-muted">
             <li>Tidak memastikan identitas pengirim pesan.</li>
             <li>Tidak memeriksa reputasi nomor telepon.</li>
             <li>Tidak menjamin dana kembali setelah transfer.</li>
@@ -44,7 +44,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-graphite-ink/15">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-graphite-ink/70 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-graphite-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
             Saring menyediakan panduan umum, bukan keputusan hukum atau jaminan
             deteksi.

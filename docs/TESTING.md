@@ -38,33 +38,45 @@ flowchart LR
 | Kategori pertanyaan "Lainnya" | `tests/unit/thread-category.test.ts` | Lulus |
 | Adapter media lintas hosting | `tests/unit/media.test.ts` | Lulus |
 | UI, revisi, autosave, bookmark, notifikasi (E2E) | `tests/e2e/v16.spec.ts` | Lulus |
-| Kontras light/dark dari warna terhitung (E2E) | `tests/e2e/contrast.spec.ts` | Lulus |
+| Kontras tiga mode tema dari warna terhitung (E2E) | `tests/e2e/contrast.spec.ts` | Lulus |
 
-## Cakupan v17: kontras dan keterbacaan
+## Cakupan v18: tiga mode tema dan keterbacaan
 
 - **Token**: `npm run audit:contrast` mengukur pasangan teks/latar dari token di
-  `app/globals.css` untuk light dan dark. Semua pasangan yang diuji lolos ambang
-  (4,5:1 teks normal, 3:1 teks besar, 3:1 batas kontrol). Pemisah dekoratif
-  dicatat terpisah karena bukan batas kontrol.
+  `app/globals.css`. Semua pasangan yang diuji lolos ambang (4,5:1 teks normal,
+  3:1 teks besar, 3:1 batas kontrol dan cincin fokus). Pemisah dekoratif dicatat
+  terpisah karena bukan batas kontrol.
+- **Konsistensi palet**: skrip juga membandingkan dua blok palet gelap
+  (`[data-theme="dark"]` dan media query `prefers-color-scheme`) dan gagal bila
+  keduanya berbeda, serta memastikan setiap token punya nilai gelap.
 - **Halaman**: `tests/e2e/contrast.spec.ts` mengaudit 19 rute (beranda, periksa,
   latihan, langkah, pustaka + detail, komunitas + detail + form, akun, artikel
-  tersimpan, 5 halaman admin, masuk, daftar) pada light **dan** dark, memakai
-  `color`/`background-color` hasil komputasi.
+  tersimpan, 5 halaman admin, masuk, daftar) pada **empat** mode:
+  `system-terang`, `system-gelap`, `manual-terang` (sistem gelap + pilihan
+  Terang), dan `manual-gelap` (sistem terang + pilihan Gelap). Audit memakai
+  `color`/`background-color` hasil komputasi, dan pada setiap rute juga
+  memastikan warna latar `body` benar-benar sesuai mode yang dipilih.
 - **Permukaan interaktif**: editor berisi teks, dialog media, panel notifikasi,
-  form masuk, pencarian Pustaka, dan menu navigasi mobile — pada kedua tema.
+  form masuk, pencarian Pustaka, dan menu navigasi mobile — pada light dan dark.
 - **Batas kontrol & placeholder**: isian latar kontrol harus berbeda >=3:1 dari
   latar sekitar, atau border >=3:1; placeholder >=4,5:1.
-- **Tema**: perubahan preferensi sistem diterapkan tanpa reload, tanpa tombol
-  tema, tanpa `localStorage`/cookie tema.
+- **Kontrol tema**: tiga tombol (Ikuti sistem / Terang / Gelap) terbukti
+  mengubah tema, mengalahkan preferensi sistem, bertahan setelah reload, dan
+  kembali ke perilaku otomatis. Preferensi hanya di `localStorage`
+  (`saring.theme`) — tidak ada cookie tema dan HTML dari server tidak memuat
+  atribut `data-theme`.
+- **Tanpa kilatan tema**: `data-theme` terbukti terpasang **sebelum**
+  `first-paint` (direkam lewat `MutationObserver` + `PerformanceObserver` di
+  peramban).
 - **Stabilitas**: tidak ada peringatan hydration pada halaman yang diuji dan
   tidak ada overflow horizontal.
-- **Screenshot**: `.tmp-audit/v17-home-light.png`, `v17-home-dark.png`,
-  `v17-article-dark.png`, `v17-community-dark.png`, `v17-admin-dark.png`,
-  `v17-mobile-dark.png`.
+- **Screenshot**: `.tmp-audit/v18-theme-system.png`, `v18-theme-light.png`,
+  `v18-theme-dark.png`, `v18-community-mobile.png`, `v18-admin-dark.png`.
 
 Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 `oklab(...)`; audit mengonversinya ke sRGB. Tanpa konversi itu, elemen beropacity
 (navbar, footer, badge) akan lolos secara palsu.
+
 
 
 ## Cakupan v16 yang diuji otomatis
@@ -170,21 +182,42 @@ npm run typecheck   # tsc --noEmit
 npm run test        # Vitest: unit + komponen (jsdom)
 npm run test:e2e    # Playwright: membangun lalu mengetes server produksi
 npm run build       # produksi build
+npm run audit:contrast   # kontras token light/dark (WCAG 2.2 AA)
 ```
 
 ## Prasyarat pengujian end-to-end
 
-`tests/e2e/article-editor.spec.ts` memakai **PostgreSQL sungguhan** (dari
-`.env.local` / `DATABASE_URL`) dan membuat datanya sendiri dengan awalan unik
-(`editor-e2e-…`), lalu menghapusnya kembali di `afterAll`.
+Semua berkas E2E memakai **PostgreSQL sungguhan** (bukan mock/in-memory) karena
+yang diuji adalah persistensi artikel, revisi, draf autosave, bookmark, dan
+notifikasi. `playwright.config.ts` memuat `.env.local` sebelum konfigurasi
+dibaca, lalu **melempar pesan yang jelas** bila `DATABASE_URL` tidak diset —
+sebelumnya ketiadaannya hanya muncul sebagai `ECONNREFUSED ::1:5432`.
 
-- Jalankan `npm run db:migrate` lebih dulu agar kolom `body_json` tersedia.
-- `playwright.config.ts` menyetel **kunci uji resmi Cloudflare Turnstile**
-  (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) pada
-  proses `webServer`, sehingga alur pengajuan benar-benar melewati verifikasi
-  Siteverify tanpa mengubah konfigurasi produksi.
-- Data uji tidak menyentuh artikel pengguna yang sudah ada; jumlah artikel di
-  Pustaka dapat bertambah sementara selama pengujian berlangsung.
+Langkah lokal:
+
+1. Buat database uji terpisah (jangan memakai database pengembangan/produksi):
+
+   ```bash
+   createdb saring_test        # atau buat lewat pgAdmin/psql
+   export DATABASE_URL="postgresql://<user>:<pass>@127.0.0.1:5432/saring_test"
+   export DATABASE_SSL=disable
+   npm run db:migrate
+   ```
+
+2. `npm run test:e2e` — Playwright membangun lalu menjalankan server produksi
+   (`next build && next start`) dengan environment yang sama.
+
+Data uji dibuat dengan awalan unik (`editor-e2e-…`, `v16-…`) lalu dihapus di
+`afterAll`.
+
+`playwright.config.ts` juga menyetel **kunci uji resmi Cloudflare Turnstile**
+(`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) pada proses
+`webServer`. Siteverify tetap dipanggil sungguhan: autentikasi, CAPTCHA, dan
+validasi tidak dimatikan.
+
+Catatan untuk database bersama: bila role database tidak boleh membuat database
+baru, E2E dapat diarahkan ke schema terpisah lewat parameter `options`
+(`-c search_path=<schema>`), sehingga tabel `public` tidak tersentuh.
 
 ## Cakupan
 
@@ -222,7 +255,34 @@ bukan server dev, agar menguji artefak yang benar-benar digunakan saat rilis.
 `.github/workflows/ci.yml` menjalankan pada push/PR:
 
 1. Job `quality`: `npm ci` → lint → typecheck → test → build.
-2. Job `e2e` (setelah `quality`): `npm ci` → `playwright install chromium` → `test:e2e`.
+2. Job `e2e` (setelah `quality`, butuh job pertama hijau):
+   - service container `postgres:16.15` dengan health check `pg_isready`
+     (retry 20×, `--health-start-period 10s`),
+   - pengaman yang menolak jalan bila `DATABASE_URL` bukan database uji lokal,
+   - health check tambahan memakai driver `pg` (bukan hanya port TCP),
+   - `npm run db:migrate` lalu `npm run db:migrate:status`,
+   - `npm run test:e2e`,
+   - unggah `test-results`/`playwright-report` bila gagal.
+
+Penyebab kegagalan E2E sebelumnya: job E2E tidak menyediakan database dan tidak
+menyetel `DATABASE_URL`, sehingga pool `pg` mencoba `localhost:5432` dan gagal
+dengan `ECONNREFUSED ::1:5432` / `127.0.0.1:5432`. Workflow sekarang
+menyediakan database sementara khusus CI, menerapkan migration ke database itu,
+dan menjalankan server yang diuji dengan environment yang sama.
+
+Environment job E2E (nilai dummy khusus CI, bukan produksi):
+
+| Variabel | Nilai |
+|---|---|
+| `DATABASE_URL` | `postgresql://saring:<dummy>@127.0.0.1:5432/saring_test` |
+| `DATABASE_SSL` | `disable` |
+| `SESSION_SECRET` | string acak 64 karakter khusus CI |
+| Turnstile | kunci uji resmi Cloudflare (`1x…AA`) |
+
+Workflow tidak pernah memakai database lokal pengguna, tidak memakai database
+produksi, dan tidak menonaktifkan autentikasi/CAPTCHA/validasi. Migration hanya
+diterapkan ke container sementara yang dihapus setelah job selesai.
+
 
 ## Catatan pemetaan ke daftar QA
 

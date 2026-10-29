@@ -22,6 +22,18 @@
   --color-line-strong: #8a8073;
   --color-placeholder: #5c6373;
 
+  /* Tautan di dalam teks panjang (Pustaka, editor, komunitas). Warnanya tetap
+     berbeda dari teks isi agar tautan tidak hanya dikenali dari garis bawah. */
+  --color-link: #7d1f12;
+  --color-link-hover: #5d150b;
+  /* Cincin fokus keyboard: >= 3:1 terhadap paper dan surface di kedua tema. */
+  --color-focus: #a52f1e;
+  /* Warna bayangan neobrutalism. Ikut tema agar bayangan tidak menyatu dengan
+     latar gelap (sebelumnya selalu #151b2b sehingga tak terlihat di dark mode). */
+  --color-shadow: #151b2b;
+  /* Warna teks sekunder di dalam permukaan graphite (sidebar, footer). */
+  --color-graphite-muted: #c9c5bb;
+
   /* Sidebar gelap khusus navigasi (dipisah dari hero) */
   --color-graphite: #111827;
   --color-graphite-soft: #1c2637;
@@ -62,18 +74,47 @@
   --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas,
     "Segoe UI Mono", monospace;
 
-  --shadow-neo: 3px 3px 0 0 #151b2b;
-  --shadow-neo-sm: 2px 2px 0 0 #151b2b;
-  --shadow-neo-lg: 7px 7px 0 0 #151b2b;
-  --shadow-neo-xl: 10px 10px 0 0 #151b2b;
+  --shadow-neo: 3px 3px 0 0 var(--color-shadow);
+  --shadow-neo-sm: 2px 2px 0 0 var(--color-shadow);
+  --shadow-neo-lg: 7px 7px 0 0 var(--color-shadow);
+  --shadow-neo-xl: 10px 10px 0 0 var(--color-shadow);
   --shadow-neo-lime: 3px 3px 0 0 #b9dd35;
 }
 
+/* ---------------------------------------------------------------------------
+ * Pemilihan tema.
+ *
+ * Tiga nilai `data-theme` pada <html>:
+ *   "system" (default) -> mengikuti prefers-color-scheme
+ *   "light"            -> selalu terang
+ *   "dark"             -> selalu gelap
+ *
+ * Aturannya:
+ *   - Palet terang adalah nilai default di `@theme`, sehingga tanpa JavaScript
+ *     dan tanpa atribut apa pun halaman tetap terbaca.
+ *   - Pilihan manual menang atas preferensi sistem: blok `[data-theme="dark"]`
+ *     berada di luar media query, sedangkan media query mengecualikan
+ *     `[data-theme="light"]`.
+ *   - Blok token gelap ditulis dua kali (manual + sistem) karena CSS tidak punya
+ *     cara menggabungkan selektor atribut dengan media query. Kesamaan isinya
+ *     diperiksa otomatis oleh `npm run audit:contrast`.
+ * ------------------------------------------------------------------------ */
 :root {
-  /* Saring tidak memiliki kontrol tema manual: skema warna mengikuti sistem.
-     `light dark` memungkinkan kontrol bawaan peramban (scrollbar, form control)
-     ikut menyesuaikan tanpa JavaScript. */
-  color-scheme: light dark;
+  color-scheme: light;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
 }
 
 body {
@@ -85,7 +126,9 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-coral);
+  /* Token fokus punya nilai terpisah untuk terang/gelap agar cincin fokus tetap
+     >= 3:1 terhadap permukaan di kedua tema (WCAG 1.4.11). */
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -100,14 +143,6 @@ body {
   }
 }
 
-/* ---------------------------------------------------------------------------
- * Editor artikel (Tiptap)
- *
- * ProseMirror merender konten di luar React, jadi gaya tulisannya diletakkan di
- * CSS. Warna tetap memakai token tema Saring supaya sama dengan halaman
- * Pustaka. `overflow-wrap` mencegah URL panjang membuat halaman melebar di
- * ponsel.
- * ------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------
  * Editor artikel (Tiptap)
  *
@@ -246,7 +281,7 @@ body {
 
 .saring-editor a {
   font-weight: 600;
-  color: var(--color-ink);
+  color: var(--color-link);
   text-decoration: underline;
   text-decoration-color: var(--color-coral);
   text-decoration-thickness: 2px;
@@ -254,6 +289,7 @@ body {
 }
 
 .saring-editor a:hover {
+  color: var(--color-link-hover);
   background-color: var(--color-lime-soft);
 }
 
@@ -295,58 +331,96 @@ body {
 
 
 /**
- * Tema otomatis berdasarkan preferensi sistem perangkat.
+ * Palet gelap Saring.
  *
- * Tidak ada tombol tema dan tidak ada nilai yang disimpan di localStorage atau
- * database, sehingga tidak mungkin terjadi hydration mismatch: seluruhnya CSS.
- * Token dibalik agar neobrutalism tetap terbaca.
+ * Ditulis dua kali dengan sengaja:
+ *   1. `[data-theme="dark"]`  -> pilihan manual pengguna, berlaku di mana pun.
+ *   2. media query            -> pilihan "Ikuti sistem" (dan kondisi tanpa
+ *                                JavaScript), dengan mengecualikan pilihan
+ *                                manual "light".
+ *
+ * Kedua blok harus berisi nilai yang sama persis. `npm run audit:contrast`
+ * membandingkan keduanya dan gagal bila ada perbedaan, sehingga duplikasi ini
+ * tidak dapat menyimpang tanpa terdeteksi.
+ *
+ * Blok ini sengaja TIDAK berada di dalam `@layer` agar selalu mengalahkan
+ * deklarasi token di `@layer theme` (Tailwind) dan kelas utilitas.
  */
-@layer base {
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-ink: #f1f3f8;
-      --color-ink-soft: #dbe2ee;
-      --color-ink-muted: #aab4c6;
-      --color-paper: #0d131d;
-      --color-surface: #161e2c;
-      /* Garis dekoratif: cukup terlihat pada latar gelap tanpa menyilaukan. */
-      --color-line: #3f4e6b;
-      /* Batas kontrol interaktif: >= 3:1 terhadap paper dan surface. */
-      --color-line-strong: #5b6e95;
-      --color-placeholder: #aab4c6;
 
-      --color-graphite: #070b12;
-      --color-graphite-soft: #121a27;
-      --color-graphite-ink: #f1f3f8;
+/* 1. Pilihan manual: gelap. */
+:root[data-theme="dark"] {
+  --color-ink: #f1f3f8;
+  --color-ink-soft: #dbe2ee;
+  --color-ink-muted: #aab4c6;
+  --color-paper: #0d131d;
+  --color-surface: #161e2c;
+  --color-line: #3f4e6b;
+  --color-line-strong: #5b6e95;
+  --color-placeholder: #aab4c6;
+  --color-link: #ffb3a5;
+  --color-link-hover: #ffd2c9;
+  --color-focus: #ffa08c;
+  --color-shadow: #5b6e95;
+  --color-graphite: #070b12;
+  --color-graphite-soft: #121a27;
+  --color-graphite-ink: #f1f3f8;
+  --color-graphite-muted: #c2cad8;
+  --color-hero: #1b2415;
+  --color-hero-edge: #2a3a1e;
+  --color-lime-soft: #25301a;
+  --color-amber: #f0b862;
+  --color-amber-text: #f5cd8b;
+  --color-amber-soft: #2f2716;
+  --color-warn: #f0b862;
+  --color-warn-soft: #2f2716;
+  --color-coral: #ff8a76;
+  --color-coral-soft: #331814;
+  --color-ink-coral: #ffb3a5;
+  --color-safe: #6fdcae;
+  --color-safe-soft: #12281f;
+  --color-on-ink: #0d131d;
+  --color-on-lime: #151b2b;
+  --color-on-coral: #1a0a06;
+  --color-on-amber: #241a08;
+  --color-on-safe: #06231a;
+}
 
-      --color-hero: #1b2415;
-      --color-hero-edge: #2a3a1e;
-      --color-lime-soft: #25301a;
-      --color-amber: #f0b862;
-      --color-amber-text: #f5cd8b;
-      --color-amber-soft: #2f2716;
-      --color-warn: #f0b862;
-      --color-warn-soft: #2f2716;
-      --color-coral: #ff8a76;
-      --color-coral-soft: #331814;
-      --color-ink-coral: #ffb3a5;
-      --color-safe: #6fdcae;
-      --color-safe-soft: #12281f;
-
-      /* Pada dark mode aksen menjadi terang, sehingga teks di atasnya harus
-         gelap. Ini yang membuat tombol lime/badge coral tetap terbaca. */
-      --color-on-ink: #0d131d;
-      --color-on-lime: #151b2b;
-      --color-on-coral: #1a0a06;
-      --color-on-amber: #241a08;
-      --color-on-safe: #06231a;
-    }
-
-    .shadow-neo,
-    .shadow-neo-sm,
-    .shadow-neo-lg,
-    .shadow-neo-xl {
-      box-shadow: 2px 2px 0 0 var(--color-line-strong);
-    }
+/* 2. Pilihan "Ikuti sistem" (atau atribut belum dipasang / JavaScript mati). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink: #f1f3f8;
+    --color-ink-soft: #dbe2ee;
+    --color-ink-muted: #aab4c6;
+    --color-paper: #0d131d;
+    --color-surface: #161e2c;
+    --color-line: #3f4e6b;
+    --color-line-strong: #5b6e95;
+    --color-placeholder: #aab4c6;
+    --color-link: #ffb3a5;
+    --color-link-hover: #ffd2c9;
+    --color-focus: #ffa08c;
+    --color-shadow: #5b6e95;
+    --color-graphite: #070b12;
+    --color-graphite-soft: #121a27;
+    --color-graphite-ink: #f1f3f8;
+    --color-graphite-muted: #c2cad8;
+    --color-hero: #1b2415;
+    --color-hero-edge: #2a3a1e;
+    --color-lime-soft: #25301a;
+    --color-amber: #f0b862;
+    --color-amber-text: #f5cd8b;
+    --color-amber-soft: #2f2716;
+    --color-warn: #f0b862;
+    --color-warn-soft: #2f2716;
+    --color-coral: #ff8a76;
+    --color-coral-soft: #331814;
+    --color-ink-coral: #ffb3a5;
+    --color-safe: #6fdcae;
+    --color-safe-soft: #12281f;
+    --color-on-ink: #0d131d;
+    --color-on-lime: #151b2b;
+    --color-on-coral: #1a0a06;
+    --color-on-amber: #241a08;
+    --color-on-safe: #06231a;
   }
 }

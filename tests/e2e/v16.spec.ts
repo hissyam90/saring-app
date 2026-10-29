@@ -188,12 +188,13 @@ test.describe("UI: editor dan search bar", () => {
     for (const side of ["top", "right", "bottom", "left"] as const) {
       expect(dark![side]).toBe("2px");
     }
-    // Tema otomatis: latar menjadi gelap tanpa tombol tema apa pun.
+    // Tema mengikuti preferensi sistem; kontrol manual ada di navbar tetapi
+    // tidak mengubah apa pun sampai pengguna memilih.
     expect(dark!.bodyBg).not.toBe(light!.bodyBg);
     expect(dark!.color).not.toBe(light!.color);
   });
 
-  test("tema mengikuti preferensi sistem dan tidak ada tombol tema", async ({
+  test("tema mengikuti preferensi sistem dan kontrol tema tersedia", async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: "dark" });
@@ -209,10 +210,23 @@ test.describe("UI: editor dan search bar", () => {
 
     expect(darkBody).not.toBe(lightBody);
 
-    // Tidak ada kontrol tema manual di mana pun.
-    await expect(page.getByRole("button", { name: /tema|theme|dark mode/i })).toHaveCount(0);
+    // Kontrol tema ada dan menawarkan tiga pilihan. Di viewport ponsel kontrol
+    // berada di dalam menu navigasi, jadi menu dibuka lebih dulu.
+    const group = page.getByRole("group", { name: "Pilihan tema tampilan" });
+    if (!(await group.first().isVisible())) {
+      await page.getByRole("button", { name: "Buka menu" }).click();
+    }
+    await expect(group.first()).toBeVisible();
+    for (const label of ["Ikuti sistem", "Terang", "Gelap"]) {
+      await expect(
+        group.first().getByRole("button", { name: label }),
+      ).toBeVisible();
+    }
+
+    // Preferensi memakai kunci localStorage Saring (`saring.theme`), bukan
+    // cookie atau kolom database.
     expect(
-      await page.evaluate(() => window.localStorage.getItem("theme")),
+      await page.evaluate(() => window.localStorage.getItem("saring.theme")),
     ).toBeNull();
   });
 });

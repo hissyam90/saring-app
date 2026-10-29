@@ -5,6 +5,10 @@ on:
     branches: [master, main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     name: Lint, typecheck, test & build
@@ -25,6 +29,59 @@ jobs:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest
     needs: quality
+
+    # ------------------------------------------------------------------------
+    # PostgreSQL khusus pengujian.
+    #
+    # Penyebab kegagalan sebelumnya: job ini tidak menyediakan database dan
+    # tidak menyetel DATABASE_URL, sehingga `new Pool({ connectionString:
+    # undefined })` di berkas E2E mencoba menghubungi localhost:5432 dan gagal
+    # dengan `ECONNREFUSED ::1:5432` / `127.0.0.1:5432`.
+    #
+    # Container service bersifat sementara: dibuat saat job mulai dan dihapus
+    # saat job selesai, sehingga tidak ada data yang bertahan. Workflow ini
+    # TIDAK pernah memakai database lokal pengguna maupun database produksi.
+    #
+    # Versi dipatok ke rilis minor PostgreSQL 16 (varian Debian/glibc agar
+    # collation teks sama seperti Heroku Postgres). Schema aplikasi hanya
+    # memakai fitur yang tersedia sejak PostgreSQL 13 (`gen_random_uuid`,
+    # `add value if not exists`, indeks parsial, `jsonb_typeof`), sehingga
+    # versi ini kompatibel dengan schema dan dengan Heroku Postgres 16/17.
+    # ------------------------------------------------------------------------
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: saring
+          POSTGRES_PASSWORD: saring_ci_only
+          POSTGRES_DB: saring_test
+        ports:
+          - 5432:5432
+        # GitHub menunggu container berstatus healthy sebelum langkah pertama.
+        options: >-
+          --health-cmd "pg_isready -U saring -d saring_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 10s
+
+    # Diberikan ke seluruh langkah DAN diwarisi proses `webServer` Playwright
+    # (Playwright menggabungkan process.env dengan `webServer.env`), sehingga
+    # server produksi yang diuji memakai database & secret yang sama.
+    env:
+      CI: "1"
+      DATABASE_URL: postgresql://saring:saring_ci_only@127.0.0.1:5432/saring_test
+      DATABASE_SSL: disable
+      DATABASE_POOL_MAX: "5"
+      # Secret khusus CI. Bukan secret produksi dan tidak dipakai di luar job
+      # ini; cookie sesi yang dibuatnya hanya berlaku selama pengujian.
+      SESSION_SECRET: 6f1d0c1a4b2e5f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8
+      # Kunci uji resmi Cloudflare Turnstile ("always passes"). Publik menurut
+      # dokumentasi Cloudflare. Verifikasi Siteverify tetap berjalan sungguhan:
+      # autentikasi, CAPTCHA, dan validasi tidak dimatikan.
+      NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+      CLOUDFLARE_TURNSTILE_SECRET_KEY: 1x0000000000000000000000000000000AA
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,7 +89,74 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # Pengaman: tolak menjalankan migration bila DATABASE_URL bukan database
+      # uji di localhost. Mencegah salah konfigurasi menulis ke database nyata.
+      - name: Pastikan DATABASE_URL menunjuk database uji lokal
+        run: |
+          case "$DATABASE_URL" in
+            *@127.0.0.1:*|*@localhost:*) echo "OK: database uji sementara di runner." ;;
+            *) echo "::error::DATABASE_URL bukan database uji lokal. Dibatalkan."; exit 1 ;;
+          esac
+
+      # Health check ganda: `options` di atas menunggu container healthy, langkah
+      # ini menunggu koneksi sungguhan memakai driver yang sama dengan aplikasi
+      # (`pg`), sehingga database benar-benar siap menerima query.
+      - name: Tunggu PostgreSQL siap
+        run: |
+          node - <<'NODE'
+          const { Client } = require("pg");
+          const deadline = Date.now() + 90_000;
+          const ssl = process.env.DATABASE_SSL === "disable" ? false : undefined;
+
+          (async () => {
+            for (;;) {
+              const client = new Client({
+                connectionString: process.env.DATABASE_URL,
+                ssl,
+              });
+              try {
+                await client.connect();
+                const { rows } = await client.query("select 1 as ok");
+                await client.end();
+                if (rows[0]?.ok === 1) {
+                  console.log("PostgreSQL siap menerima query.");
+                  return;
+                }
+              } catch (error) {
+                try {
+                  await client.end();
+                } catch {}
+                if (Date.now() > deadline) {
+                  console.error("PostgreSQL tidak siap:", error.message);
+                  process.exit(1);
+                }
+                await new Promise((resolve) => setTimeout(resolve, 2_000));
+              }
+            }
+          })();
+          NODE
+
+      - name: Terapkan migration ke database uji
+        run: npm run db:migrate
+
+      - name: Verifikasi semua migration diterapkan
+        run: npm run db:migrate:status
+
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-        env:
-          CI: "1"
+
+      - name: Jalankan E2E
+        run: npm run test:e2e
+
+      # Trace/screenshot kegagalan membantu menelusuri penyebab nyata, bukan
+      # sekadar menandai gagal.
+      - name: Unggah artefak kegagalan Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test-results
+            playwright-report
+          retention-days: 7
+          if-no-files-found: ignore
