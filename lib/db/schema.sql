@@ -1,0 +1,12 @@
+-- DEPRECATED - jangan menambah kolom di file ini.
+--
+-- Skema Saring sekarang dikelola sebagai migration terlacak pada
+-- lib/db/migrations/*.sql dan dijalankan dengan:
+--
+--   npm run db:migrate
+--
+-- Perubahan skema baru harus dibuat sebagai file migration baru (mis.
+-- 0002_add_index.sql) agar dapat ditinjau dan dijalankan otomatis pada
+-- release phase Heroku (lihat Procfile).
+--
+-- Skema awal selengkapnya: lib/db/migrations/0001_init.sql

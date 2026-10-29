@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server";
 import { lookupGoogleSafeBrowsing } from "@/lib/reputation/googleSafeBrowsing";
+import { RATE_LIMITS, checkRateLimit, clientKey, tooManyRequests } from "@/lib/security/rate-limit";
+import { isSameOrigin } from "@/lib/security/origin";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
 
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json(
+      { error: "Permintaan ditolak." },
+      { status: 403, headers: NO_STORE },
+    );
+  }
+
+  // Periksa tetap mudah diakses, tetapi dibatasi per klien agar tidak
+  // disalahgunakan sebagai proxy gratis.
+  const limit = await checkRateLimit(
+    RATE_LIMITS.urlCheck,
+    clientKey(request, "url-check"),
+  );
+  if (!limit.allowed) return tooManyRequests(limit);
+
   let body: { url?: unknown; consent?: unknown };
 
   try {

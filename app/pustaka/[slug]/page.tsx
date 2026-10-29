@@ -1,29 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, ExternalLink } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ExternalLink,
+  MessageSquarePlus,
+} from "lucide-react";
 import { LIBRARY, readingMinutes, articleWordCount } from "@/data/resources";
+import { findPublishedArticleSafe } from "@/lib/db/published";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
-export function generateStaticParams() {
-  return LIBRARY.map((article) => ({ slug: article.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const article = LIBRARY.find((item) => item.id === slug);
-  if (!article) return { title: "Artikel tidak ditemukan" };
-  return { title: article.title, description: article.summary };
+  if (article) return { title: article.title, description: article.summary };
+  const contribution = await findPublishedArticleSafe(slug);
+  if (contribution)
+    return { title: contribution.title, description: contribution.summary };
+  return { title: "Artikel tidak ditemukan" };
 }
 
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
   const article = LIBRARY.find((item) => item.id === slug);
 
-  if (!article) notFound();
+  if (!article) {
+    const contribution = await findPublishedArticleSafe(slug);
+    if (!contribution) notFound();
+    return <ContributionView contribution={contribution} />;
+  }
 
   const minutes = readingMinutes(article);
   const words = articleWordCount(article);
@@ -116,6 +128,8 @@ export default async function ArticlePage({ params }: PageProps) {
               </ul>
             </section>
           ) : null}
+
+          <AskCta slug={article.id} />
 
           {article.sources?.length ? (
             <section className="mt-6 border-t border-line pt-4">
@@ -218,6 +232,115 @@ export default async function ArticlePage({ params }: PageProps) {
           </ul>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+/** Ajakan bertanya, dipakai pada artikel bawaan maupun kontribusi. */
+function AskCta({ slug }: { slug: string }) {
+  return (
+    <div className="mt-6 border-2 border-ink bg-lime-soft px-4 py-3">
+      <p className="text-sm leading-6 text-ink">
+        Ada yang belum jelas dari artikel ini? Tanyakan di Komunitas. Pertanyaan
+        Anda akan tertaut ke artikel ini.
+      </p>
+      <Link
+        href={`/komunitas/baru?artikel=${slug}`}
+        className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-ink px-4 text-sm font-bold text-paper"
+      >
+        <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+        Tanyakan tentang artikel ini
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * Artikel kontribusi dirender sebagai paragraf teks biasa.
+ * Tidak ada HTML pengguna yang disuntikkan ke DOM.
+ */
+function ContributionView({
+  contribution,
+}: {
+  contribution: {
+    slug: string;
+    title: string;
+    summary: string;
+    category: string;
+    body: string;
+    references: string | null;
+    authorName: string;
+  };
+}) {
+  const paragraphs = contribution.body
+    .split(/\n{2,}/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+      <nav aria-label="Breadcrumb" className="mb-6">
+        <ol className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
+          <li>
+            <Link href="/pustaka" className="hover:text-ink hover:underline">
+              Pustaka
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li className="font-semibold text-ink">{contribution.category}</li>
+        </ol>
+      </nav>
+
+      <article>
+        <header className="border-b-2 border-ink pb-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
+            Kontribusi komunitas · {contribution.category}
+          </p>
+          <h1 className="mt-2 text-3xl font-black leading-[1.12] tracking-tight text-ink sm:text-[2.3rem]">
+            {contribution.title}
+          </h1>
+          <p className="mt-3 text-base leading-7 text-ink-soft">
+            {contribution.summary}
+          </p>
+          <p className="mt-2 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+            Oleh {contribution.authorName}
+          </p>
+        </header>
+
+        <div className="mt-6 grid gap-3">
+          {paragraphs.map((paragraph, index) => (
+            <p key={index} className="text-[15px] leading-7 text-ink-soft">
+              {paragraph}
+            </p>
+          ))}
+        </div>
+
+        {contribution.references ? (
+          <section className="mt-6 border-t border-line pt-4">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
+              Referensi
+            </h2>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink-muted">
+              {contribution.references}
+            </p>
+          </section>
+        ) : null}
+
+        <AskCta slug={contribution.slug} />
+
+        <p className="mt-6 border-t border-line pt-4 text-xs leading-5 text-ink-muted">
+          Artikel ini ditulis kontributor komunitas dan telah ditinjau admin.
+          Isinya bersifat edukatif dan tidak menggantikan penanganan resmi.
+        </p>
+
+        <Link
+          href="/pustaka"
+          className="mt-4 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 text-sm font-bold text-ink hover:bg-lime"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Semua artikel
+        </Link>
+      </article>
     </div>
   );
 }

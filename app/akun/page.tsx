@@ -1,0 +1,118 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getStore } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth/guards";
+import { buttonClass, Panel, Tag, formatDate } from "@/components/ui/primitives";
+import type { SubmissionStatus } from "@/lib/db/types";
+
+export const metadata: Metadata = { title: "Akun saya" };
+export const dynamic = "force-dynamic";
+
+const STATUS_LABEL: Record<SubmissionStatus, string> = {
+  pending: "Menunggu tinjauan",
+  approved: "Disetujui",
+  needs_revision: "Perlu revisi",
+  rejected: "Ditolak",
+};
+
+export default async function AkunPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/masuk");
+
+  const store = getStore();
+  const [mine, submissions] = await Promise.all([
+    store.listThreadsByAuthor(user.id),
+    store.listSubmissionsByAuthor(user.id),
+  ]);
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+      <header className="mb-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
+          Akun
+        </p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight text-ink">
+          {user.displayName}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-ink-muted">
+          Role: <span className="font-semibold text-ink">{user.role}</span>. Email
+          tidak ditampilkan di halaman publik.
+        </p>
+      </header>
+
+      <div className="flex flex-wrap gap-2">
+        <Link href="/komunitas/baru" className={buttonClass("primary")}>
+          Buat pertanyaan
+        </Link>
+        <Link href="/komunitas/artikel" className={buttonClass("secondary")}>
+          Ajukan artikel
+        </Link>
+        {user.role === "admin" ? (
+          <Link href="/admin" className={buttonClass("secondary")}>
+            Admin dashboard
+          </Link>
+        ) : null}
+      </div>
+
+      <div className="mt-5 grid gap-4">
+        <Panel title={`Pertanyaan saya (${mine.length})`}>
+          {mine.length === 0 ? (
+            <p className="text-sm text-ink-muted">Belum ada pertanyaan.</p>
+          ) : (
+            <ul className="grid gap-1.5">
+              {mine.map((thread) => (
+                <li key={thread.id}>
+                  <Link
+                    href={`/komunitas/${thread.id}`}
+                    className="flex items-center justify-between gap-2 border-l-4 border-l-ink bg-paper px-3 py-2 text-sm hover:bg-lime-soft"
+                  >
+                    <span className="min-w-0 truncate font-semibold text-ink">
+                      {thread.title}
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] text-ink-muted">
+                      {thread.replyCount} balasan
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel title={`Pengajuan artikel (${submissions.length})`}>
+          {submissions.length === 0 ? (
+            <p className="text-sm text-ink-muted">Belum ada pengajuan artikel.</p>
+          ) : (
+            <ul className="grid gap-1.5">
+              {submissions.map((submission) => (
+                <li
+                  key={submission.id}
+                  className="flex flex-wrap items-center gap-2 border-l-4 border-l-ink bg-paper px-3 py-2"
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+                    {submission.title}
+                  </span>
+                  <Tag
+                    tone={
+                      submission.status === "approved"
+                        ? "success"
+                        : submission.status === "rejected"
+                          ? "danger"
+                          : "warn"
+                    }
+                  >
+                    {STATUS_LABEL[submission.status]}
+                  </Tag>
+                  <span className="font-mono text-[11px] text-ink-muted">
+                    {formatDate(submission.createdAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}

@@ -24,6 +24,34 @@ flowchart LR
 | Rencana tindakan | `tests/components/guide.test.tsx` | Lulus |
 | Analyzer dan mode checker | `tests/components/analyzer.test.tsx`, `checker-modes.test.tsx` | Lulus |
 | Rute, Pustaka, Latihan, Langkah, mobile | `tests/e2e/app.spec.ts` | Lulus |
+| Turnstile (Siteverify) | `tests/unit/turnstile.test.ts` | Lulus |
+| Rate limit dan identitas klien | `tests/unit/rate-limit.test.ts` | Lulus |
+| Pemeriksaan origin/CSRF | `tests/unit/origin.test.ts` | Lulus |
+| Penjaga autentikasi dan role | `tests/unit/guards.test.ts` | Lulus |
+| Endpoint moderasi admin | `tests/unit/admin-route.test.ts` | Lulus |
+| Endpoint komunitas + CAPTCHA + rate limit | `tests/unit/community-route.test.ts` | Lulus |
+| Aturan publikasi artikel | `tests/unit/publication.test.ts` | Lulus |
+| Kepemilikan data dan laporan | `tests/unit/ownership.test.ts` | Lulus |
+
+## Cakupan keamanan yang diuji otomatis
+
+- **CAPTCHA**: token kosong/bukan string/terlalu panjang ditolak tanpa memanggil
+  jaringan; `success` non-boolean ditolak; action berbeda ditolak; provider error,
+  non-200, JSON rusak, dan koneksi gagal menghasilkan penolakan; secret kosong
+  fail closed; bypass tidak berlaku di production.
+- **Rate limit**: batas tercapai → HTTP 429 dengan `Retry-After`; bucket terpisah
+  per klien dan per scope; backend gagal → request ditolak; header IP hanya
+  dipercaya pada mode proxy yang dikonfigurasi (nilai aneh jatuh ke `unknown`).
+- **Otorisasi**: tanpa sesi → 401; pengguna biasa → 403; role dibaca ulang dari
+  database sehingga penurunan role langsung berlaku; admin tidak dapat mengubah
+  role akunnya sendiri (409).
+- **Publikasi**: pengajuan `pending` tidak tampil; `approved` terbit dengan slug
+  unik; `rejected`/`needs_revision` tidak terbit; artikel final tidak dapat
+  diubah penulis; penulis lain tidak dapat mengubah pengajuan orang lain.
+- **CSRF**: Origin lintas situs, `Sec-Fetch-Site: cross-site`, dan Origin tak
+  terurai ditolak.
+
+
 
 ## Cakupan penting
 

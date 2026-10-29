@@ -112,17 +112,45 @@ memperluas isi di tempat. Setiap artikel memuat breadcrumb, dek, waktu baca,
 daftar isi, isi berjudul, contoh kasus, langkah praktis, daftar periksa, sumber
 rujukan resmi, dan artikel terkait.
 
+### 5. Akun, Komunitas, dan Pustaka kontribusi
+
+Pemeriksaan pesan, nomor, dan tautan tetap bisa dipakai **tanpa akun**. Akun
+hanya diperlukan untuk menulis.
+
+- **Akun** (`/daftar`, `/masuk`, `/akun`): registrasi, login, logout, dan daftar
+  pertanyaan serta pengajuan artikel milik sendiri beserta status tinjauannya.
+- **Komunitas** (`/komunitas`): tanya jawab publik dengan pencarian, filter
+  kategori, dan pagination. Pengguna terdaftar dapat membalas dan melaporkan
+  konten; admin dapat menyembunyikan konten yang dilaporkan.
+- **Pengajuan artikel** (`/komunitas/artikel`): pengguna mengirim artikel untuk
+  ditinjau. Status: `pending`, `needs_revision`, `approved`, `rejected`, lengkap
+  dengan catatan admin. Hanya artikel `approved` yang terbit di Pustaka.
+- **Admin** (`/admin`): ringkasan angka nyata dari database, antrean artikel,
+  laporan, diskusi, dan pengguna. Semua aksi melewati satu endpoint yang
+  memeriksa role di server dan mencatat riwayat moderasi.
+- **CAPTCHA**: registrasi, login, diskusi, balasan, artikel, dan laporan memakai
+  Cloudflare Turnstile yang diverifikasi di server (Siteverify).
+
+Role minimal `user` dan `admin`. Pengguna baru tidak dapat menaikkan role
+sendiri; akun admin pertama dibuat lewat `scripts/bootstrap-admin.mjs` setelah
+akun terdaftar. Data disimpan di PostgreSQL dengan migration terlacak.
+
+
 ## Tumpukan teknologi
 
 - **Next.js 16** (App Router, dijalankan sebagai server Node.js)
 - **React 19** dan **TypeScript** (mode `strict`)
 - **Tailwind CSS 4**
 - **Lucide React** untuk ikon
+- **PostgreSQL** dengan driver `pg` (tanpa ORM), migration terlacak
+- **iron-session** untuk sesi cookie terenkripsi, **bcryptjs** untuk hash kata sandi
+- **zod** untuk validasi skema di server
+- **Cloudflare Turnstile** untuk CAPTCHA (Siteverify di server)
 - **Vitest** + **React Testing Library** untuk pengujian unit/komponen
 - **Playwright** untuk pengujian end-to-end
 - **ESLint** dan `tsc --noEmit` untuk kualitas kode
 - **GitHub Actions** untuk CI
-- **Heroku** (Node.js buildpack) untuk deployment
+- **Heroku** (Node.js buildpack) + **Cloudflare** untuk deployment dan proteksi
 
 ## Arsitektur
 
@@ -149,16 +177,26 @@ Google Safe Browsing, dan hanya setelah persetujuan eksplisit.
 ```text
 app/                     rute dan titik masuk aplikasi (App Router)
   pustaka/page.tsx       indeks Pustaka (grid + pencarian + filter)
-  pustaka/[slug]/page.tsx  halaman artikel (generateStaticParams)
+  pustaka/[slug]/page.tsx  halaman artikel (bawaan + kontribusi disetujui)
   langkah/page.tsx       rencana tindakan, menerima ?kondisi=
+  masuk/ daftar/ akun/   autentikasi dan halaman akun
+  komunitas/             indeks, detail diskusi, form pertanyaan, pengajuan artikel
+  admin/                 dashboard: artikel, laporan, diskusi, pengguna
+  api/                   auth, community, admin, url-reputation, health
 components/              komponen UI bersama dan khusus fitur
   periksa/               checker, hasil pesan, nomor, tautan
-  pustaka/library.tsx    grid artikel
+  pustaka/library.tsx    grid artikel (bawaan + kontribusi)
   latihan/simulator.tsx  sesi latihan + ringkasan skor
   langkah/guide.tsx      rencana tindakan lima bagian
+  auth/ admin/ komunitas/ security/ ui/
 lib/analysis/            mesin aturan, tipe, nomor, tautan (logika murni)
 lib/reputation/          adapter Google Safe Browsing + decoder protobuf
+lib/db/                  abstraksi Store: postgres.ts, memory.ts, migrations/
+lib/auth/                sesi (iron-session), hash kata sandi, penjaga role
+lib/security/            validasi zod, rate limit, Turnstile, pemeriksaan origin
 data/                    artikel, skenario, panduan, contoh pesan
+scripts/                 migrate.mjs, bootstrap-admin.mjs
+proxy.ts                 pengalihan awal halaman privat (bukan otorisasi)
 tests/                   unit, komponen, dan e2e
 docs/                    dokumentasi teknis
 ```
@@ -231,6 +269,13 @@ ada yang dikirim ke server.
 | URL heuristik | Browser | Tidak | Memori sementara |
 | URL reputasi | Route server setelah consent | Google Safe Browsing | Tidak disimpan aplikasi |
 | Nomor | Browser | Tidak pada mode default | Memori sementara |
+| Akun (email, nama tampilan, hash kata sandi) | Server | Tidak | PostgreSQL |
+| Konten komunitas, artikel, laporan | Server | Tidak | PostgreSQL |
+| Token CAPTCHA | Server | Cloudflare Siteverify | Tidak disimpan |
+
+Fitur pemeriksaan tidak memerlukan akun. Data akun hanya dibuat bila pengguna
+mendaftar untuk menulis di Komunitas atau mengajukan artikel. Isi halaman
+Periksa tidak pernah dikirim ke server maupun disimpan.
 
 
 Privasi adalah persyaratan produk, bukan fitur tambahan:
@@ -241,7 +286,7 @@ Privasi adalah persyaratan produk, bukan fitur tambahan:
 - Isi pesan **tidak disimpan** di `localStorage`, `sessionStorage`, cookie, database,
   atau log.
 - Tidak ada pelacakan/analitik secara bawaan.
-- Tidak diperlukan akun, email, nomor telepon, atau data pribadi.
+- Fitur pemeriksaan tidak memerlukan akun, email, nomor telepon, atau data pribadi.
 
 Lihat [docs/SECURITY-AND-PRIVACY.md](docs/SECURITY-AND-PRIVACY.md) untuk detail,
 termasuk kebijakan header keamanan dan variabel lingkungan.
@@ -257,6 +302,26 @@ npm run dev
 
 Buka http://localhost:3000.
 
+Fitur pemeriksaan berjalan tanpa konfigurasi apa pun. Untuk fitur akun,
+Komunitas, dan admin, siapkan PostgreSQL:
+
+```bash
+# salin contoh lalu isi nilainya (jangan commit .env.local)
+cp .env.example .env.local
+
+npm run db:migrate          # terapkan migration terlacak
+npm run db:migrate:status   # lihat migration yang sudah/belum jalan
+npm run dev
+```
+
+Tanpa `DATABASE_URL`, aplikasi memakai penyimpanan **in-memory** pada
+development (data hilang saat server restart) agar tetap dapat dijalankan dan
+diuji. Pada production, `DATABASE_URL` wajib: tanpa itu aplikasi menolak
+melayani data (fail closed).
+
+Untuk menguji form berisiko tanpa Cloudflare Turnstile, set
+`SARING_TURNSTILE_BYPASS=1` di `.env.local` (hanya berlaku di luar production).
+
 > Catatan: pada mode pengembangan (`next dev`), header CSP tidak aktif karena
 > runtime pengembangan membutuhkan `eval`/inline script. CSP aktif pada build
 > produksi (`next start`).
@@ -264,11 +329,13 @@ Buka http://localhost:3000.
 ## Perintah kualitas
 
 ```bash
-npm run lint        # ESLint
-npm run typecheck   # tsc --noEmit
-npm run test        # Vitest (unit + komponen)
-npm run test:e2e    # Playwright (membangun & mengetes server produksi)
-npm run build       # produksi build (next build)
+npm run lint              # ESLint
+npm run typecheck         # tsc --noEmit
+npm run test              # Vitest (unit + komponen)
+npm run test:e2e          # Playwright (membangun & mengetes server produksi)
+npm run build             # produksi build (next build)
+npm run db:migrate        # terapkan migration PostgreSQL yang tertunda
+npm run db:migrate:status # lihat status migration
 ```
 
 ## Deployment
@@ -279,15 +346,21 @@ export. Aplikasi dijalankan sebagai server Node.js.
 Ringkasan langkah (lihat selengkapnya di [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)):
 
 1. Pastikan akun Heroku memiliki CLI (`heroku login`).
-2. `heroku create saring-app` (nama disesuaikan).
+2. `heroku create saring-app` (nama disesuaikan) dan tambahkan add-on
+   `heroku-postgresql`.
 3. `git push heroku main`. Heroku mendeteksi `heroku/nodejs`, menjalankan
    `npm ci` (lockfile `package-lock.json`) lalu `npm run build`.
-4. `web: npm start` (terbaca dari `Procfile`) menyajikan `next start` yang
-   menyesuaikan `PORT` dari Heroku.
+4. `release: node scripts/migrate.mjs` (dari `Procfile`) menerapkan migration
+   database sebelum dyno baru menerima trafik.
+5. `web: npm start` (dari `Procfile`) menyajikan `next start` yang menyesuaikan
+   `PORT` dari Heroku.
 
 - `engines.node` sudah dipatok ke `22.x`.
 - Paket dikunci dengan `package-lock.json` (npm).
-- Tidak ada database atau add-on yang diperlukan.
+- Aplikasi memerlukan **PostgreSQL** (`DATABASE_URL`) pada production; tanpa itu
+  aplikasi menolak melayani data (fail closed). Lihat
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) untuk migration, variabel lingkungan,
+  Cloudflare, dan domain Name.com.
 
 Hubungkan domain kustom (jika tersedia): tambahkan domain di Heroku lalu
 arahkan DNS mengikuti **target yang diberikan Heroku** untuk aplikasi tersebut

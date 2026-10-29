@@ -2,37 +2,93 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Search } from "lucide-react";
+import { ArrowRight, PenLine, Search } from "lucide-react";
 import { ARTICLE_CATEGORIES, LIBRARY, readingMinutes } from "@/data/resources";
 import type { ArticleCategory } from "@/data/resources";
 
-type Filter = "Semua" | ArticleCategory;
+export interface ContributionSummary {
+  slug: string;
+  title: string;
+  summary: string;
+  category: string;
+  minutes: number;
+  authorName: string;
+}
 
-export function Library() {
+interface Item {
+  key: string;
+  href: string;
+  category: string;
+  title: string;
+  summary: string;
+  minutes: number;
+  authorName: string | null;
+  searchText: string;
+}
+
+export function Library({
+  contributions = [],
+}: {
+  contributions?: ContributionSummary[];
+}) {
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("Semua");
+  const [filter, setFilter] = useState<string>("Semua");
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return LIBRARY.filter((article) => {
-      if (filter !== "Semua" && article.category !== filter) return false;
-      if (!normalized) return true;
-      const haystack = [
+  // Artikel bawaan dan kontribusi yang sudah disetujui digabung dalam satu
+  // daftar agar pencarian dan filter berlaku untuk keduanya.
+  const items = useMemo<Item[]>(() => {
+    const builtin: Item[] = LIBRARY.map((article) => ({
+      key: article.id,
+      href: `/pustaka/${article.id}`,
+      category: article.category,
+      title: article.title,
+      summary: article.summary,
+      minutes: readingMinutes(article),
+      authorName: null,
+      searchText: [
         article.title,
         article.summary,
         article.category,
         ...article.tags,
-        ...article.sections.flatMap((section) => [
-          section.heading,
-          section.body,
-          ...(section.bullets ?? []),
-        ]),
+        ...article.sections.flatMap((s) => [s.heading, s.body, ...(s.bullets ?? [])]),
       ]
         .join(" ")
-        .toLowerCase();
-      return haystack.includes(normalized);
+        .toLowerCase(),
+    }));
+
+    const contributed: Item[] = contributions.map((item) => ({
+      key: item.slug,
+      href: `/pustaka/${item.slug}`,
+      category: item.category,
+      title: item.title,
+      summary: item.summary,
+      minutes: item.minutes,
+      authorName: item.authorName,
+      searchText: `${item.title} ${item.summary} ${item.category}`.toLowerCase(),
+    }));
+
+    return [...builtin, ...contributed];
+  }, [contributions]);
+
+  const categories = useMemo(() => {
+    const extra = [...new Set(items.map((i) => i.category))].filter(
+      (c) => !ARTICLE_CATEGORIES.includes(c as ArticleCategory),
+    );
+    return ["Semua", ...ARTICLE_CATEGORIES, ...extra];
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((item) => {
+      if (filter !== "Semua" && item.category !== filter) return false;
+      return q ? item.searchText.includes(q) : true;
     });
-  }, [query, filter]);
+  }, [items, query, filter]);
+
+  const featuredKey =
+    filter === "Semua" && !query.trim() && filtered.length > 0
+      ? filtered[0].key
+      : null;
 
   return (
     <div>
@@ -56,12 +112,12 @@ export function Library() {
             className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-wide text-ink-muted"
             aria-live="polite"
           >
-            {filtered.length} dari {LIBRARY.length} artikel
+            {filtered.length} dari {items.length} artikel
           </p>
         </div>
 
         <div className="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5 sm:px-5">
-          {(["Semua", ...ARTICLE_CATEGORIES] as Filter[]).map((category) => {
+          {categories.map((category) => {
             const active = filter === category;
             return (
               <button
@@ -84,9 +140,7 @@ export function Library() {
 
       {filtered.length === 0 ? (
         <div className="mt-8 border-2 border-dashed border-ink/40 px-5 py-10 text-center">
-          <p className="text-sm font-bold text-ink">
-            Tidak ada artikel yang cocok
-          </p>
+          <p className="text-sm font-bold text-ink">Tidak ada artikel yang cocok</p>
           <p className="mt-1 text-sm text-ink-muted">
             Coba kata kunci lain, atau pilih kategori Semua.
           </p>
@@ -103,69 +157,61 @@ export function Library() {
         </div>
       ) : (
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((article, index) => {
-            const featured = index === 0 && filter === "Semua" && !query.trim();
+          {filtered.map((item) => {
+            const featured = item.key === featuredKey;
             return (
               <li
-                key={article.id}
+                key={item.key}
                 className={featured ? "sm:col-span-2 lg:col-span-2" : ""}
               >
-                <ArticleCard article={article} featured={featured} />
+                <Link
+                  href={item.href}
+                  className="group flex h-full flex-col border-2 border-ink bg-surface transition-colors hover:bg-lime-soft"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {item.authorName ? (
+                        <PenLine
+                          className="h-3 w-3 shrink-0 text-ink"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      <span className="truncate text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+                        {item.category}
+                        {item.authorName ? ` · ${item.authorName}` : ""}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono text-[10px] text-ink-muted">
+                      {item.minutes} menit
+                    </span>
+                  </div>
+                  <div
+                    className={`flex flex-1 flex-col px-4 py-4 ${featured ? "sm:py-5" : ""}`}
+                  >
+                    <h3
+                      className={`font-black leading-tight tracking-tight text-ink ${
+                        featured ? "text-xl sm:text-2xl" : "text-base"
+                      }`}
+                    >
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 flex-1 text-sm leading-6 text-ink-soft">
+                      {item.summary}
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink">
+                      Baca
+                      <ArrowRight
+                        className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </div>
+                </Link>
               </li>
             );
           })}
         </ul>
       )}
     </div>
-  );
-}
-
-function ArticleCard({
-  article,
-  featured,
-}: {
-  article: (typeof LIBRARY)[number];
-  featured: boolean;
-}) {
-  return (
-    <Link
-      href={`/pustaka/${article.id}`}
-      className="group flex h-full flex-col border-2 border-ink bg-surface transition-colors hover:bg-lime-soft"
-    >
-      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-          {article.category}
-        </span>
-        <span className="font-mono text-[10px] text-ink-muted">
-          {readingMinutes(article)} menit
-        </span>
-      </div>
-
-      <div
-        className={`flex flex-1 flex-col px-4 py-4 ${featured ? "sm:py-5" : ""}`}
-      >
-        <h3
-          className={`font-black leading-tight tracking-tight text-ink ${
-            featured ? "text-xl sm:text-2xl" : "text-base"
-          }`}
-        >
-          {article.title}
-        </h3>
-        <p
-          className={`mt-2 flex-1 leading-6 text-ink-soft ${
-            featured ? "text-sm sm:text-[15px]" : "text-sm"
-          }`}
-        >
-          {article.summary}
-        </p>
-        <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink">
-          Baca
-          <ArrowRight
-            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1"
-            aria-hidden="true"
-          />
-        </span>
-      </div>
-    </Link>
   );
 }

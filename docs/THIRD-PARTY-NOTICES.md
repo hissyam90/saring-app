@@ -1,6 +1,20 @@
 # Pemberitahuan Pihak Ketiga
 
-- **Lucide React** digunakan sebagai pustaka ikon dan mengikuti lisensinya.
-- Pola visual Saring terinspirasi secara selektif oleh `shadcn-admin` dan `neobrutalism-components`; tidak ada source code pihak ketiga yang disalin ke aplikasi. `neobrutalism-components` menggunakan MIT License (copyright Samuel Breznjak, 2023).
-- `shadcn-admin` dan `neobrutalism-components` berlisensi MIT. Referensi digunakan untuk pola layout, aksesibilitas, border, shadow, dan interaksi.
-- Tautan AduanNomor, IASC, dan OJK adalah rujukan eksternal. Saring tidak mengklaim afiliasi atau integrasi API dengan layanan tersebut.
+- **Lucide React** digunakan sebagai pustaka ikon dan mengikuti lisensinya (ISC).
+- **shadcn-admin** (https://github.com/satnaing/shadcn-admin) — MIT License,
+  copyright Sat Naing. Digunakan sebagai **referensi pola** dashboard: struktur
+  sidebar responsif, tabel/filter, pagination, dialog konfirmasi, dan tata letak
+  halaman admin. Implementasi di `app/admin/` dan `components/admin/` ditulis
+  ulang untuk Next.js App Router dan sistem desain neobrutalism Saring; tidak ada
+  konfigurasi build atau router Vite yang disalin. Lisensi MIT mengizinkan
+  penggunaan dan modifikasi selama notice lisensi ini dipertahankan.
+- **neobrutalism-components** — MIT License, copyright Samuel Breznjak, 2023.
+  Referensi pola border, shadow, dan interaksi.
+- **iron-session** (MIT), **bcryptjs** (MIT), **zod** (MIT), **pg** (MIT),
+  **Tailwind CSS** (MIT), dan **Next.js** (MIT) digunakan sesuai lisensinya.
+- **Cloudflare Turnstile** dan **Google Safe Browsing** adalah layanan pihak
+  ketiga yang dipanggil dari server; penggunaannya tunduk pada ketentuan
+  masing-masing penyedia.
+- Tautan AduanNomor, IASC, dan OJK adalah rujukan eksternal. Saring tidak
+  mengklaim afiliasi atau integrasi API dengan layanan tersebut.
+

@@ -11,8 +11,21 @@ Ringkasnya: **Checker** dan **`lib/analysis`** dieksekusi di peramban tanpa jari
 ## Gambaran umum
 
 Saring menggunakan **Next.js 16 App Router** dengan pemisahan yang jelas antara
-UI, logika domain, konten, validasi, dan pengujian. Tidak ada database, backend
-terpisah, autentikasi, atau layanan AI eksternal.
+UI, logika domain, konten, validasi, dan pengujian.
+
+Fitur pemeriksaan (Periksa) tetap berjalan di peramban tanpa database. Sejak
+fitur akun, Komunitas, dan Pustaka kontribusi ditambahkan, aplikasi juga memiliki:
+
+- **PostgreSQL** sebagai database utama (driver `pg`, tanpa ORM), diakses melalui
+  abstraksi `Store` di `lib/db/` dengan dua implementasi: `postgres.ts` (produksi)
+  dan `memory.ts` (development/pengujian).
+- **Autentikasi** berbasis cookie terenkripsi `iron-session` + hash bcrypt, dengan
+  role `user`/`admin` yang selalu diverifikasi ulang di server.
+- **Migration terlacak** di `lib/db/migrations/` yang dijalankan release phase
+  Heroku.
+- **Cloudflare Turnstile** untuk form berisiko, diverifikasi server-side.
+
+Tidak ada backend terpisah, layanan AI eksternal, atau database kedua.
 
 ```
 app/               rute & titik masuk

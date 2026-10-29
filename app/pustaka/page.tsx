@@ -1,13 +1,33 @@
 import type { Metadata } from "next";
+import { listPublishedArticlesSafe } from "@/lib/db/published";
 import { Library } from "@/components/pustaka/library";
+import type { ContributionSummary } from "@/components/pustaka/library";
 
 export const metadata: Metadata = {
   title: "Pustaka",
   description:
-    "Panduan singkat dan praktis untuk mengenali serta menghadapi penipuan daring.",
+    "Panduan praktis dan artikel kontribusi komunitas tentang penipuan digital.",
 };
 
-export default function PustakaPage() {
+export const dynamic = "force-dynamic";
+
+function minutesFor(body: string): number {
+  const words = `${body}`.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
+export default async function PustakaPage() {
+  const published = await listPublishedArticlesSafe();
+
+  const contributions: ContributionSummary[] = published.map((article) => ({
+    slug: article.slug,
+    title: article.title,
+    summary: article.summary,
+    category: article.category,
+    minutes: minutesFor(`${article.summary} ${article.body}`),
+    authorName: article.authorName,
+  }));
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-6">
@@ -18,11 +38,12 @@ export default function PustakaPage() {
           Pustaka kepercayaan digital
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-          Empat belas panduan tentang modus yang paling sering terjadi di
-          Indonesia, ditulis untuk dipakai, bukan sekadar dibaca.
+          Panduan praktis tentang modus yang paling sering terjadi di Indonesia,
+          ditulis untuk dipakai. Artikel kontribusi komunitas hanya tampil setelah
+          disetujui admin.
         </p>
       </header>
-      <Library />
+      <Library contributions={contributions} />
     </div>
   );
 }

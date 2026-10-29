@@ -180,7 +180,39 @@ export default function Home() {
         <Checker />
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <section className="border-y-2 border-ink bg-paper">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+          <h2 className="text-2xl font-black tracking-tight text-ink">
+            Prinsip kami
+          </h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {PRINCIPLES.map((principle) => (
+              <div
+                key={principle.title}
+                className="border-2 border-ink bg-surface p-4"
+              >
+                <span className="flex h-8 w-8 items-center justify-center bg-ink text-lime">
+                  <principle.icon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <h3 className="mt-2.5 text-base font-bold text-ink">
+                  {principle.title}
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-ink-soft">
+                  {principle.description}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 max-w-3xl border-l-4 border-lime pl-3 text-sm leading-6 text-ink-muted">
+            Saring adalah alat bantu pengambilan keputusan, bukan pengganti
+            investigasi resmi, bank, penyedia layanan, atau aparat penegak
+            hukum. Sumber pelaporan resmi seperti OJK tersedia di halaman
+            Langkah.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-12 pt-10 sm:px-6">
         <div className="border-b-2 border-ink pb-2">
           <h2 className="text-2xl font-black tracking-tight text-ink">
             Kalau sudah terlanjur
@@ -219,33 +251,6 @@ export default function Home() {
           ))}
         </ul>
       </section>
-
-      <section className="border-t-2 border-ink bg-graphite text-paper">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <h2 className="text-2xl font-black tracking-tight">Prinsip kami</h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {PRINCIPLES.map((principle) => (
-              <div
-                key={principle.title}
-                className="border border-white/20 p-4"
-              >
-                <principle.icon className="h-6 w-6 text-lime" aria-hidden="true" />
-                <h3 className="mt-3 text-base font-bold">{principle.title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-paper/65">
-                  {principle.description}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-6 max-w-3xl text-sm leading-6 text-paper/55">
-            Saring adalah alat bantu pengambilan keputusan, bukan pengganti
-            investigasi resmi, bank, penyedia layanan, atau aparat penegak
-            hukum. Sumber pelaporan resmi seperti OJK tersedia di halaman
-            Langkah.
-          </p>
-        </div>
-      </section>
-
     </>
   );
 }

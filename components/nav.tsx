@@ -8,11 +8,13 @@ import {
   House,
   ListChecks,
   Menu,
+  MessagesSquare,
   ScanSearch,
   ShieldCheck,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AccountMenu } from "@/components/auth/account-menu";
 
 const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Beranda", icon: House },
@@ -20,6 +22,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/latihan", label: "Latihan", icon: ShieldCheck },
   { href: "/langkah", label: "Langkah", icon: ListChecks },
   { href: "/pustaka", label: "Pustaka", icon: BookOpen },
+  { href: "/komunitas", label: "Komunitas", icon: MessagesSquare },
 ];
 
 export function Nav() {
@@ -117,6 +120,7 @@ export function Nav() {
             <p className="mt-3 border-t border-white/15 px-3 pt-3 text-xs leading-5 text-paper/50">
               Pesan &amp; tautan dianalisis di peramban Anda.
             </p>
+            <AccountMenu variant="mobile" />
           </div>
         </div>
       ) : null}
@@ -176,6 +180,10 @@ export function Nav() {
             })}
           </ul>
         </nav>
+
+        <div className="border-t border-white/10 px-3 py-3">
+          <AccountMenu variant="desktop" />
+        </div>
 
         <div className="border-t border-white/10 px-5 py-4">
           <p className="text-xs font-semibold leading-5 text-paper/80">
