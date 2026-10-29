@@ -9,14 +9,12 @@ import { ImagePlus, Link2 } from "lucide-react";
 import {
   RICH_TEXT_LIMITS,
   countRichTextCharacters,
-  imageUrlFromPastedText,
-  parseImgurEmbed,
   sanitizeLinkHref,
-  type ImgurEmbedRef,
   type RichDoc,
 } from "@/lib/content/rich-text";
+import { mediaPageUrl, resolveMediaInput, type ResolvedMedia } from "@/lib/content/media";
 import { EditorToolbar } from "./editor-toolbar";
-import { ImgurEmbedNode } from "./extensions/imgur-embed";
+import { MediaEmbedNode } from "./extensions/media-embed";
 
 /**
  * Editor artikel kaya (Tiptap).
@@ -89,7 +87,7 @@ function createExtensions() {
         decoding: "async",
       },
     }),
-    ImgurEmbedNode,
+    MediaEmbedNode,
   ];
 }
 
@@ -129,11 +127,7 @@ export function RichTextEditor({
    * tawaran, bukan dipaksa: penulis tetap dapat memilih mempertahankannya
    * sebagai tautan biasa.
    */
-  const [pendingMedia, setPendingMedia] = useState<
-    | { type: "image"; src: string }
-    | { type: "imgur"; ref: ImgurEmbedRef }
-    | null
-  >(null);
+  const [pendingMedia, setPendingMedia] = useState<ResolvedMedia | null>(null);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -152,9 +146,9 @@ export function RichTextEditor({
         "aria-describedby": hintId,
       },
       /**
-       * Menempel satu URL gambar/album Imgur: jangan langsung menjadikannya
-       * teks bertaut, tetapi tawarkan pilihan. Hanya berlaku untuk tempelan
-       * teks polos; tempelan kaya (HTML) dibiarkan ke Tiptap agar formatnya
+       * Menempel satu URL/HTML/BBCode media: jangan langsung menjadikannya teks
+       * bertaut, tetapi tawarkan pilihan. Hanya berlaku untuk tempelan teks
+       * polos; tempelan kaya (HTML dokumen) dibiarkan ke Tiptap agar formatnya
        * tetap terjaga.
        */
       handlePaste: (_view, event) => {
@@ -164,17 +158,11 @@ export function RichTextEditor({
         if (clipboard.getData("text/html").trim().length > 0) return false;
 
         const text = clipboard.getData("text/plain").trim();
-        if (text.length === 0 || /\s/.test(text)) return false;
+        if (text.length === 0) return false;
 
-        const imageSrc = imageUrlFromPastedText(text);
-        if (imageSrc) {
-          setPendingMedia({ type: "image", src: imageSrc });
-          return true;
-        }
-
-        const ref = parseImgurEmbed(text);
-        if (ref) {
-          setPendingMedia({ type: "imgur", ref });
+        const media = resolveMediaInput(text);
+        if (media && media.kind !== "unsupported") {
+          setPendingMedia(media);
           return true;
         }
 
@@ -201,15 +189,15 @@ export function RichTextEditor({
 
   const insertPendingAsMedia = () => {
     if (!editor || !pendingMedia) return;
-    if (pendingMedia.type === "image") {
+    if (pendingMedia.kind === "image") {
       editor.chain().focus().setImage({ src: pendingMedia.src, alt: "" }).run();
-    } else {
+    } else if (pendingMedia.kind === "embed") {
       editor
         .chain()
         .focus()
         .insertContent({
-          type: "imgurEmbed",
-          attrs: { id: pendingMedia.ref.id, kind: pendingMedia.ref.kind },
+          type: "mediaEmbed",
+          attrs: { provider: pendingMedia.provider, id: pendingMedia.id },
         })
         .run();
     }
@@ -217,13 +205,11 @@ export function RichTextEditor({
   };
 
   const insertPendingAsLink = () => {
-    if (!editor || !pendingMedia) return;
+    if (!editor || !pendingMedia || pendingMedia.kind === "unsupported") return;
     const href =
-      pendingMedia.type === "image"
+      pendingMedia.kind === "image"
         ? pendingMedia.src
-        : `https://imgur.com/${
-            pendingMedia.ref.kind === "album" ? "a/" : ""
-          }${pendingMedia.ref.id}`;
+        : mediaPageUrl(pendingMedia.provider, pendingMedia.id);
     editor
       .chain()
       .focus()
@@ -256,11 +242,9 @@ export function RichTextEditor({
       {pendingMedia ? (
         <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink bg-amber-soft px-3 py-2">
           <p className="min-w-0 flex-1 text-xs leading-5 text-ink">
-            {pendingMedia.type === "image"
+            {pendingMedia.kind === "image"
               ? "URL gambar terdeteksi."
-              : pendingMedia.ref.kind === "album"
-                ? "Album Imgur terdeteksi."
-                : "Postingan Imgur terdeteksi."}{" "}
+              : "Album atau embed media terdeteksi."}{" "}
             Tampilkan sebagai media, atau biarkan sebagai tautan?
           </p>
           <button
@@ -269,9 +253,7 @@ export function RichTextEditor({
             className="inline-flex min-h-8 items-center gap-1.5 border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep"
           >
             <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
-            {pendingMedia.type === "imgur" && pendingMedia.ref.kind === "album"
-              ? "Sematkan album"
-              : "Jadikan gambar"}
+            {pendingMedia.kind === "embed" ? "Sematkan album" : "Jadikan gambar"}
           </button>
           <button
             type="button"

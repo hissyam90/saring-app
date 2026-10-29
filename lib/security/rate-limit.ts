@@ -24,6 +24,9 @@ export const RATE_LIMITS = {
   reportCreate: { name: "report-create", limit: 10, windowSeconds: 3600 },
   urlCheck: { name: "url-check", limit: 40, windowSeconds: 300 },
   moderate: { name: "admin-moderate", limit: 60, windowSeconds: 300 },
+  // Autosave: debounce 1,2 dtk berarti maksimal ~1 simpan per detik per pengguna.
+  draftSave: { name: "draft-save", limit: 300, windowSeconds: 300 },
+  revisionCreate: { name: "revision-create", limit: 10, windowSeconds: 3600 },
 } satisfies Record<string, RateLimitRule>;
 
 /** Hanya menerima bentuk IPv4/IPv6 yang wajar agar bucket tidak bisa dipalsukan. */

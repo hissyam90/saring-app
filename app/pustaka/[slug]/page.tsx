@@ -10,12 +10,50 @@ import {
 } from "lucide-react";
 import { LIBRARY, readingMinutes, articleWordCount } from "@/data/resources";
 import { findPublishedArticleSafe } from "@/lib/db/published";
+import { getStore } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth/guards";
 import { RichContent } from "@/components/pustaka/rich-content";
+import { BookmarkButton } from "@/components/pustaka/bookmark-button";
 import type { RichDoc } from "@/lib/content/rich-text";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Baris aksi artikel: simpan ke bookmark, dan (untuk penulis kontribusi) ajukan
+ * revisi. Revisi tidak mengubah artikel yang sedang tayang.
+ */
+function ArticleActions({
+  slug,
+  saved,
+  canBookmark,
+  submissionId,
+}: {
+  slug: string;
+  saved: boolean;
+  canBookmark: boolean;
+  submissionId?: string;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <BookmarkButton
+        slug={slug}
+        initialSaved={saved}
+        canSave={canBookmark}
+        variant="full"
+      />
+      {submissionId ? (
+        <Link
+          href={`/komunitas/artikel?edit=${submissionId}`}
+          className="inline-flex min-h-9 items-center gap-1.5 border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-lime"
+        >
+          Edit / ajukan revisi
+        </Link>
+      ) : null}
+    </div>
+  );
+}
 
 export async function generateMetadata({
   params,
@@ -33,10 +71,20 @@ export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
   const article = LIBRARY.find((item) => item.id === slug);
 
+  const user = await getCurrentUser();
+  const saved = user ? await getStore().isBookmarked(user.id, slug) : false;
+
   if (!article) {
     const contribution = await findPublishedArticleSafe(slug);
     if (!contribution) notFound();
-    return <ContributionView contribution={contribution} />;
+    return (
+      <ContributionView
+        contribution={contribution}
+        saved={saved}
+        canBookmark={Boolean(user)}
+        isOwner={Boolean(user && contribution.authorId === user.id)}
+      />
+    );
   }
 
   const minutes = readingMinutes(article);
@@ -58,6 +106,12 @@ export default async function ArticlePage({ params }: PageProps) {
           <li className="font-semibold text-ink">{article.category}</li>
         </ol>
       </nav>
+
+      <ArticleActions
+        slug={article.id}
+        saved={saved}
+        canBookmark={Boolean(user)}
+      />
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
         <article className="min-w-0">
@@ -265,9 +319,13 @@ function AskCta({ slug }: { slug: string }) {
  */
 function ContributionView({
   contribution,
+  saved,
+  canBookmark,
+  isOwner,
 }: {
   contribution: {
     slug: string;
+    submissionId: string;
     title: string;
     summary: string;
     category: string;
@@ -276,8 +334,11 @@ function ContributionView({
     references: string | null;
     authorName: string;
   };
+  saved: boolean;
+  canBookmark: boolean;
+  /** Penulis artikel melihat tautan untuk mengajukan revisi. */
+  isOwner: boolean;
 }) {
-
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
       <nav aria-label="Breadcrumb" className="mb-6">
@@ -291,6 +352,13 @@ function ContributionView({
           <li className="font-semibold text-ink">{contribution.category}</li>
         </ol>
       </nav>
+
+      <ArticleActions
+        slug={contribution.slug}
+        saved={saved}
+        canBookmark={canBookmark}
+        submissionId={isOwner ? contribution.submissionId : undefined}
+      />
 
       <article>
         <header className="border-b-2 border-ink pb-5">

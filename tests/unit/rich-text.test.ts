@@ -3,15 +3,16 @@ import {
   EMPTY_RICH_DOC,
   RICH_TEXT_LIMITS,
   countRichTextCharacters,
-  imageUrlFromPastedText,
+
   isRichDocEmpty,
   normalizeUserHref,
-  parseImgurEmbed,
+
   parseRichDoc,
   plainTextToRichDoc,
   readRichDoc,
   richDocToPlainText,
   sanitizeImageSrc,
+  sanitizeHttpsUrl,
   sanitizeLinkHref,
   type RichDoc,
 } from "@/lib/content/rich-text";
@@ -340,6 +341,7 @@ describe("Aturan panjang isi artikel", () => {
     expect(RICH_TEXT_LIMITS.maxCharacters).toBe(12000);
   });
 });
+
 describe("plainTextToRichDoc", () => {
   it("mengubah teks biasa lama menjadi paragraf agar bisa diedit", () => {
     const doc = plainTextToRichDoc("Paragraf pertama.\n\nParagraf kedua.");
@@ -360,14 +362,38 @@ describe("plainTextToRichDoc", () => {
   });
 });
 
-describe("sanitizeImageSrc", () => {
-  it("menerima URL HTTPS dengan ekstensi gambar", () => {
+describe("sanitizeHttpsUrl", () => {
+  it("menerima URL HTTPS apa pun tanpa daftar host", () => {
     for (const url of [
       "https://i.imgur.com/L0pP68gl.jpg",
-      "https://contoh.test/foto.png",
-      "https://contoh.test/a/b/foto.jpeg",
-      "https://contoh.test/animasi.gif",
-      "https://contoh.test/foto.webp",
+      "https://contoh.test/gambar/12345",
+      "https://sub.domain.contoh.test/a/b?c=1",
+    ]) {
+      expect(sanitizeHttpsUrl(url)).not.toBeNull();
+    }
+  });
+
+  it("menolak protokol selain HTTPS", () => {
+    expect(sanitizeHttpsUrl("http://contoh.test/foto.jpg")).toBeNull();
+    expect(sanitizeHttpsUrl("ftp://contoh.test/foto.jpg")).toBeNull();
+    expect(sanitizeHttpsUrl("javascript:alert(1)")).toBeNull();
+  });
+
+  it("menolak kredensial di dalam URL", () => {
+    expect(sanitizeHttpsUrl("https://u:p@contoh.test/x")).toBeNull();
+  });
+});
+
+describe("sanitizeImageSrc", () => {
+  it("menerima URL gambar HTTPS dari hosting mana pun", () => {
+    for (const url of [
+      "https://i.imgur.com/L0pP68gl.jpg",
+      "https://i.postimg.cc/abcd1234/foto.jpg",
+      "https://i.ibb.co/abcd1234/foto.png",
+      "https://images2.imgbox.com/aa/bb/foto.jpeg",
+      "https://contoh.test/galeri/foto.webp",
+      // Tanpa ekstensi: layanan CDN sering menyajikan gambar dari path polos.
+      "https://cdn.contoh.test/gambar/12345",
       "https://contoh.test/foto.avif",
     ]) {
       expect(sanitizeImageSrc(url)).not.toBeNull();
@@ -389,10 +415,11 @@ describe("sanitizeImageSrc", () => {
     expect(sanitizeImageSrc("https://user:pass@contoh.test/foto.jpg")).toBeNull();
   });
 
-  it("menolak URL yang bukan berkas gambar", () => {
+  it("menolak halaman galeri provider yang dikenal", () => {
     expect(sanitizeImageSrc("https://imgur.com/a/l4mKcOj")).toBeNull();
-    expect(sanitizeImageSrc("https://contoh.test/halaman")).toBeNull();
-    expect(sanitizeImageSrc("https://contoh.test/gambar.svg")).toBeNull();
+    expect(sanitizeImageSrc("https://postimg.cc/abcd1234")).toBeNull();
+    expect(sanitizeImageSrc("https://imgbox.com/abcd1234")).toBeNull();
+    expect(sanitizeImageSrc("https://ibb.co/abcd1234")).toBeNull();
   });
 
   it("menolak karakter kontrol dan nilai bukan string", () => {
@@ -402,122 +429,20 @@ describe("sanitizeImageSrc", () => {
   });
 });
 
-describe("parseImgurEmbed", () => {
-  it("mengenali URL album sebagai album", () => {
-    expect(parseImgurEmbed("https://imgur.com/a/l4mKcOj")).toEqual({
-      kind: "album",
-      id: "l4mKcOj",
-    });
-    expect(parseImgurEmbed("https://imgur.com/a/ALc9tWx")).toEqual({
-      kind: "album",
-      id: "ALc9tWx",
-    });
-  });
-
-  it("menormalkan URL embed dan galeri menjadi album", () => {
-    expect(parseImgurEmbed("https://imgur.com/a/l4mKcOj/embed?pub=true")).toEqual({
-      kind: "album",
-      id: "l4mKcOj",
-    });
-    expect(parseImgurEmbed("https://imgur.com/gallery/l4mKcOj")).toEqual({
-      kind: "album",
-      id: "l4mKcOj",
-    });
-  });
-
-  it("mengenali URL postingan tunggal sebagai gambar", () => {
-    expect(parseImgurEmbed("https://imgur.com/L0pP68gl")).toEqual({
-      kind: "image",
-      id: "L0pP68gl",
-    });
-  });
-
-  it("menerima URL tanpa protokol", () => {
-    expect(parseImgurEmbed("imgur.com/a/l4mKcOj")).toEqual({
-      kind: "album",
-      id: "l4mKcOj",
-    });
-  });
-
-  it("mengurai kode embed resmi Imgur dan mengabaikan script di dalamnya", () => {
-    const snippet = `<blockquote class="imgur-embed-pub" lang="en" data-id="a/l4mKcOj" data-context="false">
-  <a href="//imgur.com/a/l4mKcOj">View post on imgur.com</a>
-</blockquote>
-<script async src="//s.imgur.com/min/embed.js" charset="utf-8"></script>`;
-
-    const ref = parseImgurEmbed(snippet);
-
-    expect(ref).toEqual({ kind: "album", id: "l4mKcOj" });
-    // Tidak ada bagian script yang ikut tersimpan.
-    expect(JSON.stringify(ref)).not.toContain("script");
-    expect(JSON.stringify(ref)).not.toContain("s.imgur.com");
-  });
-
-  it("mengurai snippet dengan data-id postingan tunggal", () => {
-    const snippet =
-      '<blockquote class="imgur-embed-pub" data-id="L0pP68gl"><a href="//imgur.com/L0pP68gl">x</a></blockquote>';
-    expect(parseImgurEmbed(snippet)).toEqual({ kind: "image", id: "L0pP68gl" });
-  });
-
-  it("mengurai snippet tanpa data-id memakai href di dalam blockquote", () => {
-    const snippet =
-      '<blockquote class="imgur-embed-pub"><a href="https://imgur.com/a/ALc9tWx">Album</a></blockquote>';
-    expect(parseImgurEmbed(snippet)).toEqual({ kind: "album", id: "ALc9tWx" });
-  });
-
-  it("menolak URL berbahaya dan hostname palsu", () => {
-    expect(parseImgurEmbed("javascript:alert(1)")).toBeNull();
-    expect(parseImgurEmbed("https://imgur.com.evil.test/a/l4mKcOj")).toBeNull();
-    expect(parseImgurEmbed("https://evil.test/imgur.com/a/l4mKcOj")).toBeNull();
-    expect(parseImgurEmbed("https://imgur.com@evil.test/a/l4mKcOj")).toBeNull();
-  });
-
-  it("menolak gambar langsung i.imgur.com sebagai embed", () => {
-    expect(parseImgurEmbed("https://i.imgur.com/L0pP68gl.jpg")).toBeNull();
-  });
-
-  it("menolak id yang tidak sesuai pola", () => {
-    expect(parseImgurEmbed("https://imgur.com/a/ab")).toBeNull();
-    expect(parseImgurEmbed("https://imgur.com/a/l4mKcOj<script>")).toBeNull();
-    expect(parseImgurEmbed('data-id="a/../../etc/passwd"')).toBeNull();
-  });
-
-  it("menolak nilai bukan string atau kosong", () => {
-    expect(parseImgurEmbed(undefined)).toBeNull();
-    expect(parseImgurEmbed("   ")).toBeNull();
-  });
-});
-
-describe("imageUrlFromPastedText", () => {
-  it("mengenali satu URL gambar", () => {
-    expect(imageUrlFromPastedText("https://i.imgur.com/L0pP68gl.jpg")).not.toBeNull();
-  });
-
-  it("mengabaikan teks yang bukan satu URL gambar", () => {
-    expect(imageUrlFromPastedText("https://i.imgur.com/L0pP68gl.jpg dan teks lain")).toBeNull();
-    expect(imageUrlFromPastedText("https://imgur.com/a/l4mKcOj")).toBeNull();
-    expect(imageUrlFromPastedText("javascript:alert(1)")).toBeNull();
-  });
-});
 
 describe("parseRichDoc: node media", () => {
-  const imageNode = (attrs: Record<string, unknown>) => ({
-    type: "image",
-    attrs,
-  });
+  const imageNode = (attrs: Record<string, unknown>) => ({ type: "image", attrs });
 
-  it("menerima gambar dan embed Imgur yang valid", () => {
+  it("menerima gambar lintas hosting dan embed yang valid", () => {
     const result = parseRichDoc(
       doc([
         paragraph("Teks pembuka."),
         imageNode({
-          src: "https://i.imgur.com/L0pP68gl.jpg",
+          src: "https://i.postimg.cc/abcd1234/foto.jpg",
           alt: "Contoh gambar",
         }),
-        {
-          type: "imgurEmbed",
-          attrs: { id: "l4mKcOj", kind: "album" },
-        },
+        imageNode({ src: "https://i.ibb.co/abcd1234/foto.png" }),
+        { type: "mediaEmbed", attrs: { provider: "imgur", id: "l4mKcOj" } },
       ]),
     );
 
@@ -526,15 +451,39 @@ describe("parseRichDoc: node media", () => {
     expect(result.doc.content.map((node) => node.type)).toEqual([
       "paragraph",
       "image",
-      "imgurEmbed",
+      "image",
+      "mediaEmbed",
     ]);
-    expect(result.doc.content[1].attrs).toEqual({
-      src: "https://i.imgur.com/L0pP68gl.jpg",
-      alt: "Contoh gambar",
-    });
-    expect(result.doc.content[2].attrs).toEqual({
+    expect(result.doc.content[3].attrs).toEqual({
+      provider: "imgur",
       id: "l4mKcOj",
-      kind: "album",
+    });
+  });
+
+  it("menormalkan node lama imgurEmbed menjadi mediaEmbed", () => {
+    const result = parseRichDoc(
+      doc([{ type: "imgurEmbed", attrs: { id: "l4mKcOj", kind: "album" } }]),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.doc.content[0].type).toBe("mediaEmbed");
+    expect(result.doc.content[0].attrs).toEqual({
+      provider: "imgur",
+      id: "l4mKcOj",
+    });
+  });
+
+  it("mengubah imgurEmbed kind=image lama menjadi node gambar", () => {
+    const result = parseRichDoc(
+      doc([{ type: "imgurEmbed", attrs: { id: "L0pP68gl", kind: "image" } }]),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.doc.content[0]).toEqual({
+      type: "image",
+      attrs: { src: "https://i.imgur.com/L0pP68gl.jpg", alt: "" },
     });
   });
 
@@ -546,7 +495,6 @@ describe("parseRichDoc: node media", () => {
           alt: "x",
           title: "judul",
           width: 999,
-          height: 999,
           onerror: "alert(1)",
           class: "jahat",
         }),
@@ -575,17 +523,16 @@ describe("parseRichDoc: node media", () => {
     }
   });
 
-  it("menolak embed Imgur dengan id atau jenis tidak valid", () => {
+  it("menolak embed dengan provider atau id tidak valid", () => {
     const invalid = [
-      { id: "l4mKcOj", kind: "video" },
-      { id: "ab", kind: "album" },
-      { id: "<script>", kind: "album" },
-      { id: "l4mKcOj", kind: undefined },
-      { kind: "album" },
+      { provider: "evil", id: "l4mKcOj" },
+      { provider: "imgur", id: "ab" },
+      { provider: "imgur", id: "<script>" },
+      { provider: "imgur" },
     ];
 
     for (const attrs of invalid) {
-      expect(parseRichDoc(doc([{ type: "imgurEmbed", attrs }])).ok).toBe(false);
+      expect(parseRichDoc(doc([{ type: "mediaEmbed", attrs }])).ok).toBe(false);
     }
   });
 
@@ -593,10 +540,10 @@ describe("parseRichDoc: node media", () => {
     const result = parseRichDoc(
       doc([
         {
-          type: "imgurEmbed",
+          type: "mediaEmbed",
           attrs: {
+            provider: "imgur",
             id: "l4mKcOj",
-            kind: "album",
             src: "https://evil.test/iframe",
             script: "alert(1)",
           },
@@ -607,8 +554,8 @@ describe("parseRichDoc: node media", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.doc.content[0].attrs).toEqual({
+      provider: "imgur",
       id: "l4mKcOj",
-      kind: "album",
     });
   });
 

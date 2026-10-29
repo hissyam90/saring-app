@@ -6,31 +6,34 @@ import {
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
-import { ImgurEmbed } from "@/components/pustaka/article-media";
+import { MediaEmbed } from "@/components/pustaka/article-media";
+import { isValidMediaId } from "@/lib/content/media";
+import { isMediaEmbedProvider } from "@/lib/content/rich-text";
 
 /**
- * Node blok `imgurEmbed`.
+ * Node blok `mediaEmbed` (embed media pihak ketiga).
  *
- * Menyimpan **hanya** `id` dan `kind` yang sudah divalidasi; URL iframe dihitung
- * ulang oleh renderer. Tidak ada HTML, script, atau atribut lain dari input
- * pengguna yang masuk ke dokumen.
+ * Menyimpan **hanya** `provider` dan `id` yang sudah divalidasi; URL iframe
+ * dihitung ulang oleh renderer. Tidak ada HTML, script, atau atribut lain dari
+ * input pengguna yang masuk ke dokumen.
  *
  * Node ini `atom` dan `selectable`, sehingga dapat dipilih dan dihapus sebagai
  * satu blok tanpa merusak paragraf di sekitarnya.
  */
 
-const ImgurEmbedView = ({ node, selected }: NodeViewProps) => {
+const MediaEmbedView = ({ node, selected }: NodeViewProps) => {
   const id = typeof node.attrs.id === "string" ? node.attrs.id : "";
-  const kind = node.attrs.kind === "image" ? "image" : "album";
+  const provider = node.attrs.provider;
 
-  if (!id) return null;
+  if (!isValidMediaId(id) || !isMediaEmbedProvider(provider)) return null;
 
   return (
     <NodeViewWrapper
-      className={`saring-embed my-3 border-2 ${
+      className={`saring-embed my-3 max-w-full border-2 ${
         selected ? "border-coral" : "border-transparent"
       }`}
-      data-imgur-embed={id}
+      data-media-embed={id}
+      data-media-provider={provider}
     >
       {/*
         `contentEditable={false}` mencegah ProseMirror mengelola isi embed.
@@ -41,14 +44,14 @@ const ImgurEmbedView = ({ node, selected }: NodeViewProps) => {
         contentEditable={false}
         className="[&_iframe]:pointer-events-none [&_img]:pointer-events-none"
       >
-        <ImgurEmbed kind={kind} id={id} />
+        <MediaEmbed provider={provider} id={id} />
       </div>
     </NodeViewWrapper>
   );
 };
 
-export const ImgurEmbedNode = Node.create({
-  name: "imgurEmbed",
+export const MediaEmbedNode = Node.create({
+  name: "mediaEmbed",
   group: "block",
   atom: true,
   selectable: true,
@@ -56,22 +59,22 @@ export const ImgurEmbedNode = Node.create({
 
   addAttributes() {
     return {
+      provider: { default: "imgur" },
       id: { default: null },
-      kind: { default: "album" },
     };
   },
 
   parseHTML() {
     return [
       {
-        tag: "div[data-imgur-embed]",
+        tag: "div[data-media-embed]",
         getAttrs: (element) => {
           const el = element as HTMLElement;
-          const id = el.getAttribute("data-imgur-embed");
-          const kind = el.getAttribute("data-imgur-kind");
+          const id = el.getAttribute("data-media-embed");
+          const provider = el.getAttribute("data-media-provider");
           return {
-            id: id && /^[A-Za-z0-9]{5,15}$/.test(id) ? id : null,
-            kind: kind === "image" ? "image" : "album",
+            id: isValidMediaId(id) ? id : null,
+            provider: isMediaEmbedProvider(provider) ? provider : "imgur",
           };
         },
       },
@@ -82,14 +85,14 @@ export const ImgurEmbedNode = Node.create({
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
-        "data-imgur-embed": HTMLAttributes.id,
-        "data-imgur-kind": HTMLAttributes.kind,
+        "data-media-embed": HTMLAttributes.id,
+        "data-media-provider": HTMLAttributes.provider,
         class: "saring-embed",
       }),
     ];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(ImgurEmbedView);
+    return ReactNodeViewRenderer(MediaEmbedView);
   },
 });

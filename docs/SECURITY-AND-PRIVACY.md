@@ -47,7 +47,11 @@ Pemeriksaan pesan, nomor, dan tautan tetap dapat dipakai tanpa akun.
 |---|---|---|
 | `users` | email, nama tampilan, hash kata sandi (bcrypt cost 12), role, waktu dibuat | kata sandi mentah, nomor telepon, identitas |
 | `threads` / `replies` | judul, kategori, isi, penulis, status disembunyikan | data pribadi yang diminta aplikasi |
-| `submissions` | artikel kontribusi (dokumen JSON tervalidasi) + status tinjauan + catatan admin | versi draf yang tidak dikirim, HTML mentah |
+| `submissions` | **versi publik** artikel kontribusi (dokumen JSON tervalidasi) + status tinjauan + slug | versi draf yang tidak dikirim, HTML mentah |
+| `submission_revisions` | usulan revisi artikel terbit + status tinjauan + catatan admin | konten publik aktif (berada di `submissions`) |
+| `drafts` | draf artikel/pertanyaan (JSONB) milik satu akun | konten yang sudah diajukan |
+| `article_bookmarks` | `user_id` + `article_slug` | salinan konten artikel |
+| `notifications` | judul pesan, tautan internal, `read_at`, `dedupe_key` | isi draf privat, token, data sensitif |
 | `reports` | alasan laporan, keterangan, status | identitas pelapor pada tampilan publik |
 | `moderation_log` | aksi admin, target, catatan | isi pesan pemeriksaan |
 | `rate_limits` | nama bucket + penghitung + awal jendela | isi konten, token, IP mentah |
@@ -100,6 +104,11 @@ Halaman privat dan seluruh `/api/*` mengirim `Cache-Control: private, no-store`.
 |---|---|
 | Membuat diskusi/balasan | `requireUser` + rate limit + CAPTCHA |
 | Mengirim/mengubah artikel | `requireUser` + kepemilikan (`author_id`) + status bukan final + rate limit + CAPTCHA |
+| Mengajukan revisi artikel terbit | `requireUser` + kepemilikan + `status = approved` + rate limit + CAPTCHA |
+| Menyetujui/menolak revisi | `requireAdmin` + status revisi masih `pending`/`needs_revision` |
+| Menyimpan/menghapus draf | `requireUser`; `owner_id` dari sesi, bukan body |
+| Bookmark | `requireUser` + slug harus dapat diakses publik (bawaan atau `approved`) |
+| Notifikasi | `requireUser`; semua query memakai `where user_id = sesi` |
 | Melaporkan konten | `requireUser` + target harus ada + anti-duplikat + rate limit + CAPTCHA |
 | Semua aksi admin | `requireAdmin` + rate limit + validasi skema |
 | Melihat `/akun` | `getCurrentUser`, data difilter `author_id` |
@@ -107,6 +116,20 @@ Halaman privat dan seluruh `/api/*` mengirim `Cache-Control: private, no-store`.
 
 Pemeriksaan kepemilikan (mencegah IDOR) dilakukan di kueri (`where id = $1 and
 author_id = $2`), bukan hanya di UI.
+
+### Revisi artikel publik (versioning)
+
+- `submissions` **hanya** menyimpan versi publik yang terakhir disetujui.
+- Mengajukan revisi membuat baris `submission_revisions` berstatus `pending`;
+  konten publik tidak disentuh, sehingga pembaca tetap melihat versi lama.
+- Menyetujui revisi menyalin isi revisi ke `submissions` **di dalam satu
+  transaksi PostgreSQL** (`publishRevision`) dan mempertahankan `slug`, sehingga
+  URL publik tidak berubah. Jika transaksi gagal, versi lama tetap utuh.
+- Menolak atau meminta perbaikan **tidak** mengubah `submissions`.
+- Indeks unik parsial `submission_revisions_one_pending_idx` mencegah dua revisi
+  `pending` untuk artikel yang sama.
+- Revisi tidak dapat diterbitkan dua kali (`status` diperiksa dengan `for
+  update`), dan revisi untuk artikel yang tidak lagi `approved` ditolak.
 
 ## Konten artikel kaya (rich text)
 
@@ -265,9 +288,28 @@ lintas instance (bukan in-memory). Bila penyimpanan gagal, request **ditolak**
 | `reply-create` | 20 | 10 menit |
 | `submission-create` | 4 | 1 jam |
 | `submission-update` | 10 | 1 jam |
+| `revision-create` | 10 | 1 jam |
+| `draft-save` | 300 | 5 menit |
 | `report-create` | 10 | 1 jam |
 | `url-check` | 40 | 5 menit |
 | `admin-moderate` | 60 | 5 menit |
+
+`draft-save` sengaja tinggi karena autosave memakai debounce 1,2 detik (maksimal
+kira-kira satu permintaan per detik per pengguna), tetapi tetap dibatasi agar
+tidak dapat dipakai sebagai jalur penulisan tak terbatas.
+
+## Tema otomatis
+
+Saring **tidak** memiliki kontrol tema manual. Warna mengikuti
+`prefers-color-scheme` sepenuhnya melalui CSS (token `--color-*` di
+`app/globals.css` ditimpa di dalam `@layer base` pada media query gelap).
+
+- Tidak ada tombol tema, tidak ada nilai di `localStorage`, dan tidak ada kolom
+  tema di database.
+- Tidak mungkin terjadi hydration mismatch atau kilatan tema salah, karena
+  pilihan tema tidak pernah diputuskan oleh JavaScript.
+- `color-scheme: light dark` dipasang pada `:root` agar kontrol bawaan peramban
+  (scrollbar, input) ikut menyesuaikan.
 
 Identitas klien hanya diambil dari header yang ditulis proxy tepercaya
 (`SARING_TRUST_PROXY=cloudflare` → `cf-connecting-ip`; `heroku` → hop terakhir

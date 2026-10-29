@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import {
+  isMediaEmbedProvider,
   sanitizeLinkHref,
   type RichDoc,
   type RichMark,
   type RichNode,
 } from "@/lib/content/rich-text";
-import { ArticleImage, ImgurEmbed } from "./article-media";
+import { ArticleImage, MediaEmbed } from "./article-media";
 
 /**
  * Renderer konten artikel kaya.
@@ -161,15 +162,15 @@ function renderNode(node: RichNode, key: string): ReactNode {
         </div>
       );
 
-    case "imgurEmbed": {
+    case "mediaEmbed": {
       const id = node.attrs?.id;
-      const kind = node.attrs?.kind;
-      if (typeof id !== "string" || (kind !== "album" && kind !== "image")) {
+      const provider = node.attrs?.provider;
+      if (typeof id !== "string" || !isMediaEmbedProvider(provider)) {
         return null;
       }
       return (
         <div key={key} className={BLOCK_CLASS.media}>
-          <ImgurEmbed kind={kind} id={id} />
+          <MediaEmbed provider={provider} id={id} />
         </div>
       );
     }
@@ -215,7 +216,7 @@ export function RichContent({
   fallbackText?: string;
   className?: string;
 }) {
-  const wrapper = `grid gap-3 text-[15px] leading-7 text-ink-soft ${className}`;
+  const wrapper = `grid min-w-0 gap-3 text-[15px] leading-7 text-ink-soft [&>*]:min-w-0 ${className}`;
 
   if (!doc || !Array.isArray(doc.content) || doc.content.length === 0) {
     if (!fallbackText.trim()) return null;

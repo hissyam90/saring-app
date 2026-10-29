@@ -555,9 +555,9 @@ test.describe("Editor artikel", () => {
     await page.locator("#artikel-editor").click();
     await page.keyboard.type(FIRST_PARAGRAPH);
 
-    await form.getByRole("button", { name: "Sisipkan gambar" }).click();
-    await form.getByLabel("URL gambar").fill("https://i.imgur.com/L0pP68gl.jpg");
-    await form.getByLabel("Teks alternatif gambar").fill("Contoh gambar uji");
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
+    await form.getByLabel("URL atau kode media").fill("https://i.imgur.com/L0pP68gl.jpg");
+    await form.getByLabel("Teks alternatif media").fill("Contoh gambar uji");
     await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
 
     const img = page.locator("#artikel-editor img").first();
@@ -577,11 +577,14 @@ test.describe("Editor artikel", () => {
     await openSubmissionPage(page);
     const form = newSubmissionForm(page);
 
-    await form.getByRole("button", { name: "Sisipkan gambar" }).click();
-    await form.getByLabel("URL gambar").fill("javascript:alert(1)");
-    await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
+    await form.getByLabel("URL atau kode media").fill("javascript:alert(1)");
 
-    await expect(page.locator("#editor-image-error")).toContainText(/HTTPS/i);
+    // Dialog menonaktifkan tombol sisip selama tidak ada media valid, sehingga
+    // URL berbahaya tidak pernah masuk ke dokumen.
+    await expect(
+      form.getByRole("button", { name: "Sisipkan", exact: true }),
+    ).toBeDisabled();
     await expect(page.locator("#artikel-editor img")).toHaveCount(0);
   });
 
@@ -596,11 +599,11 @@ test.describe("Editor artikel", () => {
     await page.locator("#artikel-editor").click();
     await page.keyboard.type(FIRST_PARAGRAPH);
 
-    await form.getByRole("button", { name: "Sematkan Imgur" }).click();
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
     await form
-      .getByLabel("URL atau kode embed Imgur")
+      .getByLabel("URL atau kode media")
       .fill("https://imgur.com/a/l4mKcOj");
-    await form.getByRole("button", { name: "Sematkan", exact: true }).click();
+    await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
 
     const embed = page.locator("#artikel-editor .saring-embed");
     await expect(embed).toHaveCount(1);
@@ -644,13 +647,16 @@ test.describe("Editor artikel", () => {
     await openSubmissionPage(page);
     const form = newSubmissionForm(page);
 
-    await form.getByRole("button", { name: "Sematkan Imgur" }).click();
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
     await form
-      .getByLabel("URL atau kode embed Imgur")
+      .getByLabel("URL atau kode media")
       .fill('<blockquote class="imgur-embed-pub" data-id="../../evil"></blockquote>');
-    await form.getByRole("button", { name: "Sematkan", exact: true }).click();
 
-    await expect(page.locator("#editor-imgur-error")).toBeVisible();
+    // `data-id` tidak valid tidak menghasilkan media apa pun: tombol sisip
+    // tetap nonaktif dan tidak ada embed yang dibuat.
+    await expect(
+      form.getByRole("button", { name: "Sisipkan", exact: true }),
+    ).toBeDisabled();
     await expect(page.locator("#artikel-editor .saring-embed")).toHaveCount(0);
   });
 
@@ -685,8 +691,8 @@ test.describe("Editor artikel", () => {
   test("menyimpan media ke body_json lalu menampilkannya di Pustaka", async ({
     page,
     context,
-  }) => {
-    const mediaTitle = `Artikel dengan media ${suffix}`;
+  }, testInfo) => {
+    const mediaTitle = `Artikel dengan media ${suffix} ${testInfo.project.name}`;
 
     await loginAs(context, authorId, "user");
     await openSubmissionPage(page);
@@ -704,17 +710,23 @@ test.describe("Editor artikel", () => {
     );
 
     // Gambar langsung.
-    await form.getByRole("button", { name: "Sisipkan gambar" }).click();
-    await form.getByLabel("URL gambar").fill("https://i.imgur.com/L0pP68gl.jpg");
-    await form.getByLabel("Teks alternatif gambar").fill("Tangkapan layar");
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
+    await form.getByLabel("URL atau kode media").fill("https://i.imgur.com/L0pP68gl.jpg");
+    await form.getByLabel("Teks alternatif media").fill("Tangkapan layar");
     await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
 
+    // Node gambar yang baru disisipkan masih terpilih. Pindahkan kursor agar
+    // dialog berikutnya menyisipkan embed baru, bukan memperbarui gambar.
+    await page.locator("#artikel-editor").click();
+    await page.keyboard.press("Control+End");
+    await page.keyboard.type(" ");
+
     // Embed album Imgur.
-    await form.getByRole("button", { name: "Sematkan Imgur" }).click();
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
     await form
-      .getByLabel("URL atau kode embed Imgur")
+      .getByLabel("URL atau kode media")
       .fill("https://imgur.com/a/l4mKcOj");
-    await form.getByRole("button", { name: "Sematkan", exact: true }).click();
+    await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
 
     // Pratinjau memakai renderer yang sama dengan halaman publik.
     await form.getByRole("button", { name: "Pratinjau" }).click();
@@ -742,7 +754,7 @@ test.describe("Editor artikel", () => {
     };
     const types = doc.content.map((node) => node.type);
     expect(types).toContain("image");
-    expect(types).toContain("imgurEmbed");
+    expect(types).toContain("mediaEmbed");
 
     const imageNode = doc.content.find((node) => node.type === "image");
     expect(imageNode?.attrs).toEqual({
@@ -750,8 +762,8 @@ test.describe("Editor artikel", () => {
       alt: "Tangkapan layar",
     });
 
-    const embedNode = doc.content.find((node) => node.type === "imgurEmbed");
-    expect(embedNode?.attrs).toEqual({ id: "l4mKcOj", kind: "album" });
+    const embedNode = doc.content.find((node) => node.type === "mediaEmbed");
+    expect(embedNode?.attrs).toEqual({ provider: "imgur", id: "l4mKcOj" });
 
     // Tidak ada HTML/script yang ikut tersimpan.
     const serialized = JSON.stringify(doc);
@@ -785,11 +797,11 @@ test.describe("Editor artikel", () => {
     await page.locator("#artikel-editor").click();
     await page.keyboard.type(FIRST_PARAGRAPH);
 
-    await form.getByRole("button", { name: "Sematkan Imgur" }).click();
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
     await form
-      .getByLabel("URL atau kode embed Imgur")
+      .getByLabel("URL atau kode media")
       .fill("https://imgur.com/a/ALc9tWx");
-    await form.getByRole("button", { name: "Sematkan", exact: true }).click();
+    await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
 
     const embed = page.locator("#artikel-editor .saring-embed");
     await expect(embed).toHaveCount(1);
@@ -809,9 +821,9 @@ test.describe("Editor artikel", () => {
     page,
     context,
     browser,
-  }) => {
+  }, testInfo) => {
     // Artikel dari tes sebelumnya masih berstatus pending.
-    const mediaTitle = `Artikel dengan media ${suffix}`;
+    const mediaTitle = `Artikel dengan media ${suffix} ${testInfo.project.name}`;
     const saved = await submissionByTitle(mediaTitle);
     expect(saved).toBeDefined();
 

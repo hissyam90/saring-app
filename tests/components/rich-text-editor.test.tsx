@@ -147,14 +147,11 @@ describe("RichTextEditor: area menulis", () => {
     expect(editor?.className).toContain("saring-editor");
   });
 
-  it("menampilkan toolbar media tanpa menghapus tombol format lain", () => {
+  it("menampilkan satu tombol media tanpa menghapus tombol format lain", () => {
     renderEditor();
 
     expect(
-      screen.getByRole("button", { name: "Sisipkan gambar" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Sematkan Imgur" }),
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
     ).toBeInTheDocument();
     // Fitur lama tetap ada.
     expect(screen.getByRole("button", { name: "Tebal" })).toBeInTheDocument();
@@ -164,66 +161,149 @@ describe("RichTextEditor: area menulis", () => {
   });
 });
 
-describe("RichTextEditor: gambar langsung", () => {
-  it("menyisipkan gambar dari dialog dengan atribut aman", async () => {
+
+describe("RichTextEditor: media universal", () => {
+  it("menampilkan satu tombol media dan mempertahankan tombol format lain", () => {
+    renderEditor();
+
+    expect(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tebal" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sisipkan atau ubah tautan" }),
+    ).toBeInTheDocument();
+  });
+
+  it("menyisipkan gambar dari hosting HTTPS mana pun", async () => {
     const user = userEvent.setup();
     const { container } = renderEditor(null);
 
-    await user.click(screen.getByRole("button", { name: "Sisipkan gambar" }));
-    await user.type(
-      screen.getByLabelText("URL gambar"),
-      "https://i.imgur.com/L0pP68gl.jpg",
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
     );
-    await user.type(screen.getByLabelText("Teks alternatif gambar"), "Contoh");
+    await user.type(
+      screen.getByLabelText("URL atau kode media"),
+      "https://i.postimg.cc/abcd1234/foto.jpg",
+    );
+    await user.type(screen.getByLabelText("Teks alternatif media"), "Contoh");
     await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
 
     const img = container.querySelector("#artikel-editor img");
-    expect(img).toHaveAttribute("src", "https://i.imgur.com/L0pP68gl.jpg");
+    expect(img).toHaveAttribute("src", "https://i.postimg.cc/abcd1234/foto.jpg");
     expect(img).toHaveAttribute("alt", "Contoh");
-    // Wajib: Imgur menolak hotlink bila Referer dikirim (HTTP 403).
+    // Wajib: host gambar menolak hotlink bila Referer dikirim (HTTP 403).
     expect(img).toHaveAttribute("referrerpolicy", "no-referrer");
   });
 
-  it("menolak URL gambar tidak aman tanpa menyisipkan apa pun", async () => {
-    const user = userEvent.setup();
-    const { container } = renderEditor(null);
+  it("menyisipkan gambar dari ImgBB dan Imgbox", async () => {
+    for (const url of [
+      "https://i.ibb.co/abcd1234/foto.png",
+      "https://images2.imgbox.com/aa/bb/foto.jpeg",
+    ]) {
+      const user = userEvent.setup();
+      const { container, unmount } = renderEditor(null);
 
-    await user.click(screen.getByRole("button", { name: "Sisipkan gambar" }));
-    await user.type(screen.getByLabelText("URL gambar"), "javascript:alert(1)");
-    await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
+      await user.click(
+        screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+      );
+      await user.type(screen.getByLabelText("URL atau kode media"), url);
+      await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/URL HTTPS/i);
-    expect(container.querySelector("#artikel-editor img")).toBeNull();
+      expect(container.querySelector("#artikel-editor img")).toHaveAttribute(
+        "src",
+        url,
+      );
+      unmount();
+    }
   });
 
-  it("menolak URL halaman album pada dialog gambar", async () => {
+  it("menerima BBCode [img]", async () => {
     const user = userEvent.setup();
     const { container } = renderEditor(null);
 
-    await user.click(screen.getByRole("button", { name: "Sisipkan gambar" }));
-    await user.type(
-      screen.getByLabelText("URL gambar"),
-      "https://imgur.com/a/l4mKcOj",
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    );
+    await user.click(screen.getByLabelText("URL atau kode media"));
+    await user.paste("[img]https://i.ibb.co/abcd1234/bbcode.png[/img]");
+    await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
+
+    expect(container.querySelector("#artikel-editor img")).toHaveAttribute(
+      "src",
+      "https://i.ibb.co/abcd1234/bbcode.png",
+    );
+    // Markup BBCode sendiri tidak pernah tersimpan sebagai teks.
+    expect(container.innerHTML).not.toContain("[img]");
+  });
+
+  it("menerima HTML <img> tanpa membawa atribut event", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditor(null);
+
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    );
+    await user.click(screen.getByLabelText("URL atau kode media"));
+    await user.paste(
+      '<img src="https://i.imgur.com/L0pP68gl.jpg" onerror="alert(1)">',
     );
     await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
 
-    expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(container.querySelector("#artikel-editor img")).toBeNull();
+    expect(container.querySelector("#artikel-editor img")).toHaveAttribute(
+      "src",
+      "https://i.imgur.com/L0pP68gl.jpg",
+    );
+    // Atribut event dari input pengguna tidak pernah masuk ke dokumen.
+    expect(container.innerHTML).not.toContain("onerror");
   });
-});
 
 
-describe("RichTextEditor: embed Imgur", () => {
-  it("menyisipkan embed album dari URL album", async () => {
+  it("menolak URL tidak aman tanpa menyisipkan apa pun", async () => {
     const user = userEvent.setup();
     const { container } = renderEditor(null);
 
-    await user.click(screen.getByRole("button", { name: "Sematkan Imgur" }));
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    );
     await user.type(
-      screen.getByLabelText("URL atau kode embed Imgur"),
+      screen.getByLabelText("URL atau kode media"),
+      "javascript:alert(1)",
+    );
+
+    // Tombol sisipkan nonaktif karena tidak ada media valid.
+    expect(screen.getByRole("button", { name: /^Sisipkan$/ })).toBeDisabled();
+    expect(container.querySelector("#artikel-editor img")).toBeNull();
+  });
+
+  it("menonaktifkan sisip untuk halaman galeri yang belum didukung embed", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditor(null);
+
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    );
+    await user.type(
+      screen.getByLabelText("URL atau kode media"),
+      "https://postimg.cc/abcd1234",
+    );
+
+    expect(screen.getByRole("button", { name: /^Sisipkan$/ })).toBeDisabled();
+    expect(container.querySelector("#artikel-editor img")).toBeNull();
+  });
+
+  it("menyisipkan embed Imgur dari URL album", async () => {
+    const user = userEvent.setup();
+    const { container } = renderEditor(null);
+
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    );
+    await user.type(
+      screen.getByLabelText("URL atau kode media"),
       "https://imgur.com/a/l4mKcOj",
     );
-    await user.click(screen.getByRole("button", { name: /^Sematkan$/ }));
+    await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
 
     const iframe = container.querySelector("#artikel-editor iframe");
     expect(iframe).toHaveAttribute(
@@ -237,43 +317,52 @@ describe("RichTextEditor: embed Imgur", () => {
     const user = userEvent.setup();
     const { container } = renderEditor(null);
 
-    await user.click(screen.getByRole("button", { name: "Sematkan Imgur" }));
-    await user.click(screen.getByLabelText("URL atau kode embed Imgur"));
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
+    );
+    await user.click(screen.getByLabelText("URL atau kode media"));
     await user.paste(
       '<blockquote class="imgur-embed-pub" data-id="a/ALc9tWx"></blockquote><script async src="//s.imgur.com/min/embed.js"></script>',
     );
-    await user.click(screen.getByRole("button", { name: /^Sematkan$/ }));
+    await user.click(screen.getByRole("button", { name: /^Sisipkan$/ }));
 
     const iframe = container.querySelector("#artikel-editor iframe");
     expect(iframe).toHaveAttribute(
       "src",
       "https://imgur.com/a/ALc9tWx/embed?pub=true",
     );
-    // Tidak ada script Imgur yang dieksekusi dari input pengguna.
     expect(container.querySelector('script[src*="imgur"]')).toBeNull();
     expect(container.innerHTML).not.toContain("embed.js");
   });
 
-  it("menolak URL yang bukan Imgur", async () => {
+  it("menolak hostname palsu", async () => {
     const user = userEvent.setup();
     const { container } = renderEditor(null);
 
-    await user.click(screen.getByRole("button", { name: "Sematkan Imgur" }));
-    await user.type(
-      screen.getByLabelText("URL atau kode embed Imgur"),
-      "https://evil.test/a/l4mKcOj",
+    await user.click(
+      screen.getByRole("button", { name: "Sisipkan gambar atau media" }),
     );
-    await user.click(screen.getByRole("button", { name: /^Sematkan$/ }));
+    await user.type(
+      screen.getByLabelText("URL atau kode media"),
+      "https://imgur.com.evil.test/a/l4mKcOj",
+    );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/URL album Imgur/i);
+    expect(screen.getByRole("button", { name: /^Sisipkan$/ })).toBeDisabled();
     expect(container.querySelector("#artikel-editor iframe")).toBeNull();
   });
 
-  it("memuat embed yang sudah tersimpan di dokumen", () => {
+  it("memuat media yang sudah tersimpan di dokumen", () => {
     const { container } = renderEditor({
       type: "doc",
       content: [
-        { type: "imgurEmbed", attrs: { id: "l4mKcOj", kind: "album" } },
+        { type: "mediaEmbed", attrs: { provider: "imgur", id: "l4mKcOj" } },
+        {
+          type: "image",
+          attrs: {
+            src: "https://i.ibb.co/abcd1234/tersimpan.png",
+            alt: "Tersimpan",
+          },
+        },
       ],
     });
 
@@ -281,21 +370,8 @@ describe("RichTextEditor: embed Imgur", () => {
       "src",
       "https://imgur.com/a/l4mKcOj/embed?pub=true",
     );
-  });
-
-  it("memuat gambar yang sudah tersimpan di dokumen", () => {
-    const { container } = renderEditor({
-      type: "doc",
-      content: [
-        {
-          type: "image",
-          attrs: { src: "https://i.imgur.com/L0pP68gl.jpg", alt: "Tersimpan" },
-        },
-      ],
-    });
-
     const img = container.querySelector("#artikel-editor img");
-    expect(img).toHaveAttribute("src", "https://i.imgur.com/L0pP68gl.jpg");
+    expect(img).toHaveAttribute("src", "https://i.ibb.co/abcd1234/tersimpan.png");
     expect(img).toHaveAttribute("alt", "Tersimpan");
   });
 });

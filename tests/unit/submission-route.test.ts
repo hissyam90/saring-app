@@ -374,7 +374,7 @@ describe("POST /api/community/submissions: media", () => {
         type: "image",
         attrs: { src: "https://i.imgur.com/L0pP68gl.jpg", alt: "Contoh gambar" },
       },
-      { type: "imgurEmbed", attrs: { id: "l4mKcOj", kind: "album" } },
+      { type: "mediaEmbed", attrs: { provider: "imgur", id: "l4mKcOj" } },
     ],
   };
 
@@ -387,14 +387,14 @@ describe("POST /api/community/submissions: media", () => {
     const [stored] = await getStore().listSubmissionsByAuthor(session.userId!);
     const types = stored.bodyJson!.content.map((node) => node.type);
 
-    expect(types).toEqual(["paragraph", "image", "imgurEmbed"]);
+    expect(types).toEqual(["paragraph", "image", "mediaEmbed"]);
     expect(stored.bodyJson!.content[1].attrs).toEqual({
       src: "https://i.imgur.com/L0pP68gl.jpg",
       alt: "Contoh gambar",
     });
     expect(stored.bodyJson!.content[2].attrs).toEqual({
+      provider: "imgur",
       id: "l4mKcOj",
-      kind: "album",
     });
   });
 
@@ -436,7 +436,7 @@ describe("POST /api/community/submissions: media", () => {
             type: "doc",
             content: [
               { type: "paragraph", content: [{ type: "text", text: LONG_TEXT }] },
-              { type: "imgurEmbed", attrs: { id: "<script>", kind: "album" } },
+              { type: "mediaEmbed", attrs: { provider: "imgur", id: "<script>" } },
             ],
           },
         }),
@@ -457,10 +457,10 @@ describe("POST /api/community/submissions: media", () => {
             content: [
               { type: "paragraph", content: [{ type: "text", text: LONG_TEXT }] },
               {
-                type: "imgurEmbed",
+                type: "mediaEmbed",
                 attrs: {
                   id: "l4mKcOj",
-                  kind: "album",
+                  provider: "imgur",
                   html: '<script src="//s.imgur.com/min/embed.js"></script>',
                 },
               },
@@ -473,8 +473,8 @@ describe("POST /api/community/submissions: media", () => {
     expect(response.status).toBe(201);
     const [stored] = await getStore().listSubmissionsByAuthor(session.userId!);
     expect(stored.bodyJson!.content[1].attrs).toEqual({
+      provider: "imgur",
       id: "l4mKcOj",
-      kind: "album",
     });
     expect(JSON.stringify(stored.bodyJson)).not.toContain("embed.js");
   });

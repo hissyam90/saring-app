@@ -1,12 +1,20 @@
 import { randomUUID } from "node:crypto";
 import type {
+  ArticleBookmark,
   DashboardStats,
+  Draft,
+  DraftKind,
+  DraftPayload,
   ModerationEntry,
+  Notification,
+  NotificationKind,
   PublishedArticle,
   Reply,
   Report,
+  RevisionStatus,
   Role,
   Submission,
+  SubmissionRevision,
   Thread,
   ThreadCategory,
   User,
@@ -14,6 +22,7 @@ import type {
 } from "./types";
 import type {
   ListReportsOptions,
+  ListRevisionsOptions,
   ListSubmissionsOptions,
   ListThreadsOptions,
   ListUsersOptions,
@@ -68,6 +77,52 @@ interface MemReport {
   createdAt: string;
 }
 
+interface MemRevision {
+  id: string;
+  submissionId: string;
+  authorId: string;
+  title: string;
+  summary: string;
+  category: string;
+  body: string;
+  bodyJson: RichDoc | null;
+  references: string | null;
+  status: RevisionStatus;
+  reviewNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+}
+
+interface MemDraft {
+  id: string;
+  ownerId: string;
+  kind: DraftKind;
+  targetSubmissionId: string | null;
+  payload: DraftPayload;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface MemBookmark {
+  id: string;
+  userId: string;
+  articleSlug: string;
+  createdAt: string;
+}
+
+interface MemNotification {
+  id: string;
+  userId: string;
+  kind: NotificationKind;
+  title: string;
+  body: string | null;
+  href: string | null;
+  dedupeKey: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
 const now = () => new Date().toISOString();
 const desc = (a: string, b: string) => b.localeCompare(a);
 const asc = (a: string, b: string) => a.localeCompare(b);
@@ -98,6 +153,10 @@ export function createMemoryStore(): Store {
   const replies = new Map<string, MemReply>();
   const subs = new Map<string, MemSubmission>();
   const reports = new Map<string, MemReport>();
+  const revisions = new Map<string, MemRevision>();
+  const drafts = new Map<string, MemDraft>();
+  const bookmarks = new Map<string, MemBookmark>();
+  const notifications = new Map<string, MemNotification>();
   const log: ModerationEntry[] = [];
   const buckets = new Map<string, { start: number; count: number }>();
 
@@ -123,6 +182,23 @@ export function createMemoryStore(): Store {
     // yang diubah di luar aplikasi tidak pernah sampai ke renderer.
     bodyJson: readRichDoc(s.bodyJson),
     authorName: name(s.authorId),
+  });
+  const toRevision = (r: MemRevision): SubmissionRevision => ({
+    ...r,
+    bodyJson: readRichDoc(r.bodyJson),
+    authorName: name(r.authorId),
+  });
+  const toDraft = (d: MemDraft): Draft => ({ ...d });
+  const toBookmark = (b: MemBookmark): ArticleBookmark => ({ ...b });
+  const toNotification = (n: MemNotification): Notification => ({
+    id: n.id,
+    userId: n.userId,
+    kind: n.kind,
+    title: n.title,
+    body: n.body,
+    href: n.href,
+    readAt: n.readAt,
+    createdAt: n.createdAt,
   });
 
   return {
@@ -312,6 +388,8 @@ export function createMemoryStore(): Store {
         .map(
           (s): PublishedArticle => ({
             slug: s.slug as string,
+            submissionId: s.id,
+            authorId: s.authorId,
             title: s.title,
             summary: s.summary,
             category: s.category,
@@ -326,6 +404,268 @@ export function createMemoryStore(): Store {
     async findPublishedArticle(slug) {
       const all = await this.listPublishedArticles();
       return all.find((a) => a.slug === slug) ?? null;
+    },
+
+    // --- Revisi artikel publik ---------------------------------------------
+
+    async findOpenRevision(submissionId) {
+      const found = [...revisions.values()]
+        .filter(
+          (r) =>
+            r.submissionId === submissionId &&
+            (r.status === "pending" || r.status === "needs_revision"),
+        )
+        .sort((a, b) => desc(a.createdAt, b.createdAt))[0];
+      return found ? toRevision(found) : null;
+    },
+
+    async createRevision(input) {
+      const r: MemRevision = {
+        id: randomUUID(),
+        submissionId: input.submissionId,
+        authorId: input.authorId,
+        title: input.title,
+        summary: input.summary,
+        category: input.category,
+        body: input.body,
+        bodyJson: input.bodyJson ?? null,
+        references: input.references,
+        status: "pending",
+        reviewNote: null,
+        createdAt: now(),
+        updatedAt: now(),
+        reviewedAt: null,
+      };
+      revisions.set(r.id, r);
+      return toRevision(r);
+    },
+
+    async updateRevision(id, authorId, input) {
+      const r = revisions.get(id);
+      if (!r || r.authorId !== authorId) return null;
+      if (r.status !== "pending" && r.status !== "needs_revision") return null;
+      Object.assign(r, {
+        title: input.title,
+        summary: input.summary,
+        category: input.category,
+        body: input.body,
+        bodyJson: input.bodyJson ?? null,
+        references: input.references,
+        status: "pending",
+        reviewNote: null,
+        reviewedAt: null,
+        updatedAt: now(),
+      });
+      return toRevision(r);
+    },
+
+    async findRevision(id) {
+      const r = revisions.get(id);
+      return r ? toRevision(r) : null;
+    },
+
+    async listRevisionsByAuthor(authorId) {
+      return [...revisions.values()]
+        .filter((r) => r.authorId === authorId)
+        .sort((a, b) => desc(a.createdAt, b.createdAt))
+        .map(toRevision);
+    },
+
+    async listRevisions(opts: ListRevisionsOptions) {
+      const all = [...revisions.values()]
+        .filter((r) => (opts.status ? r.status === opts.status : true))
+        .sort((a, b) => desc(a.createdAt, b.createdAt))
+        .map(toRevision);
+      return page(all, opts.page, opts.pageSize);
+    },
+
+    async reviewRevision(input) {
+      const r = revisions.get(input.id);
+      if (!r) return null;
+      if (r.status !== "pending" && r.status !== "needs_revision") return null;
+      r.status = input.status;
+      r.reviewNote = input.note;
+      r.reviewedAt = now();
+      r.updatedAt = now();
+      return toRevision(r);
+    },
+
+    async publishRevision(input) {
+      const r = revisions.get(input.revisionId);
+      if (!r || r.status !== "pending") return null;
+
+      const s = subs.get(r.submissionId);
+      if (!s || s.status !== "approved") return null;
+
+      // Meniru efek transaksi PostgreSQL: konten publik diganti, slug tetap.
+      Object.assign(s, {
+        title: r.title,
+        summary: r.summary,
+        category: r.category,
+        body: r.body,
+        bodyJson: r.bodyJson,
+        references: r.references,
+        reviewNote: null,
+        reviewedAt: now(),
+      });
+
+      r.status = "approved";
+      r.reviewNote = input.note;
+      r.reviewedAt = now();
+      r.updatedAt = now();
+
+      return {
+        slug: s.slug as string,
+        submissionId: s.id,
+        authorId: s.authorId,
+        title: s.title,
+        summary: s.summary,
+        category: s.category,
+        body: s.body,
+        bodyJson: readRichDoc(s.bodyJson),
+        references: s.references,
+        authorName: name(s.authorId),
+        publishedAt: s.reviewedAt ?? s.createdAt,
+      };
+    },
+
+    // --- Draf autosave -----------------------------------------------------
+
+    async saveDraft(input) {
+      const existing = [...drafts.values()].find(
+        (d) =>
+          d.ownerId === input.ownerId &&
+          d.kind === input.kind &&
+          d.targetSubmissionId === input.targetSubmissionId,
+      );
+
+      if (existing) {
+        existing.payload = input.payload;
+        existing.updatedAt = now();
+        return toDraft(existing);
+      }
+
+      const d: MemDraft = {
+        id: randomUUID(),
+        ownerId: input.ownerId,
+        kind: input.kind,
+        targetSubmissionId: input.targetSubmissionId,
+        payload: input.payload,
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      drafts.set(d.id, d);
+      return toDraft(d);
+    },
+
+    async listDrafts(ownerId) {
+      return [...drafts.values()]
+        .filter((d) => d.ownerId === ownerId)
+        .sort((a, b) => desc(a.updatedAt, b.updatedAt))
+        .map(toDraft);
+    },
+
+    async findDraft(id) {
+      const d = drafts.get(id);
+      return d ? toDraft(d) : null;
+    },
+
+    async deleteDraft(id, ownerId) {
+      const d = drafts.get(id);
+      if (!d || d.ownerId !== ownerId) return false;
+      drafts.delete(id);
+      return true;
+    },
+
+    // --- Bookmark artikel --------------------------------------------------
+
+    async addBookmark(userId, articleSlug) {
+      const existing = [...bookmarks.values()].find(
+        (b) => b.userId === userId && b.articleSlug === articleSlug,
+      );
+      if (existing) return toBookmark(existing);
+
+      const b: MemBookmark = {
+        id: randomUUID(),
+        userId,
+        articleSlug,
+        createdAt: now(),
+      };
+      bookmarks.set(b.id, b);
+      return toBookmark(b);
+    },
+
+    async removeBookmark(userId, articleSlug) {
+      const existing = [...bookmarks.values()].find(
+        (b) => b.userId === userId && b.articleSlug === articleSlug,
+      );
+      if (!existing) return false;
+      bookmarks.delete(existing.id);
+      return true;
+    },
+
+    async listBookmarks(userId) {
+      return [...bookmarks.values()]
+        .filter((b) => b.userId === userId)
+        .sort((a, b) => desc(a.createdAt, b.createdAt))
+        .map(toBookmark);
+    },
+
+    async isBookmarked(userId, articleSlug) {
+      return [...bookmarks.values()].some(
+        (b) => b.userId === userId && b.articleSlug === articleSlug,
+      );
+    },
+
+    // --- Notifikasi --------------------------------------------------------
+
+    async createNotification(input) {
+      const duplicate = [...notifications.values()].some(
+        (n) => n.userId === input.userId && n.dedupeKey === input.dedupeKey,
+      );
+      if (duplicate) return null;
+
+      const n: MemNotification = {
+        id: randomUUID(),
+        userId: input.userId,
+        kind: input.kind,
+        title: input.title,
+        body: input.body,
+        href: input.href,
+        dedupeKey: input.dedupeKey,
+        readAt: null,
+        createdAt: now(),
+      };
+      notifications.set(n.id, n);
+      return toNotification(n);
+    },
+
+    async listNotifications(userId, limit) {
+      const mine = [...notifications.values()]
+        .filter((n) => n.userId === userId)
+        .sort((a, b) => desc(a.createdAt, b.createdAt));
+      return {
+        items: mine.slice(0, limit).map(toNotification),
+        unread: mine.filter((n) => n.readAt === null).length,
+      };
+    },
+
+    async markNotificationRead(id, userId) {
+      const n = notifications.get(id);
+      if (!n || n.userId !== userId) return null;
+      n.readAt ??= now();
+      return toNotification(n);
+    },
+
+    async markAllNotificationsRead(userId) {
+      let count = 0;
+      for (const n of notifications.values()) {
+        if (n.userId === userId && n.readAt === null) {
+          n.readAt = now();
+          count += 1;
+        }
+      }
+      return count;
     },
 
     async createReport(input) {

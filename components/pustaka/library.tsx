@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, PenLine, Search } from "lucide-react";
 import { ARTICLE_CATEGORIES, LIBRARY, readingMinutes } from "@/data/resources";
 import type { ArticleCategory } from "@/data/resources";
+import { BookmarkButton } from "./bookmark-button";
 
 export interface ContributionSummary {
   slug: string;
@@ -28,11 +29,17 @@ interface Item {
 
 export function Library({
   contributions = [],
+  bookmarkedSlugs = [],
+  canBookmark = false,
 }: {
   contributions?: ContributionSummary[];
+  /** Slug artikel yang sudah di-bookmark pengguna yang sedang masuk. */
+  bookmarkedSlugs?: string[];
+  canBookmark?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string>("Semua");
+  const bookmarked = useMemo(() => new Set(bookmarkedSlugs), [bookmarkedSlugs]);
 
   // Artikel bawaan dan kontribusi yang sudah disetujui digabung dalam satu
   // daftar agar pencarian dan filter berlaku untuk keduanya.
@@ -94,7 +101,7 @@ export function Library({
     <div>
       <div className="border-y-2 border-ink bg-surface">
         <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
               aria-hidden="true"
@@ -104,7 +111,7 @@ export function Library({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari topik, misalnya OTP, kurir, atau QRIS"
-              className="w-full border-2 border-ink bg-paper py-2.5 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted/70"
+              className="w-full min-w-0 border-2 border-ink bg-paper py-2.5 pl-9 pr-3 text-sm text-ink transition-colors placeholder:text-ink-muted/70 hover:border-ink focus:border-ink focus:outline-none"
               aria-label="Cari topik pustaka"
             />
           </div>
@@ -162,14 +169,16 @@ export function Library({
             return (
               <li
                 key={item.key}
-                className={featured ? "sm:col-span-2 lg:col-span-2" : ""}
+                className={`min-w-0 ${featured ? "sm:col-span-2 lg:col-span-2" : ""}`}
               >
-                <Link
-                  href={item.href}
-                  className="group flex h-full flex-col border-2 border-ink bg-surface transition-colors hover:bg-lime-soft"
-                >
-                  <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2">
-                    <span className="flex min-w-0 items-center gap-1.5">
+                {/*
+                  Kartu bukan satu <Link> penuh: tombol bookmark tidak boleh
+                  bersarang di dalam anchor. Area judul/ringkasan tetap tautan,
+                  header memuat kategori, waktu baca, dan tombol simpan.
+                */}
+                <article className="flex h-full min-w-0 flex-col border-2 border-ink bg-surface transition-colors hover:bg-lime-soft">
+                  <div className="flex min-w-0 items-center justify-between gap-2 border-b border-line px-4 py-2">
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5">
                       {item.authorName ? (
                         <PenLine
                           className="h-3 w-3 shrink-0 text-ink"
@@ -181,12 +190,23 @@ export function Library({
                         {item.authorName ? ` · ${item.authorName}` : ""}
                       </span>
                     </span>
-                    <span className="shrink-0 font-mono text-[10px] text-ink-muted">
-                      {item.minutes} menit
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="font-mono text-[10px] text-ink-muted">
+                        {item.minutes} menit
+                      </span>
+                      <BookmarkButton
+                        slug={item.key}
+                        initialSaved={bookmarked.has(item.key)}
+                        canSave={canBookmark}
+                        variant="icon"
+                      />
                     </span>
                   </div>
-                  <div
-                    className={`flex flex-1 flex-col px-4 py-4 ${featured ? "sm:py-5" : ""}`}
+                  <Link
+                    href={item.href}
+                    className={`group flex flex-1 flex-col px-4 py-4 ${
+                      featured ? "sm:py-5" : ""
+                    }`}
                   >
                     <h3
                       className={`font-black leading-tight tracking-tight text-ink ${
@@ -205,8 +225,8 @@ export function Library({
                         aria-hidden="true"
                       />
                     </span>
-                  </div>
-                </Link>
+                  </Link>
+                </article>
               </li>
             );
           })}

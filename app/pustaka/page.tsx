@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getStore } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth/guards";
 import { listPublishedArticlesSafe } from "@/lib/db/published";
 import { Library } from "@/components/pustaka/library";
 import type { ContributionSummary } from "@/components/pustaka/library";
@@ -17,6 +19,10 @@ function minutesFor(body: string): number {
 }
 
 export default async function PustakaPage() {
+  const user = await getCurrentUser();
+
+  // Artikel kontribusi dibaca dengan pembungkus tahan gangguan database agar
+  // artikel bawaan tetap tampil bila PostgreSQL sedang tidak dapat dihubungi.
   const published = await listPublishedArticlesSafe();
 
   const contributions: ContributionSummary[] = published.map((article) => ({
@@ -27,6 +33,12 @@ export default async function PustakaPage() {
     minutes: minutesFor(`${article.summary} ${article.body}`),
     authorName: article.authorName,
   }));
+
+  // Bookmark hanya dimuat untuk pengguna yang masuk; slug dipakai sebagai
+  // identitas stabil untuk artikel bawaan maupun kontribusi.
+  const bookmarkedSlugs = user
+    ? (await getStore().listBookmarks(user.id)).map((item) => item.articleSlug)
+    : [];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
@@ -43,7 +55,11 @@ export default async function PustakaPage() {
           disetujui admin.
         </p>
       </header>
-      <Library contributions={contributions} />
+      <Library
+        contributions={contributions}
+        bookmarkedSlugs={bookmarkedSlugs}
+        canBookmark={Boolean(user)}
+      />
     </div>
   );
 }

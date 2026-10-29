@@ -18,7 +18,7 @@ proteksi web (proxy, WAF, rate limiting edge, Turnstile).
 | `package.json` | `build: next build`, `start: next start`, `engines.node: 22.x`, `db:migrate` |
 | `Procfile` | `release: node scripts/migrate.mjs` dan `web: npm start` |
 | `app.json` | metadata aplikasi + buildpack `heroku/nodejs` |
-| `lib/db/migrations/*.sql` | migration PostgreSQL terlacak (termasuk `body_json` untuk artikel kaya) |
+| `lib/db/migrations/*.sql` | migration PostgreSQL terlacak (`0002` artikel kaya, `0003` revisi/draf/bookmark/notifikasi) |
 | `scripts/migrate.mjs` | menjalankan migration yang belum diterapkan |
 | `scripts/bootstrap-admin.mjs` | menaikkan role satu akun yang sudah terdaftar menjadi admin |
 | `.env.example` | daftar variabel lingkungan tanpa nilai rahasia |
@@ -50,6 +50,17 @@ issue, atau kode. Bila memakai database eksternal, set manual:
 ```bash
 heroku config:set DATABASE_URL=... -a <nama-app>
 ```
+
+### Tabel yang dibuat migration
+
+| Migration | Isi |
+|---|---|
+| `0001_init.sql` | `users`, `threads`, `replies`, `submissions`, `reports`, `moderation_log`, `rate_limits` |
+| `0002_submission_rich_body.sql` | kolom `submissions.body_json` (JSONB) untuk artikel kaya |
+| `0003_revisions_drafts_bookmarks_notifications.sql` | enum `thread_category.lainnya`, `submission_revisions`, `drafts`, `article_bookmarks`, `notifications` |
+
+Semua migration bersifat aditif. Release phase menjalankannya otomatis sebelum
+dyno baru menerima trafik.
 
 ### Batas koneksi
 

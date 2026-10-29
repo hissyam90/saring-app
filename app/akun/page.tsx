@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getStore } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { buttonClass, Panel, Tag, formatDate } from "@/components/ui/primitives";
+import { DraftList, type DraftRow } from "@/components/komunitas/draft-list";
 import type { SubmissionStatus } from "@/lib/db/types";
 
 export const metadata: Metadata = { title: "Akun saya" };
@@ -21,10 +22,29 @@ export default async function AkunPage() {
   if (!user) redirect("/masuk");
 
   const store = getStore();
-  const [mine, submissions] = await Promise.all([
+  const [mine, submissions, drafts, bookmarks] = await Promise.all([
     store.listThreadsByAuthor(user.id),
     store.listSubmissionsByAuthor(user.id),
+    store.listDrafts(user.id),
+    store.listBookmarks(user.id),
   ]);
+
+  const draftRows: DraftRow[] = drafts.map((draft) => {
+    const payload = draft.payload as { title?: string };
+    return {
+      id: draft.id,
+      kind: draft.kind,
+      targetSubmissionId: draft.targetSubmissionId,
+      title: payload.title ?? "",
+      updatedAtLabel: formatDate(draft.updatedAt),
+      resumeHref:
+        draft.kind === "thread"
+          ? `/komunitas/baru?draft=${draft.id}`
+          : draft.targetSubmissionId
+            ? `/komunitas/artikel?edit=${draft.targetSubmissionId}&draft=${draft.id}`
+            : `/komunitas/artikel?draft=${draft.id}`,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
@@ -48,6 +68,9 @@ export default async function AkunPage() {
         <Link href="/komunitas/artikel" className={buttonClass("secondary")}>
           Ajukan artikel
         </Link>
+        <Link href="/akun/tersimpan" className={buttonClass("secondary")}>
+          Artikel tersimpan ({bookmarks.length})
+        </Link>
         {user.role === "admin" ? (
           <Link href="/admin" className={buttonClass("secondary")}>
             Admin dashboard
@@ -56,6 +79,9 @@ export default async function AkunPage() {
       </div>
 
       <div className="mt-5 grid gap-4">
+        <Panel title={`Draf saya (${draftRows.length})`}>
+          <DraftList drafts={draftRows} />
+        </Panel>
         <Panel title={`Pertanyaan saya (${mine.length})`}>
           {mine.length === 0 ? (
             <p className="text-sm text-ink-muted">Belum ada pertanyaan.</p>

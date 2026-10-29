@@ -19,7 +19,8 @@ export type ThreadCategory =
   | "transaksi"
   | "lowongan"
   | "penyamaran"
-  | "akun";
+  | "akun"
+  | "lainnya";
 
 export const THREAD_CATEGORIES: { id: ThreadCategory; label: string }[] = [
   { id: "phishing", label: "Phishing" },
@@ -27,7 +28,21 @@ export const THREAD_CATEGORIES: { id: ThreadCategory; label: string }[] = [
   { id: "lowongan", label: "Lowongan kerja palsu" },
   { id: "penyamaran", label: "Penyamaran identitas" },
   { id: "akun", label: "Keamanan akun" },
+  { id: "lainnya", label: "Lainnya" },
 ];
+
+/**
+ * Kategori default untuk pertanyaan baru.
+ *
+ * "Lainnya" dipakai sebagai default karena banyak pertanyaan pengguna tidak
+ * langsung cocok dengan satu kategori. Pengguna tetap dapat memilih kategori
+ * lain, dan kategori pertanyaan lama tidak diubah otomatis oleh migration.
+ */
+export const DEFAULT_THREAD_CATEGORY: ThreadCategory = "lainnya";
+
+export function threadCategoryLabel(id: string): string {
+  return THREAD_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+}
 
 export type SubmissionStatus =
   | "pending"
@@ -88,6 +103,10 @@ export interface Submission {
 /** Artikel kontribusi yang sudah disetujui dan tampil di Pustaka. */
 export interface PublishedArticle {
   slug: string;
+  /** Baris `submissions` sumber artikel ini (untuk alur revisi). */
+  submissionId: string;
+  /** Penulis artikel, dipakai untuk menampilkan aksi Edit pemilik. */
+  authorId: string;
   title: string;
   summary: string;
   category: string;
@@ -96,6 +115,101 @@ export interface PublishedArticle {
   references: string | null;
   authorName: string;
   publishedAt: string;
+}
+
+/** Status revisi artikel publik. */
+export type RevisionStatus =
+  | "pending"
+  | "approved"
+  | "needs_revision"
+  | "rejected";
+
+/**
+ * Revisi untuk artikel yang sudah terbit.
+ *
+ * Konten publik tetap berada di `submissions`. Baris revisi hanya berisi
+ * **usulan** perubahan; ia menjadi publik hanya setelah admin menyetujuinya
+ * (lihat `Store.publishRevision`).
+ */
+export interface SubmissionRevision {
+  id: string;
+  submissionId: string;
+  authorId: string;
+  authorName: string;
+  title: string;
+  summary: string;
+  category: string;
+  body: string;
+  bodyJson: RichDoc | null;
+  references: string | null;
+  status: RevisionStatus;
+  reviewNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt: string | null;
+}
+
+export type DraftKind = "article" | "thread";
+
+/** Isi draf yang disimpan sebagai JSONB di PostgreSQL. */
+export interface ArticleDraftPayload {
+  title: string;
+  summary: string;
+  category: string;
+  bodyJson: RichDoc | null;
+  references: string;
+}
+
+export interface ThreadDraftPayload {
+  title: string;
+  category: string;
+  body: string;
+  articleSlug: string;
+}
+
+export type DraftPayload = ArticleDraftPayload | ThreadDraftPayload;
+
+export interface Draft {
+  id: string;
+  ownerId: string;
+  kind: DraftKind;
+  /** Diisi hanya untuk draf revisi artikel yang sudah terbit. */
+  targetSubmissionId: string | null;
+  payload: DraftPayload;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ArticleBookmark {
+  id: string;
+  userId: string;
+  articleSlug: string;
+  createdAt: string;
+}
+
+export type NotificationKind =
+  | "thread_reply"
+  | "article_approved"
+  | "article_needs_revision"
+  | "article_rejected"
+  | "revision_approved"
+  | "revision_needs_revision"
+  | "revision_rejected";
+
+export interface Notification {
+  id: string;
+  userId: string;
+  kind: NotificationKind;
+  title: string;
+  body: string | null;
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationList {
+  items: Notification[];
+  unread: number;
 }
 
 export interface Report {

@@ -14,23 +14,36 @@ import {
   countRichTextCharacters,
   type RichDoc,
 } from "@/lib/content/rich-text";
+import type { ArticleDraftPayload } from "@/lib/db/types";
+import { draftStateLabel, useDraftAutosave } from "./use-draft-autosave";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
 const inputClass =
   "mt-1 w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70";
 
+interface ArticleFields {
+  title: string;
+  summary: string;
+  category: string;
+  body: string;
+  bodyJson: RichDoc | null;
+  references: string | null;
+}
+
 export function SubmissionForm({
   initial,
+  revision,
+  initialDraft,
 }: {
-  initial?: {
-    id: string;
-    title: string;
-    summary: string;
-    category: string;
-    body: string;
-    bodyJson: RichDoc | null;
-    references: string | null;
-  };
+  /** Pengajuan yang belum terbit (pending / needs_revision). */
+  initial?: ArticleFields & { id: string };
+  /**
+   * Artikel yang sudah terbit. Mengirim form ini membuat **revisi terpisah**;
+   * konten publik tidak berubah sampai admin menyetujui.
+   */
+  revision?: ArticleFields & { submissionId: string; slug: string };
+  /** Draf yang dipulihkan dari "Draf Saya". */
+  initialDraft?: ArticleDraftPayload | null;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -43,22 +56,57 @@ export function SubmissionForm({
   const [editorKey, setEditorKey] = useState(0);
   const onToken = useCallback((v: string | null) => setToken(v), []);
 
-  const legacyBody = initial && !initial.bodyJson ? initial.body : "";
+  const source = revision ?? initial;
+  const legacyBody = source && !source.bodyJson ? source.body : "";
 
   /**
    * Dokumen awal editor. Artikel lama (plain text) dikonversi menjadi paragraf
    * agar isinya tidak hilang dan bisa langsung dirapikan formatnya.
    */
   const initialDoc = useMemo<RichDoc>(() => {
-    if (initial?.bodyJson) return initial.bodyJson;
+    if (initialDraft?.bodyJson) return initialDraft.bodyJson;
+    if (source?.bodyJson) return source.bodyJson;
     if (legacyBody.trim()) return plainTextToRichDoc(legacyBody);
     return EMPTY_RICH_DOC;
-  }, [initial?.bodyJson, legacyBody]);
+  }, [initialDraft?.bodyJson, source?.bodyJson, legacyBody]);
 
   const [doc, setDoc] = useState<RichDoc>(initialDoc);
   const characters = useMemo(() => countRichTextCharacters(doc), [doc]);
   // Id editor unik per form: halaman pengajuan dapat memuat beberapa form.
-  const bodyFieldId = initial ? `artikel-editor-${initial.id}` : "artikel-editor";
+  const bodyFieldId = revision
+    ? `artikel-editor-rev-${revision.submissionId}`
+    : initial
+      ? `artikel-editor-${initial.id}`
+      : "artikel-editor";
+
+  // --- Autosave draf -------------------------------------------------------
+  const [title, setTitle] = useState(initialDraft?.title ?? source?.title ?? "");
+  const [summary, setSummary] = useState(
+    initialDraft?.summary ?? source?.summary ?? "",
+  );
+  const [category, setCategory] = useState(
+    initialDraft?.category ?? source?.category ?? "",
+  );
+  const [references, setReferences] = useState(
+    initialDraft?.references ?? source?.references ?? "",
+  );
+
+  const draftPayload = useMemo<ArticleDraftPayload>(
+    () => ({ title, summary, category, bodyJson: doc, references }),
+    [title, summary, category, doc, references],
+  );
+
+  const hasContent =
+    title.trim().length > 0 || summary.trim().length > 0 || characters > 0;
+
+  const draft = useDraftAutosave({
+    kind: "article",
+    // Draf revisi terikat ke artikel publiknya agar tidak menimpa draf artikel
+    // baru dan tidak pernah menyentuh versi publik.
+    targetSubmissionId: revision?.submissionId ?? null,
+    payload: draftPayload,
+    enabled: hasContent,
+  });
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -67,23 +115,22 @@ export function SubmissionForm({
     setError(null);
     setSaved(null);
 
-    const form = new FormData(event.currentTarget);
-    const title = String(form.get("title") ?? "").trim();
-    const summary = String(form.get("summary") ?? "").trim();
-    const category = String(form.get("category") ?? "").trim();
-    const references = String(form.get("references") ?? "").trim();
+    const trimmedTitle = title.trim();
+    const trimmedSummary = summary.trim();
+    const trimmedCategory = category.trim();
+    const trimmedReferences = references.trim();
 
     // Validasi awal di klien untuk umpan balik cepat. Server tetap memeriksa
     // ulang seluruh aturan yang sama.
-    if (title.length < 10) {
+    if (trimmedTitle.length < 10) {
       setError("Judul minimal 10 karakter.");
       return;
     }
-    if (summary.length < 40) {
+    if (trimmedSummary.length < 40) {
       setError("Ringkasan minimal 40 karakter.");
       return;
     }
-    if (category.length < 3) {
+    if (trimmedCategory.length < 3) {
       setError("Kategori wajib diisi.");
       return;
     }
@@ -99,28 +146,34 @@ export function SubmissionForm({
     }
 
     const payload: Record<string, unknown> = {
-      title,
-      summary,
-      category,
+      title: trimmedTitle,
+      summary: trimmedSummary,
+      category: trimmedCategory,
       // Dokumen rich text dikirim apa adanya; server memvalidasi allowlist lalu
       // menurunkan teks biasa sendiri.
       bodyJson: doc,
     };
-    if (references) payload.references = references;
+    if (trimmedReferences) payload.references = trimmedReferences;
     if (token) payload.captchaToken = token;
+
+    // Tiga tujuan berbeda:
+    // - revisi artikel terbit → /revisions (konten publik tidak berubah)
+    // - perbaikan pengajuan belum terbit → PATCH submission
+    // - pengajuan baru → POST submission
+    const target = revision
+      ? `/api/community/submissions/${revision.submissionId}/revisions`
+      : initial
+        ? `/api/community/submissions/${initial.id}`
+        : "/api/community/submissions";
+    const method = revision ? "POST" : initial ? "PATCH" : "POST";
 
     setPending(true);
     try {
-      const response = await fetch(
-        initial
-          ? `/api/community/submissions/${initial.id}`
-          : "/api/community/submissions",
-        {
-          method: initial ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const response = await fetch(target, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
         // Isi editor sengaja tidak diubah agar tulisan tidak hilang.
@@ -129,14 +182,23 @@ export function SubmissionForm({
       }
 
       setSaved(
-        initial
-          ? "Perubahan tersimpan dan pengajuan kembali menunggu tinjauan admin."
-          : "Artikel terkirim. Statusnya menunggu tinjauan admin dan belum tampil di Pustaka.",
+        revision
+          ? "Revisi terkirim. Artikel yang sudah terbit tetap tampil sampai admin menyetujui revisi ini."
+          : initial
+            ? "Perubahan tersimpan dan pengajuan kembali menunggu tinjauan admin."
+            : "Artikel terkirim. Statusnya menunggu tinjauan admin dan belum tampil di Pustaka.",
       );
 
-      if (!initial) {
+      // Draf hanya dihapus setelah server mengonfirmasi penyimpanan.
+      await draft.discard();
+
+      if (!initial && !revision) {
         // Form baru dikosongkan hanya setelah server benar-benar menyimpan.
         formRef.current?.reset();
+        setTitle("");
+        setSummary("");
+        setCategory("");
+        setReferences("");
         setDoc(EMPTY_RICH_DOC);
         setEditorKey((key) => key + 1);
         setPreview(false);
@@ -152,7 +214,15 @@ export function SubmissionForm({
       setPending(false);
     }
   };  return (
-    <form ref={formRef} onSubmit={submit} className="grid gap-3" noValidate>
+    <form
+      ref={formRef}
+      onSubmit={submit}
+      // `[&>*]:min-w-0` wajib: item grid memiliki `min-width: auto`, sehingga URL
+      // panjang di dalam editor dapat memaksa seluruh form melebar melewati
+      // border neobrutalism (terukur 2232px pada viewport 1280px).
+      className="grid min-w-0 gap-3 [&>*]:min-w-0"
+      noValidate
+    >
       <div>
         <label htmlFor="title" className="text-sm font-semibold text-ink">
           Judul artikel
@@ -163,7 +233,8 @@ export function SubmissionForm({
           required
           minLength={10}
           maxLength={120}
-          defaultValue={initial?.title}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
           className={inputClass}
         />
       </div>
@@ -178,7 +249,8 @@ export function SubmissionForm({
           minLength={40}
           maxLength={300}
           rows={2}
-          defaultValue={initial?.summary}
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
           className={inputClass}
           placeholder="Dua sampai tiga kalimat tentang isi artikel"
         />
@@ -193,11 +265,13 @@ export function SubmissionForm({
           required
           minLength={3}
           maxLength={40}
-          defaultValue={initial?.category}
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
           className={inputClass}
           placeholder="Misalnya: Rekayasa sosial"
         />
-      </div>      <div>
+      </div>
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p id="body-label" className="text-sm font-semibold text-ink">
             Isi artikel
@@ -218,7 +292,7 @@ export function SubmissionForm({
         </div>
 
         {/* Editor tetap terpasang saat pratinjau dibuka agar isi tidak hilang. */}
-        <div className={`mt-1 ${preview ? "hidden" : ""}`}>
+        <div className={`mt-1 min-w-0 ${preview ? "hidden" : ""}`}>
           <RichTextEditor
             key={editorKey}
             id={bodyFieldId}
@@ -265,7 +339,8 @@ export function SubmissionForm({
           name="references"
           maxLength={1000}
           rows={2}
-          defaultValue={initial?.references ?? ""}
+          value={references}
+          onChange={(event) => setReferences(event.target.value)}
           className={inputClass}
           placeholder="Tautan sumber resmi, satu per baris"
         />
@@ -276,16 +351,31 @@ export function SubmissionForm({
       {error ? <Notice tone="error">{error}</Notice> : null}
       {saved ? <Notice tone="success">{saved}</Notice> : null}
 
-      <button type="submit" disabled={pending} className={buttonClass("primary")}>
-        {pending
-          ? "Menyimpan..."
-          : initial
-            ? "Kirim ulang untuk ditinjau"
-            : "Ajukan artikel"}
-      </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button type="submit" disabled={pending} className={buttonClass("primary")}>
+          {pending
+            ? "Menyimpan..."
+            : revision
+              ? "Kirim revisi untuk ditinjau"
+              : initial
+                ? "Kirim ulang untuk ditinjau"
+                : "Ajukan artikel"}
+        </button>
+        <p
+          aria-live="polite"
+          className={`font-mono text-[11px] ${
+            draft.state === "error" ? "text-ink-coral" : "text-ink-muted"
+          }`}
+        >
+          {draftStateLabel(draft.state, draft.savedAt)}
+        </p>
+      </div>
       <p className="text-xs leading-5 text-ink-muted">
         Teks dan tautan disimpan sebagai struktur tervalidasi, bukan HTML mentah.
         Format di luar daftar toolbar tidak disimpan.
+        {revision
+          ? " Revisi tidak mengubah artikel publik sebelum disetujui admin."
+          : ""}
       </p>
     </form>
   );

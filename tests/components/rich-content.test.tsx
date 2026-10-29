@@ -224,7 +224,7 @@ describe("RichContent: media", () => {
       content: [
         {
           type: "image",
-          attrs: { src: "https://i.imgur.com/L0pP68gl.jpg", alt: "Contoh" },
+          attrs: { src: "https://i.postimg.cc/abcd1234/foto.jpg", alt: "Contoh" },
         },
       ],
     };
@@ -233,20 +233,34 @@ describe("RichContent: media", () => {
     const img = container.querySelector("img");
 
     expect(img).not.toBeNull();
-    expect(img).toHaveAttribute("src", "https://i.imgur.com/L0pP68gl.jpg");
+    expect(img).toHaveAttribute("src", "https://i.postimg.cc/abcd1234/foto.jpg");
     expect(img).toHaveAttribute("alt", "Contoh");
     expect(img).toHaveAttribute("loading", "lazy");
-    // Imgur menolak hotlink bila ada Referer asing (403), jadi atribut ini
-    // wajib ada agar gambar benar-benar tampil.
+    // Host gambar menolak hotlink bila Referer asing dikirim (403).
     expect(img).toHaveAttribute("referrerpolicy", "no-referrer");
     expect(img?.className).toContain("max-w-full");
     expect(img?.className).toContain("h-auto");
   });
 
-  it("merender embed album Imgur sebagai iframe resmi dengan sandbox", () => {
+  it("merender gambar dari hosting HTTPS lain tanpa ekstensi", () => {
     const doc: RichDoc = {
       type: "doc",
-      content: [{ type: "imgurEmbed", attrs: { id: "l4mKcOj", kind: "album" } }],
+      content: [
+        { type: "image", attrs: { src: "https://cdn.contoh.test/gambar/12345" } },
+      ],
+    };
+
+    const { container } = render(<RichContent doc={doc} />);
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://cdn.contoh.test/gambar/12345",
+    );
+  });
+
+  it("merender embed media sebagai iframe resmi dengan sandbox", () => {
+    const doc: RichDoc = {
+      type: "doc",
+      content: [{ type: "mediaEmbed", attrs: { provider: "imgur", id: "l4mKcOj" } }],
     };
 
     const { container } = render(<RichContent doc={doc} />);
@@ -256,45 +270,28 @@ describe("RichContent: media", () => {
       "src",
       "https://imgur.com/a/l4mKcOj/embed?pub=true",
     );
-    expect(iframe).toHaveAttribute("title", "Album Imgur l4mKcOj");
     expect(iframe).toHaveAttribute("referrerpolicy", "no-referrer");
     const sandbox = iframe?.getAttribute("sandbox") ?? "";
     expect(sandbox).toContain("allow-scripts");
     expect(sandbox).not.toContain("allow-top-navigation");
 
     // Tautan keluar yang aman selalu tersedia sebagai fallback.
-    const link = screen.getByRole("link", { name: /Buka di Imgur/i });
+    const link = screen.getByRole("link", { name: /Buka di imgur/i });
     expect(link).toHaveAttribute("href", "https://imgur.com/a/l4mKcOj");
     expect(link.getAttribute("rel")).toContain("noopener");
     expect(link.getAttribute("rel")).toContain("noreferrer");
   });
 
-  it("merender postingan Imgur tunggal sebagai gambar langsung", () => {
-    const doc: RichDoc = {
-      type: "doc",
-      content: [{ type: "imgurEmbed", attrs: { id: "L0pP68gl", kind: "image" } }],
-    };
-
-    const { container } = render(<RichContent doc={doc} />);
-
-    expect(container.querySelector("iframe")).toBeNull();
-    expect(container.querySelector("img")).toHaveAttribute(
-      "src",
-      "https://i.imgur.com/L0pP68gl.jpg",
-    );
-  });
-
-  it("tidak merender embed dengan atribut tidak lengkap", () => {
+  it("tidak merender embed dengan provider atau id tidak valid", () => {
     const doc = {
       type: "doc",
       content: [
-        { type: "imgurEmbed", attrs: { id: "l4mKcOj", kind: "video" } },
-        { type: "imgurEmbed", attrs: { kind: "album" } },
+        { type: "mediaEmbed", attrs: { provider: "evil", id: "l4mKcOj" } },
+        { type: "mediaEmbed", attrs: { provider: "imgur" } },
       ],
     } as unknown as RichDoc;
 
     const { container } = render(<RichContent doc={doc} />);
-
     expect(container.querySelector("iframe")).toBeNull();
   });
 
@@ -313,7 +310,7 @@ describe("RichContent: media", () => {
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
 
-    // Simulasikan kegagalan muat berkas. `fireEvent.error` dipakai karena
+    // Simulasikan kegagalan muat berkas. \`fireEvent.error\` dipakai karena
     // React mendengarkan event media di root, bukan pada elemen.
     fireEvent.error(img as HTMLImageElement);
 

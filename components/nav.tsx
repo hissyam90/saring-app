@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AccountMenu } from "@/components/auth/account-menu";
+import { NotificationBell } from "@/components/komunitas/notification-bell";
 
 const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Beranda", icon: House },
@@ -67,20 +68,23 @@ export function Nav() {
             </span>
           </span>
         </Link>
-        <button
-          ref={menuButtonRef}
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-11 w-11 items-center justify-center bg-lime text-ink active:bg-lime-deep"
-          aria-expanded={open}
-          aria-label={open ? "Tutup menu" : "Buka menu"}
-        >
-          {open ? (
-            <X className="h-5 w-5" aria-hidden="true" />
-          ) : (
-            <Menu className="h-5 w-5" aria-hidden="true" />
-          )}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell variant="mobile" />
+          <button
+            ref={menuButtonRef}
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="inline-flex h-11 w-11 items-center justify-center bg-lime text-ink active:bg-lime-deep"
+            aria-expanded={open}
+            aria-label={open ? "Tutup menu" : "Buka menu"}
+          >
+            {open ? (
+              <X className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Mobile menu overlay */}
@@ -182,6 +186,7 @@ export function Nav() {
         </nav>
 
         <div className="border-t border-white/10 px-3 py-3">
+          <NotificationBell variant="desktop" />
           <AccountMenu variant="desktop" />
         </div>
 

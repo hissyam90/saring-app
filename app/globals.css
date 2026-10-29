@@ -44,7 +44,10 @@
 }
 
 :root {
-  color-scheme: light;
+  /* Saring tidak memiliki kontrol tema manual: skema warna mengikuti sistem.
+     `light dark` memungkinkan kontrol bawaan peramban (scrollbar, form control)
+     ikut menyesuaikan tanpa JavaScript. */
+  color-scheme: light dark;
 }
 
 body {
@@ -99,6 +102,8 @@ body {
  * ------------------------------------------------------------------------- */
 .saring-editor-shell {
   min-height: 300px;
+  min-width: 0;
+  max-width: 100%;
   cursor: text;
 }
 
@@ -110,6 +115,11 @@ body {
 
 .saring-editor {
   min-height: 300px;
+  /* `min-width: 0` wajib: tanpa ini, isi (URL panjang, gambar, embed) ikut
+     menentukan lebar minimum dan editor dapat melebar melewati border
+     neobrutalism pada layar sempit. */
+  min-width: 0;
+  max-width: 100%;
   padding: 1.15rem 1.25rem 2rem;
   outline: none;
   font-size: 15px;
@@ -231,6 +241,15 @@ body {
   background-color: var(--color-surface);
 }
 
+/* Gambar, embed, dan media tidak boleh melebihi area tulis. */
+.saring-editor img,
+.saring-editor iframe,
+.saring-editor figure,
+.saring-editor .saring-embed {
+  max-width: 100%;
+  min-width: 0;
+}
+
 /* Node media yang sedang dipilih diberi penanda jelas (neobrutalism). */
 .saring-editor img.ProseMirror-selectednode,
 .saring-editor .saring-embed.ProseMirror-selectednode {
@@ -248,3 +267,45 @@ body {
   opacity: 0.75;
 }
 
+
+/**
+ * Tema otomatis berdasarkan preferensi sistem perangkat.
+ *
+ * Tidak ada tombol tema dan tidak ada nilai yang disimpan di localStorage atau
+ * database, sehingga tidak mungkin terjadi hydration mismatch: seluruhnya CSS.
+ * Token dibalik agar neobrutalism tetap terbaca.
+ */
+@layer base {
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-ink: #f1f3f8;
+      --color-ink-soft: #cfd6e4;
+      --color-ink-muted: #9aa4b8;
+      --color-paper: #0d131d;
+      --color-surface: #161e2c;
+      --color-line: #2d3a4f;
+      --color-graphite: #070b12;
+      --color-graphite-soft: #121a27;
+      --color-hero: #1b2415;
+      --color-hero-edge: #2a3a1e;
+      --color-lime-soft: #25301a;
+      --color-amber: #f0b862;
+      --color-amber-text: #f5cd8b;
+      --color-amber-soft: #2f2716;
+      --color-warn: #f0b862;
+      --color-warn-soft: #2f2716;
+      --color-coral: #ff8a76;
+      --color-coral-soft: #331814;
+      --color-ink-coral: #ffb3a5;
+      --color-safe: #6fdcae;
+      --color-safe-soft: #12281f;
+    }
+
+    .shadow-neo,
+    .shadow-neo-sm,
+    .shadow-neo-lg,
+    .shadow-neo-xl {
+      box-shadow: 2px 2px 0 0 var(--color-line);
+    }
+  }
+}

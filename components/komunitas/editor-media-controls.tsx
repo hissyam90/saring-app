@@ -4,29 +4,33 @@ import { useEffect, useRef, useState } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { JSONContent } from "@tiptap/core";
-import { ImagePlus, Images, Trash2 } from "lucide-react";
+import { ImagePlus, Trash2 } from "lucide-react";
 import {
-  RICH_TEXT_LIMITS,
-  parseImgurEmbed,
-  sanitizeImageSrc,
-} from "@/lib/content/rich-text";
+  mediaEmbedUrl,
+  mediaPageUrl,
+  resolveMediaInput,
+  type MediaProvider,
+  type ResolvedMedia,
+} from "@/lib/content/media";
+import { RICH_TEXT_LIMITS } from "@/lib/content/rich-text";
 
 /**
- * Kontrol media pada toolbar editor.
+ * Satu dialog untuk semua media.
  *
- * Dua dialog terpisah supaya penulis tidak bingung antara **hyperlink**,
- * **gambar langsung**, dan **embed album Imgur**:
+ * Pengguna tidak perlu memilih provider lebih dulu: tempel URL gambar langsung,
+ * URL album, HTML `<img>`, BBCode `[img]`, atau kode embed resmi — semuanya
+ * diurai oleh `resolveMediaInput` dan ditampilkan sebagai pratinjau sebelum
+ * disisipkan.
  *
- * - `ImageControl` menyisipkan/mengganti node `image` (URL berkas gambar).
- * - `ImgurControl` menyisipkan/mengganti node `imgurEmbed` dari URL album,
- *   URL postingan, atau kode embed resmi.
+ * Hasil yang disimpan selalu terstruktur:
+ *   - gambar → node `image` { src, alt }
+ *   - embed  → node `mediaEmbed` { provider, id }
  *
- * Semua nilai divalidasi dengan fungsi yang sama yang dipakai server, sehingga
- * yang bisa disisipkan di editor tidak akan ditolak API karena alasan berbeda.
+ * Markup yang ditempel tidak pernah disimpan; hanya URL atau ID tervalidasi.
  */
 
 const PANEL =
-  "absolute right-0 top-11 z-20 w-[min(22rem,calc(100vw-3rem))] border-2 border-ink bg-surface p-2.5 shadow-neo-sm";
+  "absolute right-0 top-11 z-20 w-[min(24rem,calc(100vw-3rem))] border-2 border-ink bg-surface p-2.5 shadow-neo-sm";
 
 const INPUT =
   "mt-1 w-full border-2 border-ink bg-paper px-2 py-1.5 text-sm text-ink placeholder:text-ink-muted/70";
@@ -35,7 +39,7 @@ const LABEL =
   "block text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted";
 
 const PRIMARY_BTN =
-  "inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep";
+  "inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50";
 
 const SECONDARY_BTN =
   "inline-flex min-h-8 items-center gap-1 border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-paper";
@@ -48,14 +52,68 @@ const ERROR_BOX =
 
 const HINT = "mt-1 text-[11px] leading-4 text-ink-muted";
 
-/**
- * Menyisipkan node blok tanpa menghapus media yang sedang terpilih.
- *
- * `insertContent` mengganti isi seleksi. Bila seleksi berupa `NodeSelection`
- * (mis. gambar yang baru disisipkan masih terpilih), media baru akan menimpa
- * media lama. Karena itu node atom yang terpilih disisipkan **setelah**
- * posisinya, bukan menggantikannya.
- */
+/** Pratinjau media sebelum disisipkan. */
+function MediaPreview({ media }: { media: ResolvedMedia | null }) {
+  if (!media) return null;
+
+  if (media.kind === "unsupported") {
+    return (
+      <p className="mt-1 border-l-4 border-l-amber bg-amber-soft px-2 py-1 text-[11px] leading-4 text-ink">
+        {media.hint}
+      </p>
+    );
+  }
+
+  if (media.kind === "image") {
+    return (
+      <div className="mt-2 border-2 border-ink bg-paper p-1.5">
+        <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+          Pratinjau gambar
+        </p>
+        {/* eslint-disable-next-line @next/next/no-img-element -- pratinjau URL eksternal pengguna */}
+        <img
+          src={media.src}
+          alt=""
+          referrerPolicy="no-referrer"
+          loading="lazy"
+          className="max-h-40 w-auto max-w-full border border-line bg-surface"
+        />
+        <p className="mt-1 break-all font-mono text-[10px] leading-4 text-ink-muted">
+          {media.src}
+        </p>
+      </div>
+    );
+  }
+
+  const embedSrc = mediaEmbedUrl(media.provider, media.id);
+  return (
+    <div className="mt-2 border-2 border-ink bg-paper p-1.5">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+        Pratinjau embed {media.provider}
+      </p>
+      {embedSrc ? (
+        <iframe
+          src={embedSrc}
+          title={`Pratinjau embed ${media.provider}`}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
+          className="h-48 w-full max-w-full border border-line"
+        />
+      ) : null}
+      <a
+        href={mediaPageUrl(media.provider, media.id)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 inline-block break-all text-[10px] font-semibold text-ink underline"
+      >
+        {mediaPageUrl(media.provider, media.id)}
+      </a>
+    </div>
+  );
+}
+
+/** Menyisipkan node blok tanpa menghapus media yang sedang terpilih. */
 function insertBlock(editor: Editor, content: JSONContent): void {
   const { selection } = editor.state;
   if (selection instanceof NodeSelection) {
@@ -65,201 +123,30 @@ function insertBlock(editor: Editor, content: JSONContent): void {
   editor.chain().focus().insertContent(content).run();
 }
 
-function ToolbarButton({
-  label,
-  icon: Icon,
-  active,
-  onClick,
-}: {
-  label: string;
-  icon: typeof ImagePlus;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-pressed={active}
-      title={label}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border-2 transition-colors ${
-        active
-          ? "border-ink bg-ink text-paper"
-          : "border-transparent bg-surface text-ink-soft hover:border-ink hover:text-ink"
-      }`}
-    >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </button>
-  );
-}
-
-/** Dialog sisip/ubah gambar langsung. */
-export function ImageControl({ editor }: { editor: Editor }) {
-  const [open, setOpen] = useState(false);
-  const [url, setUrl] = useState("");
-  const [alt, setAlt] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const urlRef = useRef<HTMLInputElement>(null);
-
-  const selected = useEditorState({
-    editor,
-    selector: ({ editor: instance }) => ({
-      active: instance.isActive("image"),
-      src: (instance.getAttributes("image").src as string | undefined) ?? "",
-      alt: (instance.getAttributes("image").alt as string | undefined) ?? "",
-    }),
-  });
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => urlRef.current?.focus(), 0);
-    return () => clearTimeout(timer);
-  }, [open]);
-
-  const openPanel = () => {
-    setUrl(selected?.src ?? "");
-    setAlt(selected?.alt ?? "");
-    setError(null);
-    setOpen(true);
-  };
-
-  const close = () => {
-    setOpen(false);
-    setError(null);
-  };
-
-  const apply = () => {
-    const src = sanitizeImageSrc(url);
-    if (!src) {
-      setError(
-        "Gunakan URL HTTPS yang berakhiran .jpg, .jpeg, .png, .gif, .webp, atau .avif.",
-      );
-      return;
-    }
-
-    const safeAlt = alt.trim().slice(0, RICH_TEXT_LIMITS.maxAltLength);
-
-    if (selected?.active) {
-      editor
-        .chain()
-        .focus()
-        .updateAttributes("image", { src, alt: safeAlt })
-        .run();
-    } else {
-      // `setImage` juga mengganti seleksi; gunakan jalur yang sama agar gambar
-      // yang sedang terpilih tidak tertimpa.
-      insertBlock(editor, { type: "image", attrs: { src, alt: safeAlt } });
-    }
-    close();
-  };
-
-  const remove = () => {
-    editor.chain().focus().deleteSelection().run();
-    close();
-  };
-
-  return (
-    <div className="relative">
-      <ToolbarButton
-        label="Sisipkan gambar"
-        icon={ImagePlus}
-        active={Boolean(selected?.active) || open}
-        onClick={open ? close : openPanel}
-      />
-
-      {open ? (
-        <div className={PANEL}>
-          <p className={LABEL}>URL gambar</p>
-          <input
-            ref={urlRef}
-            type="text"
-            inputMode="url"
-            value={url}
-            onChange={(event) => {
-              setUrl(event.target.value);
-              setError(null);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                apply();
-              }
-              if (event.key === "Escape") {
-                event.preventDefault();
-                close();
-              }
-            }}
-            placeholder="https://i.imgur.com/ID.jpg"
-            aria-label="URL gambar"
-            aria-describedby={error ? "editor-image-error" : "editor-image-hint"}
-            className={INPUT}
-          />
-
-          <p className={`${LABEL} mt-2`}>Teks alternatif (opsional)</p>
-          <input
-            type="text"
-            value={alt}
-            maxLength={RICH_TEXT_LIMITS.maxAltLength}
-            onChange={(event) => setAlt(event.target.value)}
-            placeholder="Deskripsi singkat untuk pembaca layar"
-            aria-label="Teks alternatif gambar"
-            className={INPUT}
-          />
-
-          {error ? (
-            <p id="editor-image-error" role="alert" className={ERROR_BOX}>
-              {error}
-            </p>
-          ) : (
-            <p id="editor-image-hint" className={HINT}>
-              Tempel tautan berkas gambar (bukan halaman album). Untuk album
-              Imgur, gunakan tombol Sematkan Imgur.
-            </p>
-          )}
-
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <button type="button" onClick={apply} className={PRIMARY_BTN}>
-              {selected?.active ? "Perbarui" : "Sisipkan"}
-            </button>
-            {selected?.active ? (
-              <button type="button" onClick={remove} className={SECONDARY_BTN}>
-                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                Hapus gambar
-              </button>
-            ) : null}
-            <button type="button" onClick={close} className={CANCEL_BTN}>
-              Batal
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-
-/**
- * Dialog sisip/ubah embed Imgur.
- *
- * Menerima URL album (`https://imgur.com/a/{id}`), URL postingan
- * (`https://imgur.com/{id}`), dan kode embed resmi Imgur. Dari kode embed hanya
- * `data-id` (atau `href` di dalam blockquote) yang diambil; `<script>` yang
- * ditempel diabaikan sepenuhnya dan tidak pernah disimpan.
- */
-export function ImgurControl({ editor }: { editor: Editor }) {
+export function MediaControl({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
+  const [alt, setAlt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const selected = useEditorState({
     editor,
-    selector: ({ editor: instance }) => ({
-      active: instance.isActive("imgurEmbed"),
-      id: (instance.getAttributes("imgurEmbed").id as string | undefined) ?? "",
-      kind: (instance.getAttributes("imgurEmbed").kind as string | undefined) ?? "",
-    }),
+    selector: ({ editor: instance }) => {
+      const imageActive = instance.isActive("image");
+      const embedActive = instance.isActive("mediaEmbed");
+      return {
+        imageActive,
+        embedActive,
+        active: imageActive || embedActive,
+        src: (instance.getAttributes("image").src as string | undefined) ?? "",
+        alt: (instance.getAttributes("image").alt as string | undefined) ?? "",
+        provider:
+          (instance.getAttributes("mediaEmbed").provider as string | undefined) ??
+          "imgur",
+        id: (instance.getAttributes("mediaEmbed").id as string | undefined) ?? "",
+      };
+    },
   });
 
   useEffect(() => {
@@ -268,12 +155,19 @@ export function ImgurControl({ editor }: { editor: Editor }) {
     return () => clearTimeout(timer);
   }, [open]);
 
+  const preview = value.trim().length > 0 ? resolveMediaInput(value) : null;
+
   const openPanel = () => {
-    setValue(
-      selected?.active && selected.id
-        ? `https://imgur.com/${selected.kind === "album" ? "a/" : ""}${selected.id}`
-        : "",
-    );
+    if (selected?.imageActive) {
+      setValue(selected.src);
+      setAlt(selected.alt);
+    } else if (selected?.embedActive) {
+      setValue(mediaPageUrl(selected.provider as MediaProvider, selected.id));
+      setAlt("");
+    } else {
+      setValue("");
+      setAlt("");
+    }
     setError(null);
     setOpen(true);
   };
@@ -284,20 +178,49 @@ export function ImgurControl({ editor }: { editor: Editor }) {
   };
 
   const apply = () => {
-    const ref = parseImgurEmbed(value);
-    if (!ref) {
+    const media = resolveMediaInput(value);
+
+    if (!media) {
       setError(
-        "Gunakan URL album Imgur (https://imgur.com/a/ID), URL postingan, atau kode embed resmi Imgur.",
+        "Masukkan URL gambar/album HTTPS, HTML <img>, BBCode [img], atau kode embed resmi.",
       );
       return;
     }
+    if (media.kind === "unsupported") {
+      setError(media.hint);
+      return;
+    }
 
-    const attrs = { id: ref.id, kind: ref.kind };
+    const safeAlt = alt.trim().slice(0, RICH_TEXT_LIMITS.maxAltLength);
 
-    if (selected?.active) {
-      editor.chain().focus().updateAttributes("imgurEmbed", attrs).run();
+    if (media.kind === "image") {
+      const node: JSONContent = {
+        type: "image",
+        attrs: { src: media.src, alt: safeAlt },
+      };
+      if (selected?.imageActive) {
+        editor
+          .chain()
+          .focus()
+          .updateAttributes("image", { src: media.src, alt: safeAlt })
+          .run();
+      } else if (selected?.embedActive) {
+        // Mengganti embed yang terpilih dengan gambar.
+        editor.chain().focus().insertContent(node).run();
+      } else {
+        insertBlock(editor, node);
+      }
+      close();
+      return;
+    }
+
+    const attrs = { provider: media.provider, id: media.id };
+    if (selected?.embedActive) {
+      editor.chain().focus().updateAttributes("mediaEmbed", attrs).run();
+    } else if (selected?.imageActive) {
+      editor.chain().focus().insertContent({ type: "mediaEmbed", attrs }).run();
     } else {
-      insertBlock(editor, { type: "imgurEmbed", attrs });
+      insertBlock(editor, { type: "mediaEmbed", attrs });
     }
     close();
   };
@@ -307,18 +230,27 @@ export function ImgurControl({ editor }: { editor: Editor }) {
     close();
   };
 
+
   return (
     <div className="relative">
-      <ToolbarButton
-        label="Sematkan Imgur"
-        icon={Images}
-        active={Boolean(selected?.active) || open}
+      <button
+        type="button"
         onClick={open ? close : openPanel}
-      />
+        aria-label="Sisipkan gambar atau media"
+        aria-pressed={Boolean(selected?.active) || open}
+        title="Sisipkan gambar atau media"
+        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border-2 transition-colors ${
+          selected?.active || open
+            ? "border-ink bg-ink text-paper"
+            : "border-transparent bg-surface text-ink-soft hover:border-ink hover:text-ink"
+        }`}
+      >
+        <ImagePlus className="h-4 w-4" aria-hidden="true" />
+      </button>
 
       {open ? (
         <div className={PANEL}>
-          <p className={LABEL}>URL album atau kode embed Imgur</p>
+          <p className={LABEL}>URL, HTML, BBCode, atau kode embed</p>
           <textarea
             ref={inputRef}
             value={value}
@@ -333,32 +265,56 @@ export function ImgurControl({ editor }: { editor: Editor }) {
                 close();
               }
             }}
-            placeholder={"https://imgur.com/a/l4mKcOj\natau tempel kode embed Imgur"}
-            aria-label="URL atau kode embed Imgur"
-            aria-describedby={error ? "editor-imgur-error" : "editor-imgur-hint"}
+            placeholder={
+              "https://i.postimg.cc/xxxx/foto.jpg\nhttps://imgur.com/a/l4mKcOj\n[img]https://i.ibb.co/xxxx/foto.png[/img]"
+            }
+            aria-label="URL atau kode media"
+            aria-describedby={error ? "editor-media-error" : "editor-media-hint"}
             className={`${INPUT} font-mono text-xs`}
           />
 
+          <p className={`${LABEL} mt-2`}>Teks alternatif (opsional)</p>
+          <input
+            type="text"
+            value={alt}
+            maxLength={RICH_TEXT_LIMITS.maxAltLength}
+            onChange={(event) => setAlt(event.target.value)}
+            placeholder="Deskripsi singkat untuk pembaca layar"
+            aria-label="Teks alternatif media"
+            className={INPUT}
+          />
+
+          <MediaPreview media={preview} />
+
           {error ? (
-            <p id="editor-imgur-error" role="alert" className={ERROR_BOX}>
+            <p id="editor-media-error" role="alert" className={ERROR_BOX}>
               {error}
             </p>
           ) : (
-            <p id="editor-imgur-hint" className={HINT}>
-              Album tampil sebagai embed resmi. Postingan tunggal tampil sebagai
-              gambar karena Imgur memblokir iframe halaman postingan. Script di
-              dalam kode embed diabaikan.
+            <p id="editor-media-hint" className={HINT}>
+              Gambar dari hosting HTTPS mana pun didukung. Halaman album hanya
+              dapat disematkan bila providernya mendukung embed resmi.
             </p>
           )}
 
+          <p className="mt-1 text-[10px] leading-4 text-ink-muted">
+            Privasi: gambar di-host pihak ketiga. Hapus metadata sensitif (mis.
+            lokasi GPS) sebelum mengunggah ke layanan eksternal.
+          </p>
+
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <button type="button" onClick={apply} className={PRIMARY_BTN}>
-              {selected?.active ? "Perbarui embed" : "Sematkan"}
+            <button
+              type="button"
+              onClick={apply}
+              disabled={!preview || preview.kind === "unsupported"}
+              className={PRIMARY_BTN}
+            >
+              {selected?.active ? "Perbarui" : "Sisipkan"}
             </button>
             {selected?.active ? (
               <button type="button" onClick={remove} className={SECONDARY_BTN}>
                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                Hapus embed
+                Hapus media
               </button>
             ) : null}
             <button type="button" onClick={close} className={CANCEL_BTN}>

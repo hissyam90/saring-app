@@ -32,6 +32,34 @@ flowchart LR
 | Endpoint komunitas + CAPTCHA + rate limit | `tests/unit/community-route.test.ts` | Lulus |
 | Aturan publikasi artikel | `tests/unit/publication.test.ts` | Lulus |
 | Kepemilikan data dan laporan | `tests/unit/ownership.test.ts` | Lulus |
+| Versioning artikel publik + revisi | `tests/unit/revisions.test.ts` | Lulus |
+| Aksi admin menyetujui/menolak revisi | `tests/unit/revision-review.test.ts` | Lulus |
+| Draf, bookmark, notifikasi (route) | `tests/unit/engagement.test.ts` | Lulus |
+| Kategori pertanyaan "Lainnya" | `tests/unit/thread-category.test.ts` | Lulus |
+| Adapter media lintas hosting | `tests/unit/media.test.ts` | Lulus |
+| UI, revisi, autosave, bookmark, notifikasi (E2E) | `tests/e2e/v16.spec.ts` | Lulus |
+
+## Cakupan v16 yang diuji otomatis
+
+- **Media lintas hosting**: gambar `i.postimg.cc`, `i.ibb.co`, `images2.imgbox.com`
+  dan host HTTPS lain diterima; URL halaman galeri (postimg/imgbox/ibb) ditolak
+  dengan petunjuk; host yang menyerupai provider (`imgur.com.evil.test`) ditolak;
+  BBCode `[img]`, HTML `<img>`, dan kode embed resmi diurai tanpa menyimpan script.
+- **Versioning artikel**: revisi pending tidak mengubah artikel publik; persetujuan
+  mengganti versi publik dan mempertahankan slug; penolakan/permintaan perbaikan
+  tidak menghapus artikel tayang; revisi tidak dapat diterbitkan dua kali.
+- **Draf**: upsert satu draf per jenis/target; `bodyJson` tetap melewati allowlist;
+  draf hanya terbaca pemiliknya; penghapusan draf orang lain ditolak.
+- **Bookmark**: artikel bawaan dan kontribusi `approved` diterima, artikel pending
+  ditolak, tidak ada duplikat, penghapusan hanya milik sendiri.
+- **Notifikasi**: dibuat dari balasan nyata, tidak untuk balasan pada pertanyaan
+  sendiri, idempoten, dan tidak dapat dibaca/diubah pengguna lain.
+- **Kategori `Lainnya`**: default form, diterima validasi server, tersimpan, dan
+  dapat difilter tanpa mengubah kategori pertanyaan lama.
+- **UI**: editor tidak meluap dengan URL panjang (desktop & mobile), search bar
+  Pustaka bergaris empat sisi di mode terang dan gelap, dan tema mengikuti sistem
+  tanpa kontrol manual di DOM maupun `localStorage`.
+
 | Validasi & sanitasi konten kaya | `tests/unit/rich-text.test.ts` | Lulus |
 | Endpoint pengajuan artikel (konten, IDOR, status) | `tests/unit/submission-route.test.ts` | Lulus |
 | Kontrak penyimpanan `body_json` | `tests/unit/article-persistence.test.ts` | Lulus |

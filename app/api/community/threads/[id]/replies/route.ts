@@ -5,6 +5,7 @@ import { isSameOrigin } from "@/lib/security/origin";
 import { RATE_LIMITS, checkRateLimit, clientKey, tooManyRequests } from "@/lib/security/rate-limit";
 import { replySchema, firstError } from "@/lib/security/validation";
 import { verifyTurnstile, TURNSTILE_ERROR } from "@/lib/security/turnstile";
+import { notifyThreadReply } from "@/lib/notifications";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -47,6 +48,16 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
       threadId: parsed.data.threadId,
       authorId: user.id,
       body: parsed.data.body,
+    });
+
+    // Notifikasi setelah balasan benar-benar tersimpan.
+    await notifyThreadReply({
+      threadAuthorId: thread.authorId,
+      replierId: user.id,
+      replierName: user.displayName,
+      threadId: thread.id,
+      threadTitle: thread.title,
+      replyId: reply.id,
     });
 
     return json({ ...reply, authorName: user.displayName }, 201);

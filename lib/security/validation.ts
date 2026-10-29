@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { THREAD_CATEGORIES } from "@/lib/db/types";
+import type { ArticleDraftPayload, ThreadDraftPayload } from "@/lib/db/types";
 import {
   RICH_TEXT_LIMITS,
   parseRichDoc,
@@ -202,6 +203,106 @@ export const removeContentSchema = z.object({
 export const roleUpdateSchema = z.object({
   userId: z.uuid("ID pengguna tidak valid."),
   role: z.enum(["user", "admin"]),
+});
+
+// --- Draf autosave ---------------------------------------------------------
+
+const articleDraftSchema = z.object({
+  title: z.string().max(200),
+  summary: z.string().max(400),
+  category: z.string().max(60),
+  // Draf boleh belum lengkap; validasi ketat hanya saat submit.
+  bodyJson: z.unknown().nullable(),
+  references: z.string().max(1000),
+});
+
+const threadDraftSchema = z.object({
+  title: z.string().max(200),
+  category: z.string().max(40),
+  body: z.string().max(5000),
+  articleSlug: z.string().max(70),
+});
+
+export const draftSchema = z.object({
+  kind: z.enum(["article", "thread"]),
+  targetSubmissionId: z.uuid("ID artikel tidak valid.").optional().nullable(),
+  payload: z.unknown(),
+});
+
+export type ParsedDraft =
+  | { kind: "article"; targetSubmissionId: string | null; payload: ArticleDraftPayload }
+  | { kind: "thread"; targetSubmissionId: null; payload: ThreadDraftPayload };
+
+/**
+ * Memvalidasi draf. Isi draf tidak boleh lebih longgar dari artikel final:
+ * `bodyJson` tetap melewati allowlist yang sama agar draf tidak dapat dipakai
+ * untuk menyelundupkan konten terlarang ke database.
+ */
+export function parseDraftInput(
+  input: Record<string, unknown>,
+): { ok: true; data: ParsedDraft } | { ok: false; error: string } {
+  const parsed = draftSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  if (parsed.data.kind === "article") {
+    const payload = articleDraftSchema.safeParse(parsed.data.payload);
+    if (!payload.success) return { ok: false, error: "Isi draf artikel tidak valid." };
+
+    let bodyJson: RichDoc | null = null;
+    if (payload.data.bodyJson !== null && payload.data.bodyJson !== undefined) {
+      const doc = parseRichDoc(payload.data.bodyJson);
+      if (!doc.ok) return { ok: false, error: doc.error };
+      bodyJson = doc.doc;
+    }
+
+    return {
+      ok: true,
+      data: {
+        kind: "article",
+        targetSubmissionId: parsed.data.targetSubmissionId ?? null,
+        payload: { ...payload.data, bodyJson },
+      },
+    };
+  }
+
+  const payload = threadDraftSchema.safeParse(parsed.data.payload);
+  if (!payload.success) return { ok: false, error: "Isi draf pertanyaan tidak valid." };
+
+  return {
+    ok: true,
+    data: { kind: "thread", targetSubmissionId: null, payload: payload.data },
+  };
+}
+
+// --- Bookmark --------------------------------------------------------------
+
+export const bookmarkSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1, "Artikel tidak valid.")
+    .max(70)
+    .regex(/^[a-z0-9-]+$/, "Artikel tidak valid."),
+});
+
+// --- Notifikasi ------------------------------------------------------------
+
+export const notificationReadSchema = z.object({
+  /** `all: true` menandai seluruh notifikasi sebagai dibaca. */
+  all: z.boolean().optional(),
+  id: z.uuid("ID notifikasi tidak valid.").optional(),
+});
+
+// --- Revisi artikel publik -------------------------------------------------
+
+export const revisionReviewSchema = z.object({
+  revisionId: z.uuid("ID revisi tidak valid."),
+  action: z.enum([
+    "approve-revision",
+    "request-revision-change",
+    "reject-revision",
+  ]),
+  note: z.string().trim().max(1000).optional().nullable(),
 });
 
 /** Mengubah error zod menjadi pesan pertama yang bisa ditampilkan. */

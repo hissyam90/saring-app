@@ -125,11 +125,20 @@ hanya diperlukan untuk menulis.
 - **Pengajuan artikel** (`/komunitas/artikel`): editor rich text (Tiptap) dengan
   format lengkap, pratinjau, dan penghitung karakter. Status: `pending`,
   `needs_revision`, `approved`, `rejected`, lengkap dengan catatan admin. Hanya
-  artikel `approved` yang terbit di Pustaka.
+  artikel `approved` yang terbit di Pustaka. Artikel yang sudah terbit dapat
+  **direvisi** tanpa menghilangkan versi yang sedang tayang.
 - **Admin** (`/admin`): ringkasan angka nyata dari database, antrean artikel
-  (isi artikel ditinjau dengan formatnya), laporan, diskusi, dan pengguna. Semua
-  aksi melewati satu endpoint yang memeriksa role di server dan mencatat riwayat
-  moderasi.
+  (isi artikel ditinjau dengan formatnya), antrean **revisi** dengan perbandingan
+  versi publik vs usulan, laporan, diskusi, dan pengguna. Semua aksi melewati satu
+  endpoint yang memeriksa role di server dan mencatat riwayat moderasi.
+- **Draf otomatis** (`/akun`): artikel dan pertanyaan disimpan sebagai draf di
+  PostgreSQL (debounce 1,2 detik) dan dapat dilanjutkan atau dihapus.
+- **Bookmark** (`/akun/tersimpan`): simpan artikel Pustaka (bawaan maupun
+  kontribusi) ke akun; tersimpan lintas perangkat dan sesi.
+- **Notifikasi** dalam aplikasi: balasan baru, artikel disetujui/perlu
+  perbaikan/ditolak, dan keputusan revisi. Tanpa email, SMS, atau WebSocket.
+- **Tema otomatis**: tampilan mengikuti preferensi terang/gelap sistem perangkat
+  (tanpa tombol tema dan tanpa menyimpan pilihan).
 - **CAPTCHA**: registrasi, login, diskusi, balasan, artikel, dan laporan memakai
   Cloudflare Turnstile yang diverifikasi di server (Siteverify).
 

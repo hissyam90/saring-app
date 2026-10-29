@@ -1,14 +1,23 @@
 import type {
+  ArticleBookmark,
   DashboardStats,
+  Draft,
+  DraftKind,
+  DraftPayload,
   ModerationEntry,
+  Notification,
+  NotificationKind,
+  NotificationList,
   Paged,
   PublishedArticle,
   Reply,
   Report,
   ReportStatus,
   ReportTarget,
+  RevisionStatus,
   Role,
   Submission,
+  SubmissionRevision,
   SubmissionStatus,
   Thread,
   ThreadCategory,
@@ -20,6 +29,12 @@ import type { RichDoc } from "@/lib/content/rich-text";
 export interface ListThreadsOptions {
   search?: string;
   category?: ThreadCategory;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListRevisionsOptions {
+  status?: RevisionStatus;
   page: number;
   pageSize: number;
 }
@@ -112,6 +127,92 @@ export interface Store {
 
   listPublishedArticles(): Promise<PublishedArticle[]>;
   findPublishedArticle(slug: string): Promise<PublishedArticle | null>;
+
+  // --- Revisi artikel publik ---------------------------------------------
+  /**
+   * Revisi terbuka (pending atau needs_revision) milik satu artikel.
+   * Dipakai untuk mencegah duplikasi pengajuan dan melanjutkan revisi.
+   */
+  findOpenRevision(submissionId: string): Promise<SubmissionRevision | null>;
+  createRevision(input: {
+    submissionId: string;
+    authorId: string;
+    title: string;
+    summary: string;
+    category: string;
+    body: string;
+    bodyJson?: RichDoc | null;
+    references: string | null;
+  }): Promise<SubmissionRevision>;
+  /** Memperbarui revisi milik penulis yang masih dapat diubah. */
+  updateRevision(
+    id: string,
+    authorId: string,
+    input: {
+      title: string;
+      summary: string;
+      category: string;
+      body: string;
+      bodyJson?: RichDoc | null;
+      references: string | null;
+    },
+  ): Promise<SubmissionRevision | null>;
+  findRevision(id: string): Promise<SubmissionRevision | null>;
+  listRevisionsByAuthor(authorId: string): Promise<SubmissionRevision[]>;
+  listRevisions(opts: ListRevisionsOptions): Promise<Paged<SubmissionRevision>>;
+  /** Mengubah status revisi (admin). Tidak menyentuh konten publik. */
+  reviewRevision(input: {
+    id: string;
+    status: RevisionStatus;
+    note: string | null;
+    reviewerId: string;
+    reviewerName: string;
+  }): Promise<SubmissionRevision | null>;
+  /**
+   * Menyetujui revisi dan menerbitkannya secara atomik: konten revisi disalin ke
+   * `submissions`, status revisi menjadi `approved`. Bila gagal, versi publik
+   * lama tetap utuh (rollback).
+   */
+  publishRevision(input: {
+    revisionId: string;
+    reviewerId: string;
+    note: string | null;
+  }): Promise<PublishedArticle | null>;
+
+  // --- Draf autosave -----------------------------------------------------
+  saveDraft(input: {
+    ownerId: string;
+    kind: DraftKind;
+    targetSubmissionId: string | null;
+    payload: DraftPayload;
+  }): Promise<Draft>;
+  listDrafts(ownerId: string): Promise<Draft[]>;
+  findDraft(id: string): Promise<Draft | null>;
+  /** Menghapus draf; mengembalikan false bila bukan milik pemilik tersebut. */
+  deleteDraft(id: string, ownerId: string): Promise<boolean>;
+
+  // --- Bookmark artikel --------------------------------------------------
+  addBookmark(userId: string, articleSlug: string): Promise<ArticleBookmark>;
+  removeBookmark(userId: string, articleSlug: string): Promise<boolean>;
+  listBookmarks(userId: string): Promise<ArticleBookmark[]>;
+  isBookmarked(userId: string, articleSlug: string): Promise<boolean>;
+
+  // --- Notifikasi --------------------------------------------------------
+  /**
+   * Membuat notifikasi. Mengembalikan `null` bila `dedupeKey` sudah ada untuk
+   * pengguna ini, sehingga retry/aksi berulang tidak membuat notifikasi ganda.
+   */
+  createNotification(input: {
+    userId: string;
+    kind: NotificationKind;
+    title: string;
+    body: string | null;
+    href: string | null;
+    dedupeKey: string;
+  }): Promise<Notification | null>;
+  listNotifications(userId: string, limit: number): Promise<NotificationList>;
+  markNotificationRead(id: string, userId: string): Promise<Notification | null>;
+  markAllNotificationsRead(userId: string): Promise<number>;
 
   createReport(input: {
     reporterId: string;

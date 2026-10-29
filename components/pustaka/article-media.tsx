@@ -9,23 +9,22 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, ImageOff, Images } from "lucide-react";
 import {
-  imgurDirectImageUrl,
-  imgurEmbedUrl,
-  imgurPageUrl,
-  sanitizeImageSrc,
-  type ImgurKind,
-} from "@/lib/content/rich-text";
+  mediaEmbedUrl,
+  mediaPageUrl,
+  type MediaProvider,
+} from "@/lib/content/media";
+import { sanitizeImageSrc } from "@/lib/content/rich-text";
 
 /**
  * Renderer media artikel.
  *
- * Komponen ini klien karena perlu menangani kegagalan pemuatan (gambar 404,
- * host mati, atau iframe yang diblokir `X-Frame-Options`). Dipakai oleh
- * halaman Pustaka, halaman admin, dan pratinjau editor supaya tampilannya sama.
+ * Klien karena perlu menangani kegagalan pemuatan (gambar 404, host mati, atau
+ * iframe yang diblokir `X-Frame-Options`). Dipakai oleh halaman Pustaka, halaman
+ * admin, dan pratinjau editor supaya tampilannya sama.
  *
  * Tidak ada HTML dari pengguna yang dirender: `src` dihitung ulang dari data
- * yang sudah divalidasi, dan tautan fallback selalu menuju halaman Imgur yang
- * dibentuk aplikasi.
+ * yang sudah divalidasi (host gambar apa pun yang HTTPS) atau dari ID embed yang
+ * sudah diverifikasi, dan tautan fallback selalu dibentuk aplikasi.
  */
 
 const LINK_SAFE = {
@@ -34,7 +33,7 @@ const LINK_SAFE = {
 } as const;
 
 /** Kotak fallback saat media tidak dapat dimuat. */
-function MediaFallback({
+export function MediaFallback({
   title,
   detail,
   href,
@@ -46,17 +45,17 @@ function MediaFallback({
   label: string;
 }) {
   return (
-    <div className="border-2 border-dashed border-ink/40 bg-paper px-4 py-5 text-center">
+    <div className="border-2 border-dashed border-ink/40 bg-paper px-3 py-4 text-center">
       <ImageOff className="mx-auto h-5 w-5 text-ink-muted" aria-hidden="true" />
       <p className="mt-2 text-sm font-bold text-ink">{title}</p>
       <p className="mt-1 text-xs leading-5 text-ink-muted">{detail}</p>
       <a
         href={href}
-        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-ink underline"
+        className="mt-2 inline-flex max-w-full items-center gap-1.5 break-all text-xs font-semibold text-ink underline"
         {...LINK_SAFE}
       >
         {label}
-        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+        <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
       </a>
     </div>
   );
@@ -66,7 +65,11 @@ function MediaFallback({
  * Gambar langsung (`image`).
  *
  * `src` divalidasi ulang di sini (lapisan kedua). Bila berkas gagal dimuat,
- * pembaca melihat fallback yang menautkan ke URL aslinya, bukan gambar rusak.
+ * pembaca melihat fallback yang menautkan ke URL aslinya.
+ *
+ * `referrerpolicy="no-referrer"` wajib: Imgur (dan beberapa host lain) menolak
+ * hotlink bila permintaan membawa header `Referer` asing — terukur di browser
+ * sebagai HTTP 403 dengan referrer vs 200 tanpa referrer.
  */
 export function ArticleImage({
   src,
@@ -110,45 +113,50 @@ export function ArticleImage({
       decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
-      className={`mx-auto block h-auto max-w-full border-2 border-ink bg-surface ${className}`}
+      className={`mx-auto block h-auto w-auto max-w-full border-2 border-ink bg-surface ${className}`}
     />
   );
 }
 
-
 /**
- * Embed Imgur (`imgurEmbed`).
+ * Embed media (`mediaEmbed`).
  *
- * Album dirender dengan iframe resmi `https://imgur.com/a/{id}/embed?pub=true`.
- * Bentuk URL itu dipilih setelah diverifikasi: halaman album biasa mengirim
- * `X-Frame-Options: DENY`, sedangkan URL `…/embed?pub=true` tidak.
+ * Hanya provider yang sudah diverifikasi yang dapat menjadi iframe: Imgur album
+ * melalui `https://imgur.com/a/{id}/embed?pub=true`, yang terbukti **tidak**
+ * mengirim `X-Frame-Options` (halaman album biasa mengirim `DENY`).
  *
- * Postingan tunggal **tidak** dapat di-iframe (Imgur mengirim `DENY`), sehingga
- * dirender sebagai gambar langsung `https://i.imgur.com/{id}.jpg`.
- *
- * Tautan keluar ke Imgur selalu tersedia. Bila iframe tidak selesai dimuat
- * dalam batas waktu, tampilan diganti fallback agar tidak ada kotak kosong yang
- * terlihat seperti embed berhasil.
+ * Tautan keluar ke halaman provider selalu tersedia, karena iframe yang gagal
+ * (album privat/dihapus/diblokir) tetap memicu event `load` dengan halaman error
+ * pihak ketiga sehingga kegagalan tidak selalu dapat dideteksi dari sisi Saring.
  */
-export function ImgurEmbed({ kind, id }: { kind: ImgurKind; id: string }) {
-  const pageUrl = imgurPageUrl({ kind, id });
+export function MediaEmbed({
+  provider,
+  id,
+}: {
+  provider: MediaProvider;
+  id: string;
+}) {
+  const embedSrc = mediaEmbedUrl(provider, id);
+  const pageUrl = mediaPageUrl(provider, id);
   const [frameState, setFrameState] = useState<"loading" | "ready" | "failed">(
     "loading",
   );
 
   useEffect(() => {
-    if (kind !== "album") return;
+    if (!embedSrc) return;
     const timer = setTimeout(() => {
       setFrameState((current) => (current === "ready" ? current : "failed"));
     }, 9_000);
     return () => clearTimeout(timer);
-  }, [kind, id]);
+  }, [embedSrc]);
 
-  if (kind !== "album") {
+  if (!embedSrc) {
     return (
-      <ArticleImage
-        src={imgurDirectImageUrl(id)}
-        alt={`Postingan Imgur ${id}`}
+      <MediaFallback
+        title="Embed tidak didukung"
+        detail="Provider media ini belum diverifikasi untuk ditampilkan sebagai embed."
+        href={pageUrl}
+        label="Buka media"
       />
     );
   }
@@ -158,14 +166,14 @@ export function ImgurEmbed({ kind, id }: { kind: ImgurKind; id: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ink bg-paper px-3 py-1.5">
         <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
           <Images className="h-3.5 w-3.5" aria-hidden="true" />
-          Imgur · Album
+          {provider} · album
         </span>
         <a
           href={pageUrl}
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink underline"
           {...LINK_SAFE}
         >
-          Buka di Imgur
+          Buka di {provider}
           <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </a>
       </div>
@@ -173,44 +181,38 @@ export function ImgurEmbed({ kind, id }: { kind: ImgurKind; id: string }) {
       {frameState === "failed" ? (
         <div className="px-3 py-4">
           <MediaFallback
-            title="Embed Imgur tidak dapat dimuat"
+            title="Embed tidak dapat dimuat"
             detail="Album mungkin privat, sudah dihapus, atau embed diblokir peramban."
             href={pageUrl}
-            label="Buka album di Imgur"
+            label={`Buka album di ${provider}`}
           />
         </div>
       ) : (
         <iframe
-          src={imgurEmbedUrl(id)}
-          title={`Album Imgur ${id}`}
+          src={embedSrc}
+          title={`Album ${provider} ${id}`}
           loading="lazy"
           referrerPolicy="no-referrer"
           // Konten berasal dari origin lain (imgur.com). `allow-scripts` +
-          // `allow-same-origin` diperlukan agar embed resmi dapat berjalan;
+          // `allow-same-origin` diperlukan agar embed resmi berjalan;
           // kombinasinya tidak berbahaya di sini karena dokumen tidak
-          // sesama-origin dengan Saring.
+          // sesama-origin dengan Saring sehingga tidak dapat menyentuh DOM
+          // maupun cookie aplikasi.
           sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
           allow="fullscreen"
           onLoad={() => setFrameState("ready")}
           onError={() => setFrameState("failed")}
-          className="block h-[360px] w-full border-0 sm:h-[480px]"
+          className="block h-[360px] w-full max-w-full border-0 sm:h-[480px]"
         />
       )}
 
-      {/*
-        Tautan fallback selalu terlihat. Iframe yang gagal (album privat,
-        dihapus, atau diblokir) tetap memicu event `load` dengan halaman error
-        pihak ketiga, sehingga kegagalan tidak selalu dapat dideteksi dari sisi
-        Saring. Karena itu pembaca selalu diberi jalan keluar yang aman alih-alih
-        kotak kosong tanpa penjelasan.
-      */}
       <figcaption className="border-t-2 border-ink bg-paper px-3 py-1.5">
         <a
           href={pageUrl}
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink underline"
           {...LINK_SAFE}
         >
-          Jika embed tidak tampil, buka album di Imgur
+          Jika embed tidak tampil, buka album di {provider}
           <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </a>
       </figcaption>

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   FileText,
   Flag,
+  GitCompareArrows,
   LayoutDashboard,
   MessagesSquare,
   Users,
@@ -14,6 +15,7 @@ import type { LucideIcon } from "lucide-react";
 const ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin", label: "Ringkasan", icon: LayoutDashboard },
   { href: "/admin/artikel", label: "Artikel", icon: FileText },
+  { href: "/admin/revisi", label: "Revisi", icon: GitCompareArrows },
   { href: "/admin/laporan", label: "Laporan", icon: Flag },
   { href: "/admin/diskusi", label: "Diskusi", icon: MessagesSquare },
   { href: "/admin/pengguna", label: "Pengguna", icon: Users },

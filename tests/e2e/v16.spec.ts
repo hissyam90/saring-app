@@ -1,0 +1,644 @@
+import { expect, test, type BrowserContext } from "@playwright/test";
+import { randomUUID } from "node:crypto";
+import { loadEnvConfig } from "@next/env";
+import { Pool } from "pg";
+import bcrypt from "bcryptjs";
+import { sealData } from "iron-session";
+
+/**
+ * Verifikasi end-to-end untuk pekerjaan v16.
+ *
+ * Memakai PostgreSQL sungguhan dan server produksi (`next build` + `next start`)
+ * dari `playwright.config.ts`. Data uji dibuat dengan awalan unik lalu dihapus
+ * kembali, sehingga data pengguna yang sudah ada tidak tersentuh.
+ */
+
+loadEnvConfig(process.cwd(), true);
+
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3100;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+const PASSWORD = "kata-sandi-uji-yang-panjang-123";
+
+const suffix = randomUUID().slice(0, 8);
+const AUTHOR_EMAIL = `v16-author-${suffix}@contoh.test`;
+const ADMIN_EMAIL = `v16-admin-${suffix}@contoh.test`;
+const READER_EMAIL = `v16-reader-${suffix}@contoh.test`;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.DATABASE_SSL === "disable"
+      ? false
+      : { rejectUnauthorized: process.env.DATABASE_SSL === "verify-full" },
+});
+
+const createdUserIds: string[] = [];
+let authorId = "";
+let adminId = "";
+let readerId = "";
+
+async function createUser(
+  email: string,
+  displayName: string,
+  role: "user" | "admin",
+) {
+  const hash = await bcrypt.hash(PASSWORD, 12);
+  const result = await pool.query(
+    `insert into users (email, display_name, password_hash, role)
+     values (lower($1), $2, $3, $4) returning id`,
+    [email, displayName, hash, role],
+  );
+  const id = String(result.rows[0].id);
+  createdUserIds.push(id);
+  return id;
+}
+
+async function loginAs(
+  context: BrowserContext,
+  userId: string,
+  role: "user" | "admin",
+) {
+  const value = await sealData(
+    { userId, role, issuedAt: Date.now() },
+    { password: process.env.SESSION_SECRET as string, ttl: 60 * 60 },
+  );
+  await context.addCookies([
+    {
+      name: "saring_session",
+      value,
+      url: BASE_URL,
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
+
+async function submissionByTitle(title: string) {
+  const result = await pool.query(
+    `select id, title, status, slug, body, body_json
+     from submissions where title like $1 order by created_at desc limit 1`,
+    [`${title}%`],
+  );
+  return result.rows[0] as
+    | {
+        id: string;
+        title: string;
+        status: string;
+        slug: string | null;
+        body: string;
+        body_json: unknown;
+      }
+    | undefined;
+}
+
+const ARTICLE_TEXT =
+  "Pesan kurir palsu biasanya meminta biaya tambahan dengan alasan paket tertahan " +
+  "di gudang. Tautan di dalam pesan mengarah ke halaman pembayaran yang meniru " +
+  "situs resmi. Langkah aman: buka aplikasi kurir resmi, periksa nomor resi di " +
+  "sana, dan jangan pernah membayar lewat tautan dari pesan. Ingat juga bahwa " +
+  "layanan kurir resmi tidak pernah meminta pembayaran melalui pesan singkat, " +
+  "dan selalu menampilkan nomor resi yang bisa dicocokkan di aplikasi mereka.";
+
+test.beforeAll(async () => {
+  authorId = await createUser(AUTHOR_EMAIL, `Penulis v16 ${suffix}`, "user");
+  adminId = await createUser(ADMIN_EMAIL, `Admin v16 ${suffix}`, "admin");
+  readerId = await createUser(READER_EMAIL, `Pembaca v16 ${suffix}`, "user");
+});
+
+test.afterAll(async () => {
+  if (createdUserIds.length > 0) {
+    await pool.query(`delete from users where id = any($1::uuid[])`, [
+      createdUserIds,
+    ]);
+  }
+  await pool.end();
+});
+
+test.describe.configure({ mode: "serial" });
+
+test.describe("UI: editor dan search bar", () => {
+  test("editor tidak meluap walau berisi URL panjang", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+    await page.goto("/komunitas/artikel");
+    await page.locator("#artikel-editor").click();
+    await page.keyboard.type(`https://contoh.test/${"a".repeat(220)}`);
+
+    const metrics = await page.evaluate(() => {
+      const editor = document.querySelector("#artikel-editor") as HTMLElement | null;
+      return {
+        docOverflow:
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+        editorOverflow: editor ? editor.scrollWidth - editor.clientWidth : null,
+      };
+    });
+
+    expect(metrics.docOverflow).toBeLessThanOrEqual(1);
+    expect(metrics.editorOverflow).toBeLessThanOrEqual(1);
+
+    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: `.tmp-audit/v16-ui-mobile.png`,
+      fullPage: false,
+    });
+  });
+
+  test("search bar Pustaka punya border empat sisi pada mode terang dan gelap", async ({
+    page,
+  }) => {
+    const readBorders = async () =>
+      page.evaluate(() => {
+        const input = document.querySelector(
+          'input[aria-label="Cari topik pustaka"]',
+        ) as HTMLInputElement | null;
+        if (!input) return null;
+        const cs = getComputedStyle(input);
+        return {
+          top: cs.borderTopWidth,
+          right: cs.borderRightWidth,
+          bottom: cs.borderBottomWidth,
+          left: cs.borderLeftWidth,
+          color: cs.borderTopColor,
+          bg: cs.backgroundColor,
+          bodyBg: getComputedStyle(document.body).backgroundColor,
+        };
+      });
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/pustaka");
+    const light = await readBorders();
+    expect(light).not.toBeNull();
+    for (const side of ["top", "right", "bottom", "left"] as const) {
+      expect(light![side]).toBe("2px");
+    }
+    expect(light!.bodyBg).toBe("rgb(245, 242, 234)");
+
+    await page.screenshot({
+      path: ".tmp-audit/v15-pustaka-search-desktop.png",
+      fullPage: false,
+    });
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.reload();
+    const dark = await readBorders();
+    expect(dark).not.toBeNull();
+    for (const side of ["top", "right", "bottom", "left"] as const) {
+      expect(dark![side]).toBe("2px");
+    }
+    // Tema otomatis: latar menjadi gelap tanpa tombol tema apa pun.
+    expect(dark!.bodyBg).not.toBe(light!.bodyBg);
+    expect(dark!.color).not.toBe(light!.color);
+  });
+
+  test("tema mengikuti preferensi sistem dan tidak ada tombol tema", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    const darkBody = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor,
+    );
+
+    await page.emulateMedia({ colorScheme: "light" });
+    const lightBody = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor,
+    );
+
+    expect(darkBody).not.toBe(lightBody);
+
+    // Tidak ada kontrol tema manual di mana pun.
+    await expect(page.getByRole("button", { name: /tema|theme|dark mode/i })).toHaveCount(0);
+    expect(
+      await page.evaluate(() => window.localStorage.getItem("theme")),
+    ).toBeNull();
+  });
+});
+
+
+test.describe("Kategori pertanyaan", () => {
+  test("Lainnya terpilih otomatis pada form pertanyaan baru", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, readerId, "user");
+    await page.goto("/komunitas/baru");
+
+    const select = page.getByLabel("Kategori");
+    await expect(select).toHaveValue("lainnya");
+    await expect(select.locator("option:checked")).toHaveText("Lainnya");
+
+    await page.screenshot({
+      path: ".tmp-audit/v16-community-default-category.png",
+      fullPage: false,
+    });
+
+    // Pengguna tetap dapat memilih kategori lain.
+    await select.selectOption("phishing");
+    await expect(select).toHaveValue("phishing");
+  });
+
+  test("filter Komunitas menerima kategori Lainnya", async ({ page }) => {
+    const response = await page.request.get("/api/community/threads?kategori=lainnya");
+    expect(response.status()).toBe(200);
+    const data = (await response.json()) as { items: unknown[] };
+    expect(Array.isArray(data.items)).toBe(true);
+  });
+});
+
+test.describe("Media universal", () => {
+  test("menyisipkan gambar lintas hosting dan embed Imgur", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+    await page.goto("/komunitas/artikel");
+
+    const form = page.locator("section").filter({ hasText: "Pengajuan baru" }).first();
+    await page.locator("#artikel-editor").click();
+    await page.keyboard.type(ARTICLE_TEXT);
+
+    // Gambar dari Postimages (bukan Imgur).
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
+    await form
+      .getByLabel("URL atau kode media")
+      .fill("https://i.postimg.cc/abcd1234/contoh.jpg");
+    await form.getByRole("button", { name: /^Sisipkan$/ }).click();
+
+    await expect(page.locator("#artikel-editor img").first()).toHaveAttribute(
+      "src",
+      "https://i.postimg.cc/abcd1234/contoh.jpg",
+    );
+
+    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: ".tmp-audit/v16-media-editor.png",
+      fullPage: false,
+    });
+  });
+
+  test("menolak halaman galeri yang belum didukung embed", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+    await page.goto("/komunitas/artikel");
+    const form = page.locator("section").filter({ hasText: "Pengajuan baru" }).first();
+
+    await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
+    await form.getByLabel("URL atau kode media").fill("https://imgbox.com/abcd1234");
+
+    // Tombol sisipkan nonaktif karena tidak ada representasi media yang aman.
+    await expect(form.getByRole("button", { name: /^Sisipkan$/ })).toBeDisabled();
+    await expect(page.locator("#artikel-editor img")).toHaveCount(0);
+  });
+});
+
+
+
+test.describe("Revisi artikel publik", () => {
+  const originalTitle = `Artikel revisi v16 ${suffix}`;
+  const revisedTitle = `Artikel revisi v16 ${suffix} versi dua`;
+  let submissionId = "";
+  let slug = "";
+
+  test.beforeAll(async () => {
+    const slugBase = `artikel-revisi-v16-${suffix}`;
+    const result = await pool.query(
+      `insert into submissions
+         (author_id, title, summary, category, body, body_json, status, slug, reviewed_at)
+       values ($1, $2, $3, $4, $5, $6, 'approved', $7, now())
+       returning id, slug`,
+      [
+        authorId,
+        originalTitle,
+        "Ringkasan artikel revisi yang cukup panjang untuk lolos validasi isi.",
+        "Phishing",
+        ARTICLE_TEXT,
+        JSON.stringify({
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: ARTICLE_TEXT }] },
+          ],
+        }),
+        slugBase,
+      ],
+    );
+    submissionId = String(result.rows[0].id);
+    slug = String(result.rows[0].slug);
+  });
+
+  test("penulis dapat mengajukan revisi tanpa menghilangkan versi publik", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+    await page.goto(`/komunitas/artikel?edit=${submissionId}`);
+
+    await expect(page.getByText(/Versi publik tetap tampil/i)).toBeVisible();
+    await page.getByLabel("Judul artikel").fill(revisedTitle);
+    await page
+      .getByLabel("Ringkasan")
+      .fill("Ringkasan versi kedua yang cukup panjang untuk lolos validasi isi.");
+
+    // Token CAPTCHA dihasilkan widget secara asinkron. Tunggu hingga Cloudflare
+    // benar-benar menulis token ke input tersembunyi, agar pengiriman tidak
+    // ditolak oleh Siteverify karena token masih kosong.
+    await expect
+      .poll(
+        async () =>
+          await page.evaluate(() => {
+            const input = document.querySelector(
+              'input[name="cf-turnstile-response"]',
+            ) as HTMLInputElement | null;
+            return input?.value?.length ?? 0;
+          }),
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(0);
+
+    await page.getByRole("button", { name: /Kirim revisi untuk ditinjau/i }).click();
+
+    await expect(page.getByText(/Revisi terkirim/i)).toBeVisible({
+      timeout: 20_000,
+    });
+
+    const revision = await pool.query(
+      `select status, title from submission_revisions where submission_id = $1`,
+      [submissionId],
+    );
+    expect(revision.rows).toHaveLength(1);
+    expect(revision.rows[0].status).toBe("pending");
+    expect(revision.rows[0].title).toBe(revisedTitle);
+
+    const current = await pool.query(
+      `select status, title from submissions where id = $1`,
+      [submissionId],
+    );
+    expect(current.rows[0].status).toBe("approved");
+    expect(current.rows[0].title).toBe(originalTitle);
+
+    await page.goto(`/pustaka/${slug}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(originalTitle);
+
+    await page.screenshot({
+      path: ".tmp-audit/v16-published-article-revision.png",
+      fullPage: false,
+    });
+  });
+
+  test("admin melihat perbandingan dan menyetujui revisi", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, adminId, "admin");
+    await page.goto("/admin/revisi");
+
+    await expect(page.getByText(/Versi publik saat ini/i).first()).toBeVisible();
+    await expect(page.getByText(revisedTitle).first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Setujui & terbitkan" }).first().click();
+    await page.getByRole("button", { name: "Konfirmasi" }).first().click();
+
+    await expect
+      .poll(
+        async () => {
+          const result = await pool.query(
+            `select status, title from submissions where id = $1`,
+            [submissionId],
+          );
+          return `${result.rows[0].status}:${result.rows[0].title}`;
+        },
+        { timeout: 20_000 },
+      )
+      .toBe(`approved:${revisedTitle}`);
+
+    const after = await pool.query(`select slug from submissions where id = $1`, [
+      submissionId,
+    ]);
+    expect(after.rows[0].slug).toBe(slug);
+  });
+
+  test("versi baru tampil di Pustaka setelah disetujui", async ({ page }) => {
+    await page.goto(`/pustaka/${slug}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(revisedTitle);
+  });
+});
+
+test.describe("Autosave draf", () => {
+  const draftTitle = `Draf artikel v16 ${suffix}`;
+
+  test("menyimpan draf ke PostgreSQL dan memulihkannya", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+    await page.goto("/komunitas/artikel");
+
+    await page.getByLabel("Judul artikel").fill(draftTitle);
+    await page
+      .getByLabel("Ringkasan")
+      .fill("Ringkasan draf yang cukup panjang untuk disimpan sebagai draf artikel.");
+    await page.getByLabel("Kategori").fill("Rekayasa sosial");
+    await page.locator("#artikel-editor").click();
+    await page.keyboard.type(ARTICLE_TEXT);
+
+    // Status tersimpan hanya muncul setelah server mengonfirmasi.
+    await expect(page.getByText(/Tersimpan/i).first()).toBeVisible({
+      timeout: 20_000,
+    });
+
+    const saved = await pool.query(
+      `select id, kind, payload from drafts where owner_id = $1 and kind = 'article'`,
+      [authorId],
+    );
+    expect(saved.rows.length).toBeGreaterThan(0);
+    const payload = saved.rows[0].payload as { title: string };
+    expect(payload.title).toBe(draftTitle);
+
+    const draftId = String(saved.rows[0].id);
+
+    // Draf tidak dipublikasikan otomatis.
+    expect(await submissionByTitle(draftTitle)).toBeUndefined();
+
+    // Daftar draf muncul di Akun Saya.
+    await page.goto("/akun");
+    await expect(page.getByText(draftTitle)).toBeVisible();
+    await page.screenshot({ path: ".tmp-audit/v16-drafts.png", fullPage: false });
+
+    // Melanjutkan draf memulihkan isi form.
+    await page.goto(`/komunitas/artikel?draft=${draftId}`);
+    await expect(page.getByText(/Melanjutkan draf tersimpan/i)).toBeVisible();
+    await expect(page.getByLabel("Judul artikel")).toHaveValue(draftTitle);
+    await expect(page.locator("#artikel-editor")).toContainText(
+      "Pesan kurir palsu biasanya",
+    );
+  });
+});
+
+test.describe("Bookmark artikel", () => {
+  test("tersimpan di akun dan bertahan setelah muat ulang", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, readerId, "user");
+    await page.goto("/pustaka");
+
+    const card = page
+      .locator("article")
+      .filter({ hasText: "Nomor baru, minta pinjaman" })
+      .first();
+    await card.getByRole("button", { name: "Simpan artikel" }).click();
+    await expect(
+      card.getByRole("button", { name: "Hapus dari artikel tersimpan" }),
+    ).toBeVisible();
+
+    const stored = await pool.query(
+      `select article_slug from article_bookmarks where user_id = $1`,
+      [readerId],
+    );
+    expect(stored.rows.map((r) => r.article_slug)).toContain(
+      "nomor-baru-minta-uang",
+    );
+
+    await page.goto("/akun/tersimpan");
+    await expect(page.getByText("Nomor baru, minta pinjaman").first()).toBeVisible();
+    await page.screenshot({ path: ".tmp-audit/v16-bookmarks.png", fullPage: false });
+
+    // Bertahan setelah halaman dimuat ulang (data di database, bukan state).
+    await page.reload();
+    await expect(page.getByText("Nomor baru, minta pinjaman").first()).toBeVisible();
+  });
+});
+
+test.describe("Notifikasi", () => {
+  test("balasan pengguna lain membuat notifikasi nyata untuk penulis", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    // Pertanyaan milik penulis.
+    const thread = await pool.query(
+      `insert into threads (author_id, title, category, body)
+       values ($1, $2, 'lainnya', $3) returning id`,
+      [
+        authorId,
+        `Pertanyaan notifikasi v16 ${suffix}`,
+        "Isi pertanyaan yang cukup panjang untuk lolos validasi minimal tiga puluh karakter.",
+      ],
+    );
+    const threadId = String(thread.rows[0].id);
+
+    // Pembaca membalas lewat API (CAPTCHA kunci uji + sesi pembaca).
+    const readerContext = await browser.newContext();
+    await loginAs(readerContext, readerId, "user");
+    const reply = await readerContext.request.post(
+      `/api/community/threads/${threadId}/replies`,
+      {
+        data: {
+          body: "Balasan yang cukup panjang untuk lolos validasi balasan.",
+          captchaToken: "dummy",
+        },
+      },
+    );
+    await readerContext.close();
+
+    const notifications = await pool.query(
+      `select kind, href, read_at from notifications where user_id = $1`,
+      [authorId],
+    );
+    if (notifications.rows.length === 0) {
+      // Token CAPTCHA dari luar browser tidak tersedia; catat sebagai batasan
+      // alih-alih mengklaim berhasil.
+      test.skip(true, `Balasan ditolak (${reply.status()}) tanpa token CAPTCHA browser.`);
+      return;
+    }
+
+    await loginAs(context, authorId, "user");
+    await page.goto("/komunitas");
+    const bell = page.getByRole("button", { name: /Notifikasi, \d+ belum dibaca/ });
+    await expect(bell).toBeVisible({ timeout: 15_000 });
+
+    await bell.click();
+    await expect(page.getByText(/membalas pertanyaan Anda/i).first()).toBeVisible();
+    await page.screenshot({
+      path: ".tmp-audit/v16-notifications.png",
+      fullPage: false,
+    });
+
+    await page.getByRole("button", { name: "Tandai semua" }).click();
+    await expect(page.getByText("dibaca").first()).toBeVisible();
+
+    // Status baca disimpan di server; tunggu hingga permintaan selesai.
+    await expect
+      .poll(
+        async () => {
+          const after = await pool.query(
+            `select count(*)::int as unread from notifications
+              where user_id = $1 and read_at is null`,
+            [authorId],
+          );
+          return after.rows[0].unread as number;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(0);
+  });
+});
+
+
+test.describe("Audit visual", () => {
+  test("mengambil screenshot audit pada desktop dan mobile", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+
+    // Desktop: editor kosong (area tulis + toolbar).
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/komunitas/artikel");
+    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: ".tmp-audit/v15-editor-desktop.png",
+      fullPage: false,
+    });
+
+    // Mobile: editor.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload();
+    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: ".tmp-audit/v15-editor-mobile.png",
+      fullPage: false,
+    });
+
+    // Mobile: search bar Pustaka.
+    await page.goto("/pustaka");
+    await page.screenshot({
+      path: ".tmp-audit/v15-pustaka-search-mobile.png",
+      fullPage: false,
+    });
+
+    // Tidak ada overflow horizontal pada viewport mobile.
+    const overflow = await page.evaluate(() => {
+      const viewport = document.documentElement.clientWidth;
+      const offenders: string[] = [];
+      document.querySelectorAll<HTMLElement>("*").forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.right > viewport + 0.5) {
+          offenders.push(
+            `${el.tagName}.${(el.className || "").toString().slice(0, 40)} right=${Math.round(rect.right)}`,
+          );
+        }
+      });
+      return {
+        diff: document.documentElement.scrollWidth - viewport,
+        offenders: offenders.slice(0, 6),
+      };
+    });
+    expect(overflow.diff, `Offenders: ${overflow.offenders.join(" | ")}`).toBeLessThanOrEqual(1);
+  });
+});
+

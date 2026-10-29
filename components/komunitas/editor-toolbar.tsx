@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { normalizeUserHref } from "@/lib/content/rich-text";
-import { ImageControl, ImgurControl } from "./editor-media-controls";
+import { MediaControl } from "./editor-media-controls";
 
 /**
  * Toolbar editor artikel.
@@ -344,8 +344,7 @@ export function EditorToolbar({
 
       <ToolSeparator />
 
-      <ImageControl editor={editor} />
-      <ImgurControl editor={editor} />
+      <MediaControl editor={editor} />
 
       <ToolSeparator />
 

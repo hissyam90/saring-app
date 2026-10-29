@@ -48,6 +48,8 @@ const ALLOWED_NODES = new Set([
   "hardBreak",
   "text",
   "image",
+  "mediaEmbed",
+  /** @deprecated nama lama untuk embed; dinormalisasi menjadi `mediaEmbed`. */
   "imgurEmbed",
 ]);
 
@@ -95,9 +97,9 @@ export interface RichNode {
     /** `image` */
     src?: string;
     alt?: string;
-    /** `imgurEmbed` */
+    /** `mediaEmbed` */
     id?: string;
-    kind?: ImgurKind;
+    provider?: string;
   };
   content?: RichNode[];
   marks?: RichMark[];
@@ -105,20 +107,23 @@ export interface RichNode {
 }
 
 /**
- * Jenis media Imgur yang didukung.
+ * Provider embed yang sudah diverifikasi boleh dirender sebagai iframe.
  *
- * - `album`: halaman album/galeri. Di-embed sebagai iframe resmi Imgur.
- * - `image`: satu postingan gambar. Halaman postingan Imgur mengirim
- *   `X-Frame-Options: DENY` sehingga **tidak** bisa di-iframe; dirender sebagai
- *   gambar langsung `https://i.imgur.com/{id}.jpg` yang sudah diverifikasi
- *   menyajikan berkas gambar aslinya.
+ * Hanya Imgur: `https://imgur.com/a/{id}/embed?pub=true` tidak mengirim
+ * `X-Frame-Options` (halaman album biasa mengirim `DENY`). Provider lain tidak
+ * masuk daftar ini karena mekanismenya belum diverifikasi, sehingga halaman
+ * galeri mereka diarahkan memakai tautan gambar langsung.
  */
-export type ImgurKind = "album" | "image";
+export const MEDIA_EMBED_PROVIDERS = ["imgur"] as const;
+export type MediaEmbedProvider = (typeof MEDIA_EMBED_PROVIDERS)[number];
 
-/** Hasil parsing URL/kode embed Imgur. */
-export interface ImgurEmbedRef {
-  kind: ImgurKind;
-  id: string;
+export function isMediaEmbedProvider(
+  value: unknown,
+): value is MediaEmbedProvider {
+  return (
+    typeof value === "string" &&
+    (MEDIA_EMBED_PROVIDERS as readonly string[]).includes(value)
+  );
 }
 
 export interface RichDoc {
@@ -188,51 +193,40 @@ export function normalizeUserHref(raw: string): string | null {
 }
 
 /**
- * Ekstensi berkas gambar yang diizinkan untuk gambar langsung.
+ * Host halaman galeri provider yang dikenal.
  *
- * SVG sengaja tidak diizinkan: walaupun `<img src>` tidak mengeksekusi script,
- * berkas SVG dapat memuat sumber daya eksternal dan tidak diperlukan untuk
- * artikel edukasi.
+ * Halaman seperti ini bukan berkas gambar: menampilkannya lewat `<img>` hanya
+ * menghasilkan gambar rusak, dan memuatnya lewat iframe tidak diizinkan karena
+ * origin-nya belum diverifikasi. Daftar ini dipakai bersama oleh validasi
+ * server (`sanitizeImageSrc`) dan adapter media (`lib/content/media.ts`) agar
+ * tidak ada dua aturan yang menyimpang.
  */
-const ALLOWED_IMAGE_EXTENSIONS = [
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".webp",
-  ".avif",
-] as const;
-
-/** Host Imgur yang dikenali untuk keperluan embed. */
-const IMGUR_HOSTS = new Set([
+export const KNOWN_GALLERY_HOSTS = new Set([
   "imgur.com",
   "www.imgur.com",
   "m.imgur.com",
-  "i.imgur.com",
+  "postimg.cc",
+  "www.postimg.cc",
+  "imgbox.com",
+  "www.imgbox.com",
+  "ibb.co",
+  "www.ibb.co",
 ]);
 
-/** Id media Imgur: alfanumerik pendek (album maupun gambar). */
-const IMGUR_ID = /^[A-Za-z0-9]{5,15}$/;
-
 /**
- * Membersihkan dan memvalidasi URL gambar langsung.
+ * Membersihkan URL HTTPS apa pun (tanpa daftar host).
  *
- * Hanya `https:` yang diterima (tidak ada mixed content dan tidak ada
- * `data:`/`blob:`/`javascript:`). Path harus berakhiran ekstensi gambar yang
- * diizinkan, sehingga URL halaman HTML tidak bisa dipakai sebagai "gambar".
- *
- * Fungsi ini **tidak** melakukan permintaan jaringan: mem-fetch URL arbitrer
- * dari server untuk menebak apakah sebuah URL adalah gambar tidak dilakukan.
- * Kegagalan muat ditangani oleh renderer (fallback tautan).
+ * Dipakai bersama oleh validasi gambar, adapter media, dan embed. Yang ditolak:
+ * protokol selain `https:`, URL berkredensial, karakter kontrol/spasi (dipakai
+ * untuk menyamarkan protokol), dan URL kepanjangan.
  */
-export function sanitizeImageSrc(raw: unknown): string | null {
+export function sanitizeHttpsUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
 
   const value = raw.trim();
   if (value.length === 0 || value.length > RICH_TEXT_LIMITS.maxHrefLength) {
     return null;
   }
-  // Karakter kontrol/spasi dapat dipakai untuk mengelabui pemeriksaan protokol.
   if (/[\u0000-\u0020\u007f]/.test(value)) return null;
 
   let parsed: URL;
@@ -245,125 +239,40 @@ export function sanitizeImageSrc(raw: unknown): string | null {
   if (parsed.protocol !== "https:") return null;
   if (parsed.username || parsed.password) return null;
 
-  const path = parsed.pathname.toLowerCase();
-  if (!ALLOWED_IMAGE_EXTENSIONS.some((ext) => path.endsWith(ext))) return null;
-
   return parsed.toString();
 }
 
-/** URL gambar langsung Imgur untuk satu postingan. */
-export function imgurDirectImageUrl(id: string): string {
-  return `https://i.imgur.com/${id}.jpg`;
-}
-
-/** Halaman publik Imgur (dipakai untuk tautan fallback yang aman). */
-export function imgurPageUrl(ref: ImgurEmbedRef): string {
-  return ref.kind === "album"
-    ? `https://imgur.com/a/${ref.id}`
-    : `https://imgur.com/${ref.id}`;
+/** True bila URL menunjuk halaman galeri provider (bukan berkas gambar). */
+export function isGalleryPageUrl(raw: unknown): boolean {
+  const safe = sanitizeHttpsUrl(raw);
+  if (!safe) return false;
+  return KNOWN_GALLERY_HOSTS.has(new URL(safe).hostname.toLowerCase());
 }
 
 /**
- * URL iframe embed resmi Imgur untuk album.
+ * Membersihkan dan memvalidasi URL gambar langsung.
  *
- * Diverifikasi manual: `https://imgur.com/a/{id}/embed?pub=true` tidak
- * mengirim `X-Frame-Options`, sedangkan halaman album biasa mengirim
- * `X-Frame-Options: DENY`. Hanya bentuk ini yang boleh menjadi `src` iframe.
+ * Hanya `https:` yang diterima (tidak ada mixed content dan tidak ada
+ * `data:`/`blob:`/`javascript:`). URL berkredensial dan karakter kontrol
+ * ditolak.
+ *
+ * **Tidak** mensyaratkan ekstensi tertentu: banyak layanan menyajikan gambar
+ * dari path tanpa ekstensi, dan ekstensi di URL tidak membuktikan isi berkas.
+ * Yang tetap ditolak adalah halaman galeri provider yang dikenal, karena URL
+ * tersebut pasti bukan berkas gambar.
+ *
+ * Fungsi ini **tidak** melakukan permintaan jaringan: mem-fetch URL arbitrer
+ * dari server untuk menebak apakah sebuah URL adalah gambar tidak dilakukan.
+ * Kegagalan muat ditangani renderer (fallback tautan).
  */
-export function imgurEmbedUrl(id: string): string {
-  return `https://imgur.com/a/${id}/embed?pub=true`;
-}
+export function sanitizeImageSrc(raw: unknown): string | null {
+  const safe = sanitizeHttpsUrl(raw);
+  if (!safe) return null;
 
-function imgurRefFromPath(pathname: string): ImgurEmbedRef | null {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return null;
+  const parsed = new URL(safe);
+  if (KNOWN_GALLERY_HOSTS.has(parsed.hostname.toLowerCase())) return null;
 
-  // /a/{id} atau /gallery/{id} (+ segmen opsional seperti /embed)
-  if (
-    (segments[0] === "a" || segments[0] === "gallery") &&
-    segments.length >= 2
-  ) {
-    const id = segments[1];
-    return IMGUR_ID.test(id) ? { kind: "album", id } : null;
-  }
-
-  // /{id}
-  const id = segments[0];
-  return IMGUR_ID.test(id) ? { kind: "image", id } : null;
-}
-
-/**
- * Mengurai URL Imgur atau kode embed resmi menjadi referensi media.
- *
- * Menerima:
- * - `https://imgur.com/a/{id}` dan `https://imgur.com/gallery/{id}` → album
- * - `https://imgur.com/a/{id}/embed?pub=true` → album (dinormalisasi)
- * - `https://imgur.com/{id}` → satu gambar
- * - kode embed resmi:
- *   `<blockquote class="imgur-embed-pub" data-id="a/{id}">…</blockquote><script …>`
- *
- * **Script di dalam snippet tidak pernah disimpan atau dijalankan.** Yang
- * diambil hanya `data-id` (atau `href` pada anchor di dalam blockquote) yang
- * sudah divalidasi terhadap pola id Imgur.
- */
-export function parseImgurEmbed(raw: unknown): ImgurEmbedRef | null {
-  if (typeof raw !== "string") return null;
-
-  const value = raw.trim();
-  if (value.length === 0 || value.length > 4_000) return null;
-
-  // 1) Kode embed resmi: ambil data-id lebih dulu, lalu href di dalamnya.
-  if (/imgur-embed-pub|data-id|<blockquote|<iframe/i.test(value)) {
-    const dataId = value.match(/data-id\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (dataId) {
-      const cleaned = dataId.trim().replace(/^a\//i, "");
-      if (IMGUR_ID.test(cleaned)) {
-        // `data-id="a/{id}"` menandakan album; tanpa prefiks = satu gambar.
-        return {
-          kind: /^a\//i.test(dataId.trim()) ? "album" : "image",
-          id: cleaned,
-        };
-      }
-      return null;
-    }
-
-    const href = value.match(/href\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (href) return parseImgurEmbed(href);
-
-    const src = value.match(/src\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (src) return parseImgurEmbed(src);
-
-    return null;
-  }
-
-  // 2) URL biasa. Tambahkan https:// bila pengguna menulis tanpa protokol.
-  const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(value);
-  const candidate = hasScheme ? value : `https://${value}`;
-
-  let parsed: URL;
-  try {
-    parsed = new URL(candidate);
-  } catch {
-    return null;
-  }
-
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
-  if (parsed.username || parsed.password) return null;
-
-  const host = parsed.hostname.toLowerCase();
-  if (!IMGUR_HOSTS.has(host)) return null;
-
-  // i.imgur.com/{id}.{ext} adalah gambar langsung, bukan embed.
-  if (host === "i.imgur.com") return null;
-
-  return imgurRefFromPath(parsed.pathname);
-}
-
-/** True bila teks yang ditempel hanya berupa satu URL gambar langsung. */
-export function imageUrlFromPastedText(text: string): string | null {
-  const value = text.trim();
-  if (value.length === 0 || /\s/.test(value)) return null;
-  return sanitizeImageSrc(value);
+  return parsed.toString();
 }
 
 function normalizeMark(raw: unknown): RichMark {
@@ -498,28 +407,38 @@ function normalizeNode(
     return { type: "image", attrs: { src, alt } };
   }
 
-  // --- Media: embed Imgur -------------------------------------------------
-  if (type === "imgurEmbed") {
+  // --- Media: embed provider ----------------------------------------------
+  // `imgurEmbed` adalah nama lama dari node ini; dokumen lama dinormalisasi
+  // menjadi `mediaEmbed` agar hanya ada satu bentuk tersimpan.
+  if (type === "mediaEmbed" || type === "imgurEmbed") {
     counter.media += 1;
     if (counter.media > RICH_TEXT_LIMITS.maxMediaNodes) {
       throw new RichTextError("Terlalu banyak media dalam satu artikel.");
     }
 
     const attrs = isRecord(raw.attrs) ? raw.attrs : {};
-    const kind = attrs.kind;
     const id = attrs.id;
-
-    if (
-      (kind !== "album" && kind !== "image") ||
-      typeof id !== "string" ||
-      !IMGUR_ID.test(id)
-    ) {
-      throw new RichTextError("Embed Imgur tidak valid.");
+    if (typeof id !== "string" || !/^[A-Za-z0-9]{5,15}$/.test(id)) {
+      throw new RichTextError("Embed media tidak valid.");
     }
 
-    // Hanya id dan jenis yang disimpan. URL embed dihitung ulang oleh renderer
-    // dari id, sehingga `src`/HTML dari klien tidak pernah dipakai.
-    return { type: "imgurEmbed", attrs: { kind, id } };
+    // Kompatibilitas dokumen lama: `imgurEmbed` dengan `kind: "image"`
+    // sebenarnya menunjuk satu postingan gambar, bukan album. Halaman postingan
+    // Imgur memblokir iframe, jadi bentuk lama ini dikonversi menjadi node
+    // gambar biasa.
+    const legacyKind = attrs.kind;
+    if (type === "imgurEmbed" && legacyKind === "image") {
+      return { type: "image", attrs: { src: `https://i.imgur.com/${id}.jpg`, alt: "" } };
+    }
+
+    const provider = attrs.provider ?? "imgur";
+    if (!isMediaEmbedProvider(provider)) {
+      throw new RichTextError("Embed media tidak valid.");
+    }
+
+    // Hanya provider dan id yang disimpan. URL embed dihitung ulang oleh
+    // renderer dari id, sehingga `src`/HTML dari klien tidak pernah dipakai.
+    return { type: "mediaEmbed", attrs: { provider, id } };
   }
 
   return { type, content: normalizeChildren(raw.content, depth, counter) };

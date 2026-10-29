@@ -1,4 +1,5 @@
 import { getStore } from "@/lib/db";
+import { THREAD_CATEGORIES } from "@/lib/db/types";
 import type { ThreadCategory } from "@/lib/db/types";
 import { requireUser } from "@/lib/auth/guards";
 import { clampPage, fail, handle, json, readJson } from "@/lib/api/helpers";
@@ -8,7 +9,8 @@ import { threadSchema, firstError } from "@/lib/security/validation";
 import { verifyTurnstile, TURNSTILE_ERROR } from "@/lib/security/turnstile";
 
 const PAGE_SIZE = 10;
-const CATEGORIES = new Set(["phishing", "transaksi", "lowongan", "penyamaran", "akun"]);
+/** Kategori yang diterima filter; diturunkan dari sumber tunggal di `types.ts`. */
+const CATEGORIES = new Set<string>(THREAD_CATEGORIES.map((c) => c.id));
 
 export async function GET(request: Request): Promise<Response> {
   return handle(async () => {
