@@ -601,6 +601,136 @@ test.describe("Notifikasi", () => {
 });
 
 
+test.describe("Moderasi laporan", () => {
+  /** Laporan nyata pada sebuah pertanyaan, dibuat langsung di PostgreSQL. */
+  async function createReport(reason: string) {
+    const thread = await pool.query(
+      `insert into threads (author_id, title, category, body)
+       values ($1, $2, 'lainnya', $3) returning id`,
+      [authorId, `Laporan uji ${randomUUID().slice(0, 8)}`, "Isi pertanyaan uji moderasi."],
+    );
+    const report = await pool.query(
+      `insert into reports (reporter_id, target_type, target_id, reason)
+       values ($1, 'thread', $2, $3) returning id`,
+      [readerId, thread.rows[0].id, reason],
+    );
+    return String(report.rows[0].id);
+  }
+
+  async function reportState(id: string) {
+    const result = await pool.query(
+      `select status, resolved_at from reports where id = $1`,
+      [id],
+    );
+    return result.rows[0] as { status: string; resolved_at: Date | null };
+  }
+
+  test("transisi open → reviewing → resolved → open menyimpan status dan resolved_at", async ({
+    browser,
+  }) => {
+    const reportId = await createReport("Uji transisi status laporan");
+
+    const adminContext = await browser.newContext();
+    await loginAs(adminContext, adminId, "admin");
+
+    const setStatus = async (status: string) => {
+      const response = await adminContext.request.post("/api/admin/moderate", {
+        data: { action: "set-report-status", reportId, status },
+      });
+      return response.status();
+    };
+
+    const initial = await reportState(reportId);
+    expect(initial.status).toBe("open");
+    expect(initial.resolved_at).toBeNull();
+
+    // open -> reviewing: belum diselesaikan, jadi resolved_at tetap kosong.
+    expect(await setStatus("reviewing")).toBe(200);
+    const reviewing = await reportState(reportId);
+    expect(reviewing.status).toBe("reviewing");
+    expect(reviewing.resolved_at).toBeNull();
+
+    // reviewing -> resolved: resolved_at terisi.
+    expect(await setStatus("resolved")).toBe(200);
+    const resolved = await reportState(reportId);
+    expect(resolved.status).toBe("resolved");
+    expect(resolved.resolved_at).not.toBeNull();
+
+    // resolved -> open: dibuka kembali, resolved_at dikosongkan.
+    expect(await setStatus("open")).toBe(200);
+    const reopened = await reportState(reportId);
+    expect(reopened.status).toBe("open");
+    expect(reopened.resolved_at).toBeNull();
+
+    await adminContext.close();
+  });
+
+  test("menyelesaikan laporan mengisi resolved_at, membukanya mengosongkannya", async ({
+    browser,
+  }) => {
+    const reportId = await createReport("Uji resolved_at dua arah");
+
+    const adminContext = await browser.newContext();
+    await loginAs(adminContext, adminId, "admin");
+
+    const setStatus = (status: string) =>
+      adminContext.request.post("/api/admin/moderate", {
+        data: { action: "set-report-status", reportId, status },
+      });
+
+    expect((await setStatus("resolved")).status()).toBe(200);
+    const first = await reportState(reportId);
+    expect(first.status).toBe("resolved");
+    const firstResolvedAt = first.resolved_at;
+    expect(firstResolvedAt).not.toBeNull();
+
+    // Kembali ke reviewing harus mengosongkan resolved_at.
+    expect((await setStatus("reviewing")).status()).toBe(200);
+    expect((await reportState(reportId)).resolved_at).toBeNull();
+
+    // Diselesaikan lagi: resolved_at terisi kembali (waktu baru).
+    expect((await setStatus("resolved")).status()).toBe(200);
+    const second = await reportState(reportId);
+    expect(second.resolved_at).not.toBeNull();
+    expect(second.resolved_at!.getTime()).toBeGreaterThanOrEqual(
+      firstResolvedAt!.getTime(),
+    );
+
+    await adminContext.close();
+  });
+
+  test("laporan tidak ditemukan dan status tidak valid ditolak tanpa mengubah data", async ({
+    browser,
+  }) => {
+    const reportId = await createReport("Uji ID tidak ditemukan");
+
+    const adminContext = await browser.newContext();
+    await loginAs(adminContext, adminId, "admin");
+
+    const missing = await adminContext.request.post("/api/admin/moderate", {
+      data: {
+        action: "set-report-status",
+        reportId: "00000000-0000-0000-0000-000000000000",
+        status: "resolved",
+      },
+    });
+    expect(missing.status()).toBe(404);
+
+    const invalidStatus = await adminContext.request.post("/api/admin/moderate", {
+      data: { action: "set-report-status", reportId, status: "selesai" },
+    });
+    expect(invalidStatus.status()).toBe(400);
+
+    // Laporan yang ada tidak ikut berubah oleh request yang ditolak.
+    const state = await reportState(reportId);
+    expect(state.status).toBe("open");
+    expect(state.resolved_at).toBeNull();
+
+    await adminContext.close();
+  });
+});
+
+
 test.describe("Audit visual", () => {
   test("mengambil screenshot audit pada desktop dan mobile", async ({
     page,

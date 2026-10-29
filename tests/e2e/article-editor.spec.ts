@@ -208,6 +208,34 @@ test.describe("Editor artikel", () => {
     await expect(editor.locator("ul li")).toHaveCount(2);
   });
 
+  test("ketikan tepat setelah tombol toolbar tidak hilang saat frame tertunda", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, authorId, "user");
+
+    // Tiptap memulihkan fokus editor lewat requestAnimationFrame. Menunda rAF
+    // meniru runner CI yang sibuk: tanpa perbaikan, karakter yang diketik
+    // sebelum frame berikutnya jatuh ke tombol toolbar dan hilang.
+    await page.addInitScript(() => {
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        raf(() => setTimeout(() => callback(performance.now()), 120));
+    });
+
+    await openSubmissionPage(page);
+    await page.locator("#artikel-editor").click();
+
+    const toolbar = page.getByRole("toolbar", { name: "Format artikel" });
+    await toolbar.getByRole("button", { name: "Tebal" }).click();
+    await page.keyboard.type("Tidak hilang");
+
+    // Tidak ada karakter yang hilang dan format tebal tetap aktif.
+    await expect(page.locator("#artikel-editor strong")).toHaveText(
+      "Tidak hilang",
+    );
+  });
+
   test("menolak tautan berbahaya di dialog tautan", async ({ page, context }) => {
     const form = newSubmissionForm(page);
     await loginAs(context, authorId, "user");

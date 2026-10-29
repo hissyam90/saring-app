@@ -50,6 +50,10 @@ function ToolButton({
   return (
     <button
       type="button"
+      // Tombol toolbar tidak boleh mengambil fokus dari editor. Tiptap
+      // memulihkan fokus lewat requestAnimationFrame, sehingga karakter yang
+      // diketik sebelum frame berikutnya hilang (target keydown jadi tombol).
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}

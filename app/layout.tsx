@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Script from "next/script";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
@@ -45,14 +44,15 @@ export default function RootLayout({
     <html lang="id" suppressHydrationWarning>
       <body className="min-h-screen bg-paper text-ink">
         {/*
-          Skrip tema harus berjalan sebelum halaman pertama kali digambar agar
-          tidak ada kilatan terang/gelap yang salah (FOUT). `beforeInteractive`
-          disisipkan ke HTML awal dan dieksekusi sebelum kode Next.js, jadi
-          atribut `data-theme` sudah terpasang saat CSS pertama kali dihitung.
+          Skrip tema harus berjalan sebelum halaman digambar agar tidak ada
+          kilatan tema yang salah. Skrip sebaris biasa (bukan `next/script`)
+          dieksekusi browser saat HTML diurai, sehingga tidak bergantung pada
+          unduhan chunk Next.js yang bisa selesai setelah paint pertama.
         */}
-        <Script id="saring-theme-init" strategy="beforeInteractive">
-          {THEME_INIT_SCRIPT}
-        </Script>
+        <script
+          id="saring-theme-init"
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
         {/*
           WCAG 2.4.1 (Bypass Blocks): tautan ini tersembunyi sampai menerima
           fokus keyboard, sehingga pengguna keyboard/screen reader dapat

@@ -832,11 +832,15 @@ export function createPostgresStore(pool: Pool): Store {
       return { items: rows.map(toReport), total: Number(totalRows[0].n) };
     },
     async resolveReport(input) {
+      // `$2` hanya untuk kolom enum `status`; kondisi `resolved_at` memakai
+      // parameter boolean terpisah. Memakai `$2` di kedua tempat membuat
+      // PostgreSQL harus menyimpulkan dua tipe berbeda untuk satu parameter
+      // ("inconsistent types deduced for parameter $2").
       const rows = await q(
         `update reports set status = $2,
-            resolved_at = case when $2 = 'resolved' then now() else null end
+            resolved_at = case when $3::boolean then now() else null end
           where id = $1 returning *`,
-        [input.id, input.status],
+        [input.id, input.status, input.status === "resolved"],
       );
       return rows[0] ? toReport(rows[0]) : null;
     },
