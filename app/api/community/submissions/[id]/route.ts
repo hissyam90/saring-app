@@ -8,7 +8,7 @@ import {
   clientKey,
   tooManyRequests,
 } from "@/lib/security/rate-limit";
-import { submissionSchema, firstError } from "@/lib/security/validation";
+import { parseSubmissionInput } from "@/lib/security/validation";
 import { verifyTurnstile, TURNSTILE_ERROR } from "@/lib/security/turnstile";
 
 type Params = { params: Promise<{ id: string }> };
@@ -27,8 +27,8 @@ export async function PATCH(request: Request, { params }: Params): Promise<Respo
     if (!limit.allowed) return tooManyRequests(limit);
 
     const body = await readJson(request);
-    const parsed = submissionSchema.safeParse(body);
-    if (!parsed.success) return fail(firstError(parsed.error), 400);
+    const parsed = parseSubmissionInput(body);
+    if (!parsed.ok) return fail(parsed.error, 400);
 
     const store = getStore();
     const existing = await store.findSubmission(id);
@@ -48,7 +48,8 @@ export async function PATCH(request: Request, { params }: Params): Promise<Respo
       summary: parsed.data.summary,
       category: parsed.data.category,
       body: parsed.data.body,
-      references: parsed.data.references || null,
+      bodyJson: parsed.data.bodyJson,
+      references: parsed.data.references,
     });
 
     if (!updated) return fail("Pengajuan tidak dapat diperbarui.", 409);

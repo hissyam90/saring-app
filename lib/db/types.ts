@@ -1,5 +1,7 @@
 export type Role = "user" | "admin";
 
+import type { RichDoc } from "@/lib/content/rich-text";
+
 export interface User {
   id: string;
   email: string;
@@ -65,7 +67,16 @@ export interface Submission {
   title: string;
   summary: string;
   category: string;
+  /**
+   * Proyeksi teks biasa dari {@link bodyJson}. Dipertahankan agar artikel lama
+   * (dan data plain text) tetap dapat dibaca, dicari, dan ditampilkan.
+   */
   body: string;
+  /**
+   * Dokumen rich text tervalidasi. `null` untuk artikel lama yang hanya punya
+   * teks biasa, atau bila dokumen tidak lolos validasi saat dibaca.
+   */
+  bodyJson: RichDoc | null;
   references: string | null;
   status: SubmissionStatus;
   reviewNote: string | null;
@@ -81,6 +92,7 @@ export interface PublishedArticle {
   summary: string;
   category: string;
   body: string;
+  bodyJson: RichDoc | null;
   references: string | null;
   authorName: string;
   publishedAt: string;

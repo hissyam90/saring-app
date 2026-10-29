@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { LIBRARY, readingMinutes, articleWordCount } from "@/data/resources";
 import { findPublishedArticleSafe } from "@/lib/db/published";
+import { RichContent } from "@/components/pustaka/rich-content";
+import type { RichDoc } from "@/lib/content/rich-text";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -256,8 +258,10 @@ function AskCta({ slug }: { slug: string }) {
 }
 
 /**
- * Artikel kontribusi dirender sebagai paragraf teks biasa.
- * Tidak ada HTML pengguna yang disuntikkan ke DOM.
+ * Artikel kontribusi dirender dari dokumen tervalidasi lewat `RichContent`.
+ * Tidak ada `dangerouslySetInnerHTML`: teks di-escape React, node di luar
+ * allowlist dilewati, dan tautan diperiksa ulang sebelum menjadi anchor.
+ * Artikel lama yang masih berupa teks biasa tetap tampil lewat `fallbackText`.
  */
 function ContributionView({
   contribution,
@@ -268,14 +272,11 @@ function ContributionView({
     summary: string;
     category: string;
     body: string;
+    bodyJson: RichDoc | null;
     references: string | null;
     authorName: string;
   };
 }) {
-  const paragraphs = contribution.body
-    .split(/\n{2,}/)
-    .map((line) => line.trim())
-    .filter(Boolean);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
@@ -307,12 +308,11 @@ function ContributionView({
           </p>
         </header>
 
-        <div className="mt-6 grid gap-3">
-          {paragraphs.map((paragraph, index) => (
-            <p key={index} className="text-[15px] leading-7 text-ink-soft">
-              {paragraph}
-            </p>
-          ))}
+        <div className="mt-6">
+          <RichContent
+            doc={contribution.bodyJson}
+            fallbackText={contribution.body}
+          />
         </div>
 
         {contribution.references ? (

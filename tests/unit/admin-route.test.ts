@@ -33,6 +33,7 @@ function post(body: unknown, headers: Record<string, string> = {}) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      host: "saring.test",
       origin: "https://saring.test",
       "sec-fetch-site": "same-origin",
       ...headers,

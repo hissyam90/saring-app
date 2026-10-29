@@ -12,6 +12,12 @@
   Referensi pola border, shadow, dan interaksi.
 - **iron-session** (MIT), **bcryptjs** (MIT), **zod** (MIT), **pg** (MIT),
   **Tailwind CSS** (MIT), dan **Next.js** (MIT) digunakan sesuai lisensinya.
+- **Tiptap** (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`,
+  `@tiptap/extensions`, `@tiptap/extension-image`) — MIT License, copyright
+  Tiptap GmbH. Dipakai sebagai editor artikel; ekstensi dibatasi pada format
+  yang lolos allowlist server. Konten tidak disimpan sebagai HTML Tiptap maupun
+  dirender dengan `dangerouslySetInnerHTML`. Gambar disimpan sebagai URL
+  eksternal, bukan hasil unggahan.
 - **Cloudflare Turnstile** dan **Google Safe Browsing** adalah layanan pihak
   ketiga yang dipanggil dari server; penggunaannya tunduk pada ketentuan
   masing-masing penyedia.

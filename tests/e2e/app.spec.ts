@@ -21,11 +21,14 @@ test.describe("Routes", () => {
 });
 
 test.describe("Pustaka", () => {
-  test("indeks menampilkan grid artikel dan membuka halaman detail", async ({
+  test("indeks menampilkan artikel bawaan dan membuka halaman detail", async ({
     page,
   }) => {
     await page.goto("/pustaka");
-    await expect(page.getByText(/14 dari 14 artikel/)).toBeVisible();
+    // Jumlah artikel tidak dipatok: kontribusi komunitas yang sudah disetujui
+    // ikut tampil, sehingga totalnya dapat bertambah. Yang diuji adalah
+    // penghitungnya tampil dan artikel bawaan tetap dapat dibuka.
+    await expect(page.getByText(/\d+ dari \d+ artikel/)).toBeVisible();
 
     await page.getByRole("link", { name: /Nomor baru, minta pinjaman/ }).click();
     await expect(page).toHaveURL(/\/pustaka\/nomor-baru-minta-uang/);

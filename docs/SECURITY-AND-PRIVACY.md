@@ -47,7 +47,7 @@ Pemeriksaan pesan, nomor, dan tautan tetap dapat dipakai tanpa akun.
 |---|---|---|
 | `users` | email, nama tampilan, hash kata sandi (bcrypt cost 12), role, waktu dibuat | kata sandi mentah, nomor telepon, identitas |
 | `threads` / `replies` | judul, kategori, isi, penulis, status disembunyikan | data pribadi yang diminta aplikasi |
-| `submissions` | artikel kontribusi + status tinjauan + catatan admin | versi draf yang tidak dikirim |
+| `submissions` | artikel kontribusi (dokumen JSON tervalidasi) + status tinjauan + catatan admin | versi draf yang tidak dikirim, HTML mentah |
 | `reports` | alasan laporan, keterangan, status | identitas pelapor pada tampilan publik |
 | `moderation_log` | aksi admin, target, catatan | isi pesan pemeriksaan |
 | `rate_limits` | nama bucket + penghitung + awal jendela | isi konten, token, IP mentah |
@@ -108,10 +108,146 @@ Halaman privat dan seluruh `/api/*` mengirim `Cache-Control: private, no-store`.
 Pemeriksaan kepemilikan (mencegah IDOR) dilakukan di kueri (`where id = $1 and
 author_id = $2`), bukan hanya di UI.
 
-## CSRF
+## Konten artikel kaya (rich text)
+
+Artikel kontribusi ditulis dengan editor Tiptap dan disimpan sebagai **dokumen
+JSON terstruktur**, bukan HTML.
+
+### Format penyimpanan
+
+| Kolom | Isi | Keterangan |
+|---|---|---|
+| `submissions.body_json` (`jsonb`) | Dokumen Tiptap yang sudah dinormalisasi | Sumber utama format. `NULL` untuk artikel lama. |
+| `submissions.body` (`text`) | Proyeksi teks biasa dari `body_json` | Diturunkan **di server**, dipakai untuk pratinjau, daftar, dan artikel lama. |
+
+Migration: `lib/db/migrations/0002_submission_rich_body.sql` (aditif, idempoten,
+tanpa operasi destruktif). Artikel lama tidak diubah: `body_json` bernilai
+`NULL` dan renderer memakai `body` sebagai fallback.
+
+### Allowlist konten
+
+Hanya node dan mark berikut yang boleh disimpan **dan** dirender:
+
+| Jenis | Nilai |
+|---|---|
+| Node | `paragraph`, `heading` (level 2–3), `bulletList`, `orderedList`, `listItem`, `blockquote`, `horizontalRule`, `hardBreak`, `text`, `image`, `imgurEmbed` |
+| Mark | `bold`, `italic`, `underline`, `strike`, `code`, `link` |
+| Atribut | `heading.level` (2/3), `link.href`, `image.src`, `image.alt`, `imgurEmbed.id`, `imgurEmbed.kind` |
+
+`codeBlock`, `iframe`, `table`, dan mark seperti `textStyle` ditolak. `codeBlock`
+juga dinonaktifkan di editor sehingga tidak bisa dihasilkan UI.
+
+### Media: gambar langsung dan embed Imgur
+
+**Gambar langsung (`image`)**
+
+- Hanya `https:` yang diterima. `http:`, `data:`, `blob:`, `javascript:`,
+  `file:`, URL berkredensial, dan karakter kontrol ditolak.
+- Path harus berakhiran `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, atau `.avif`,
+  sehingga URL halaman HTML tidak bisa dipakai sebagai "gambar". SVG sengaja
+  tidak diizinkan.
+- Hanya `src` dan `alt` yang disimpan; `title`, `width`, `height`, `class`, dan
+  atribut lain dari klien dibuang.
+- `allowBase64: false` di editor, sehingga gambar base64 besar tidak masuk ke
+  `body_json`.
+- Server **tidak** melakukan permintaan jaringan untuk menebak apakah sebuah URL
+  adalah gambar. Kegagalan muat ditangani di renderer (fallback tautan).
+
+**Embed Imgur (`imgurEmbed`)**
+
+- Yang disimpan hanya `id` (alfanumerik 5–15 karakter) dan `kind`
+  (`album`/`image`). URL iframe **dihitung ulang** oleh renderer dari `id`, jadi
+  `src`/HTML dari klien tidak pernah dipakai.
+- Menerima URL album (`https://imgur.com/a/{id}`), galeri
+  (`https://imgur.com/gallery/{id}`), URL embed, URL postingan tunggal, dan kode
+  embed resmi (`blockquote.imgur-embed-pub`).
+- Dari kode embed hanya `data-id` (atau `href` di dalam blockquote) yang diambil.
+  `<script>` yang ditempel **diabaikan sepenuhnya** dan tidak pernah disimpan
+  atau dijalankan.
+- Host selain `imgur.com`, `www.imgur.com`, `m.imgur.com`, dan `i.imgur.com`
+  ditolak (termasuk `imgur.com.evil.test`).
+
+**Mekanisme render embed (diverifikasi manual, bukan asumsi)**
+
+| URL | `X-Frame-Options` | Hasil |
+|---|---|---|
+| `https://imgur.com/a/{id}` | `DENY` | tidak dapat di-iframe |
+| `https://imgur.com/a/{id}/embed` | — | memuat halaman embed |
+| `https://imgur.com/a/{id}/embed?pub=true` | — | **dipakai**; iframe memuat album (diuji di browser) |
+| `https://imgur.com/{id}` | `DENY` | tidak dapat di-iframe → dirender sebagai gambar |
+
+Karena halaman postingan tunggal memblokir iframe, `kind: "image"` dirender
+sebagai gambar langsung `https://i.imgur.com/{id}.jpg` (diverifikasi menyajikan
+`image/jpeg`).
+
+**Hotlink dan `referrerpolicy`**
+
+Imgur menolak hotlink bila permintaan membawa `Referer` asing: terukur di
+browser sebagai **HTTP 403** dengan referrer vs **200** tanpa referrer. Karena
+itu semua gambar artikel memakai `referrerpolicy="no-referrer"` (di editor
+melalui `Image.configure({ HTMLAttributes })`, di renderer melalui atribut
+`<img>`). Tanpa ini gambar tampil rusak walaupun URL-nya benar.
+
+**Fallback**
+
+- Gambar: bila gagal dimuat, ditampilkan kotak "Gambar gagal dimuat" dengan
+  tautan aman ke URL aslinya.
+- Embed: tautan "Jika embed tidak tampil, buka album di Imgur" **selalu**
+  terlihat, karena iframe yang gagal (album privat/dihapus/diblokir) tetap
+  memicu event `load` dengan halaman error pihak ketiga sehingga kegagalan tidak
+  selalu dapat dideteksi dari sisi Saring. Timeout 9 detik tetap dipakai sebagai
+  jaring pengaman bila `load` tidak pernah terjadi.
+
+**CSP**
+
+- `img-src 'self' data: blob: https:` — penulis boleh memakai host gambar HTTPS
+  mana pun, sesuai kebutuhan artikel edukasi.
+- `frame-src https://challenges.cloudflare.com https://imgur.com` — hanya origin
+  Imgur yang dibutuhkan untuk embed; tanpa wildcard `*.imgur.com`.
+- `connect-src` **tidak** dilonggarkan: Saring tidak melakukan `fetch` ke Imgur
+  dari browser maupun server.
+
+**Iframe embed**
+
+`sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"` dan
+`referrerpolicy="no-referrer"`. Kombinasi `allow-scripts` + `allow-same-origin`
+diperlukan agar embed resmi berjalan; ini aman karena dokumen berasal dari origin
+berbeda dengan Saring sehingga tidak dapat mengakses DOM maupun cookie aplikasi.
+
+### Validasi dan pengamanan
+
+1. **Editor bukan pengaman.** Klien mengirim `bodyJson`; server tidak
+   mempercayainya.
+2. `parseRichDoc()` (`lib/content/rich-text.ts`) memeriksa struktur, jumlah node
+   (maks 2000), kedalaman (maks 6), dan panjang node teks. Atribut di luar
+   daftar dibuang; `target`/`rel` dari klien tidak pernah disimpan.
+3. Tautan divalidasi ulang dengan `sanitizeLinkHref()`: hanya `http:`,
+   `https:`, dan `mailto:`; `javascript:`, `data:`, `vbscript:`, `file:`, URL
+   relatif, karakter kontrol, dan URL berkredensial ditolak.
+4. Panjang isi dihitung dari teks biasa hasil proyeksi server: minimal 300 dan
+   maksimal 12000 karakter (sama dengan aturan textarea sebelumnya). Artikel
+   kosong atau berisi markup kosong ditolak.
+5. `readRichDoc()` memvalidasi ulang saat **membaca** dari database, sehingga
+   data yang diubah di luar aplikasi tidak pernah sampai ke renderer.
+6. Renderer (`components/pustaka/rich-content.tsx`) tidak memakai
+   `dangerouslySetInnerHTML`. Setiap node dipetakan menjadi elemen React, teks
+   di-escape React, node di luar allowlist dilewati, dan `href` diperiksa ulang.
+
+### Tautan keluar
+
+Tautan eksternal dirender dengan `target="_blank"` dan
+`rel="noopener noreferrer nofollow ugc"`. Tautan `mailto:` tidak membuka tab
+baru. Tidak ada unggahan gambar atau berkas pada tahap ini.
+
 
 - Semua endpoint mutasi memeriksa `Origin` dan `Sec-Fetch-Site` melalui
   `isSameOrigin()`. Request lintas situs ditolak dengan 403.
+- Perbandingan host memakai header **`Host`** (dan `X-Forwarded-Host` hanya bila
+  `SARING_TRUST_PROXY` diset), **bukan** `request.url`. Next.js dapat mengisi
+  `request.url` dengan host internal server, sehingga membandingkan dengan
+  `request.url` menolak semua POST dari browser pada host selain `localhost`
+  (perilaku lama, sudah diperbaiki dan diuji regresi).
+- Skema (http/https) tidak dibandingkan karena TLS umumnya diterminasi di proxy.
 - Cookie sesi memakai `SameSite=Lax` sebagai lapisan pertama.
 - Semua mutasi memakai `POST`/`PATCH` dengan body JSON, bukan `GET`.
 

@@ -115,6 +115,7 @@ export default async function SubmissionPage() {
                   summary: submission.summary,
                   category: submission.category,
                   body: submission.body,
+                  bodyJson: submission.bodyJson,
                   references: submission.references,
                 }}
               />

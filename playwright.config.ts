@@ -21,5 +21,18 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
+    /**
+     * Kunci uji resmi Cloudflare Turnstile ("always passes").
+     *
+     * Nilainya publik dan memang disediakan Cloudflare untuk pengujian
+     * otomatis di domain apa pun. Dipakai di sini supaya alur pengajuan artikel
+     * benar-benar melewati verifikasi Siteverify di server saat pengujian,
+     * bukan melewatinya. Konfigurasi produksi (`.env.local` / Heroku Config
+     * Vars) sama sekali tidak diubah.
+     */
+    env: {
+      NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      CLOUDFLARE_TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+    },
   },
 });

@@ -19,6 +19,7 @@ import type {
   ListUsersOptions,
   Store,
 } from "./store";
+import { readRichDoc, type RichDoc } from "@/lib/content/rich-text";
 
 interface MemUser extends UserWithHash {
   removed: boolean;
@@ -48,6 +49,7 @@ interface MemSubmission {
   summary: string;
   category: string;
   body: string;
+  bodyJson: RichDoc | null;
   references: string | null;
   status: Submission["status"];
   reviewNote: string | null;
@@ -117,6 +119,9 @@ export function createMemoryStore(): Store {
   const toReply = (r: MemReply): Reply => ({ ...r, authorName: name(r.authorId) });
   const toSub = (s: MemSubmission): Submission => ({
     ...s,
+    // Normalisasi saat baca, sama seperti implementasi PostgreSQL, agar data
+    // yang diubah di luar aplikasi tidak pernah sampai ke renderer.
+    bodyJson: readRichDoc(s.bodyJson),
     authorName: name(s.authorId),
   });
 
@@ -226,7 +231,13 @@ export function createMemoryStore(): Store {
     async createSubmission(input) {
       const s: MemSubmission = {
         id: randomUUID(),
-        ...input,
+        authorId: input.authorId,
+        title: input.title,
+        summary: input.summary,
+        category: input.category,
+        body: input.body,
+        bodyJson: input.bodyJson ?? null,
+        references: input.references,
         status: "pending",
         reviewNote: null,
         slug: null,
@@ -240,7 +251,16 @@ export function createMemoryStore(): Store {
       const s = subs.get(id);
       if (!s || s.authorId !== authorId) return null;
       if (s.status === "approved" || s.status === "rejected") return null;
-      Object.assign(s, input, { status: "pending", reviewNote: null });
+      Object.assign(s, {
+        title: input.title,
+        summary: input.summary,
+        category: input.category,
+        body: input.body,
+        bodyJson: input.bodyJson ?? null,
+        references: input.references,
+        status: "pending",
+        reviewNote: null,
+      });
       return toSub(s);
     },
     async findSubmission(id) {
@@ -296,6 +316,7 @@ export function createMemoryStore(): Store {
             summary: s.summary,
             category: s.category,
             body: s.body,
+            bodyJson: readRichDoc(s.bodyJson),
             references: s.references,
             authorName: name(s.authorId),
             publishedAt: s.reviewedAt ?? s.createdAt,

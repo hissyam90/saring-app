@@ -19,6 +19,7 @@ import type {
   Store,
 } from "./store";
 import { slugify } from "./memory";
+import { readRichDoc } from "@/lib/content/rich-text";
 
 type Row = Record<string, unknown>;
 
@@ -62,12 +63,25 @@ const toSubmission = (r: Row): Submission => ({
   summary: String(r.summary),
   category: String(r.category),
   body: String(r.body),
+  bodyJson: readRichDoc(r.body_json),
   references: r.refs ? String(r.refs) : null,
   status: r.status as Submission["status"],
   reviewNote: r.review_note ? String(r.review_note) : null,
   slug: r.slug ? String(r.slug) : null,
   createdAt: iso(r.created_at),
   reviewedAt: r.reviewed_at ? iso(r.reviewed_at) : null,
+});
+
+const toPublished = (r: Row): PublishedArticle => ({
+  slug: String(r.slug),
+  title: String(r.title),
+  summary: String(r.summary),
+  category: String(r.category),
+  body: String(r.body),
+  bodyJson: readRichDoc(r.body_json),
+  references: r.refs ? String(r.refs) : null,
+  authorName: String(r.author_name ?? "Kontributor"),
+  publishedAt: iso(r.reviewed_at ?? r.created_at),
 });
 
 const toReport = (r: Row): Report => ({
@@ -231,14 +245,15 @@ export function createPostgresStore(pool: Pool): Store {
 
     async createSubmission(input) {
       const rows = await q(
-        `insert into submissions (author_id, title, summary, category, body, refs)
-         values ($1, $2, $3, $4, $5, $6) returning *`,
+        `insert into submissions (author_id, title, summary, category, body, body_json, refs)
+         values ($1, $2, $3, $4, $5, $6, $7) returning *`,
         [
           input.authorId,
           input.title,
           input.summary,
           input.category,
           input.body,
+          input.bodyJson ? JSON.stringify(input.bodyJson) : null,
           input.references,
         ],
       );
@@ -247,7 +262,8 @@ export function createPostgresStore(pool: Pool): Store {
     async updateSubmission(id, authorId, input) {
       const rows = await q(
         `update submissions
-            set title = $3, summary = $4, category = $5, body = $6, refs = $7,
+            set title = $3, summary = $4, category = $5, body = $6, body_json = $7,
+                refs = $8,
                 status = 'pending', review_note = null, reviewed_at = null
           where id = $1 and author_id = $2
             and status in ('pending', 'needs_revision')
@@ -259,6 +275,7 @@ export function createPostgresStore(pool: Pool): Store {
           input.summary,
           input.category,
           input.body,
+          input.bodyJson ? JSON.stringify(input.bodyJson) : null,
           input.references,
         ],
       );
@@ -333,18 +350,7 @@ export function createPostgresStore(pool: Pool): Store {
          where s.status = 'approved' and s.slug is not null
          order by s.reviewed_at desc nulls last`,
       );
-      return rows.map(
-        (r): PublishedArticle => ({
-          slug: String(r.slug),
-          title: String(r.title),
-          summary: String(r.summary),
-          category: String(r.category),
-          body: String(r.body),
-          references: r.refs ? String(r.refs) : null,
-          authorName: String(r.author_name ?? "Kontributor"),
-          publishedAt: iso(r.reviewed_at ?? r.created_at),
-        }),
-      );
+      return rows.map(toPublished);
     },
     async findPublishedArticle(slug) {
       const rows = await q(
@@ -353,18 +359,7 @@ export function createPostgresStore(pool: Pool): Store {
          where s.slug = $1 and s.status = 'approved' limit 1`,
         [slug],
       );
-      if (!rows[0]) return null;
-      const r = rows[0];
-      return {
-        slug: String(r.slug),
-        title: String(r.title),
-        summary: String(r.summary),
-        category: String(r.category),
-        body: String(r.body),
-        references: r.refs ? String(r.refs) : null,
-        authorName: String(r.author_name ?? "Kontributor"),
-        publishedAt: iso(r.reviewed_at ?? r.created_at),
-      };
+      return rows[0] ? toPublished(rows[0]) : null;
     },
 
     async createReport(input) {

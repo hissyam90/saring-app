@@ -70,3 +70,181 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Editor artikel (Tiptap)
+ *
+ * ProseMirror merender konten di luar React, jadi gaya tulisannya diletakkan di
+ * CSS. Warna tetap memakai token tema Saring supaya sama dengan halaman
+ * Pustaka. `overflow-wrap` mencegah URL panjang membuat halaman melebar di
+ * ponsel.
+ * ------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+ * Editor artikel (Tiptap)
+ *
+ * ProseMirror merender konten di luar React, jadi gaya tulisannya diletakkan di
+ * CSS. Warna tetap memakai token tema Saring supaya sama dengan halaman
+ * Pustaka. `overflow-wrap` mencegah URL panjang membuat halaman melebar di
+ * ponsel.
+ *
+ * Ukuran area menulis:
+ * - `.saring-editor-shell` membungkus `EditorContent`. Sebelum editor selesai
+ *   dipasang (`immediatelyRender: false`), ProseMirror belum ada sehingga
+ *   elemen ini kosong. Tanpa `min-height` di shell, seluruh kotak editor
+ *   menyusut setinggi toolbar dan terlihat seperti input satu baris.
+ * - `.saring-editor` sendiri juga punya `min-height` agar area tulis tetap luas
+ *   meskipun dokumen kosong.
+ * - Tidak ada `max-height`/`overflow-y`: area tumbuh mengikuti panjang tulisan
+ *   seperti editor forum, bukan menjadi kotak bergulir sendiri.
+ * ------------------------------------------------------------------------- */
+.saring-editor-shell {
+  min-height: 300px;
+  cursor: text;
+}
+
+@media (min-width: 640px) {
+  .saring-editor-shell {
+    min-height: 380px;
+  }
+}
+
+.saring-editor {
+  min-height: 300px;
+  padding: 1.15rem 1.25rem 2rem;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--color-ink-soft);
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+@media (min-width: 640px) {
+  .saring-editor {
+    min-height: 380px;
+    padding: 1.5rem 1.75rem 2.5rem;
+    font-size: 16px;
+    line-height: 1.8;
+  }
+}
+
+.saring-editor:focus {
+  outline: none;
+}
+
+.saring-editor > * + * {
+  margin-top: 0.75rem;
+}
+
+.saring-editor p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.saring-editor h2 {
+  margin: 1.5rem 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.saring-editor h3 {
+  margin: 1.25rem 0 0.3rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+
+.saring-editor h2:first-child,
+.saring-editor h3:first-child {
+  margin-top: 0;
+}
+
+.saring-editor ul,
+.saring-editor ol {
+  margin: 0.4rem 0;
+  padding-left: 1.5rem;
+}
+
+.saring-editor ul {
+  list-style: disc;
+}
+
+.saring-editor ol {
+  list-style: decimal;
+}
+
+.saring-editor li {
+  margin: 0.2rem 0;
+}
+
+.saring-editor li > p {
+  display: inline;
+}
+
+.saring-editor blockquote {
+  margin: 0.9rem 0;
+  border-left: 4px solid var(--color-ink);
+  background-color: var(--color-paper);
+  padding: 0.6rem 0.85rem;
+  color: var(--color-ink-soft);
+}
+
+.saring-editor hr {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 2px solid var(--color-line);
+}
+
+.saring-editor code {
+  border: 1px solid var(--color-line);
+  background-color: var(--color-paper);
+  padding: 0.05rem 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.saring-editor a {
+  font-weight: 600;
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--color-coral);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.saring-editor a:hover {
+  background-color: var(--color-lime-soft);
+}
+
+/* Media di dalam editor: rasio asli dipertahankan, tidak melebihi lebar kolom. */
+.saring-editor img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.25rem 0;
+  border: 2px solid var(--color-ink);
+  background-color: var(--color-surface);
+}
+
+/* Node media yang sedang dipilih diberi penanda jelas (neobrutalism). */
+.saring-editor img.ProseMirror-selectednode,
+.saring-editor .saring-embed.ProseMirror-selectednode {
+  outline: 3px solid var(--color-coral);
+  outline-offset: 2px;
+}
+
+/* Placeholder hanya muncul pada paragraf kosong pertama. */
+.saring-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-ink-muted);
+  opacity: 0.75;
+}
+

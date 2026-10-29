@@ -20,6 +20,11 @@
     "db:migrate:status": "node scripts/migrate.mjs --status"
   },
   "dependencies": {
+    "@tiptap/extension-image": "^3.32.1",
+    "@tiptap/extensions": "^3.32.1",
+    "@tiptap/pm": "^3.32.1",
+    "@tiptap/react": "^3.32.1",
+    "@tiptap/starter-kit": "^3.32.1",
     "bcryptjs": "^3.0.3",
     "iron-session": "^9.0.1",
     "lucide-react": "^1.62.0",

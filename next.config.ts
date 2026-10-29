@@ -21,6 +21,14 @@ const securityHeaders = [
  * mengizinkan Cloudflare Turnstile karena widget-nya dimuat dari domain
  * Cloudflare. Tanpa izin itu, form yang dilindungi CAPTCHA tidak dapat
  * dirender.
+ *
+ * Media artikel:
+ * - `img-src` menambahkan `https:` karena penulis boleh menyisipkan gambar dari
+ *   host HTTPS mana pun (mis. `i.imgur.com`). Skema `data:`/`blob:` yang sudah
+ *   ada hanya dipakai elemen internal Next/Turnstile, bukan konten artikel.
+ * - `frame-src` menambahkan `https://imgur.com` untuk embed album resmi
+ *   (`https://imgur.com/a/{id}/embed?pub=true`). Hanya origin itu; tidak ada
+ *   wildcard `*.imgur.com`.
  */
 const cspHeader = {
   key: "Content-Security-Policy",
@@ -28,10 +36,10 @@ const cspHeader = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https://challenges.cloudflare.com",
-    "frame-src https://challenges.cloudflare.com",
+    "frame-src https://challenges.cloudflare.com https://imgur.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

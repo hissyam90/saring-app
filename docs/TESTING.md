@@ -32,6 +32,45 @@ flowchart LR
 | Endpoint komunitas + CAPTCHA + rate limit | `tests/unit/community-route.test.ts` | Lulus |
 | Aturan publikasi artikel | `tests/unit/publication.test.ts` | Lulus |
 | Kepemilikan data dan laporan | `tests/unit/ownership.test.ts` | Lulus |
+| Validasi & sanitasi konten kaya | `tests/unit/rich-text.test.ts` | Lulus |
+| Endpoint pengajuan artikel (konten, IDOR, status) | `tests/unit/submission-route.test.ts` | Lulus |
+| Kontrak penyimpanan `body_json` | `tests/unit/article-persistence.test.ts` | Lulus |
+| Renderer konten kaya & XSS | `tests/components/rich-content.test.tsx` | Lulus |
+| Editor Tiptap: toolbar, format, tautan | `tests/components/rich-text-editor.test.tsx` | Lulus |
+| Editor artikel end-to-end (PostgreSQL + Pustaka) | `tests/e2e/article-editor.spec.ts` | Lulus |
+
+## Cakupan editor artikel yang diuji otomatis
+
+- **Ukuran area menulis**: tinggi `#artikel-editor` ≥ 360 px di desktop dan ≥ 280
+  px di mobile walaupun dokumen kosong; `max-height: none` dan `overflow-y:
+  visible` (tidak ada kotak bergulir sendiri); tinggi bertambah saat tulisan
+  memanjang; placeholder tetap tampil.
+- Toolbar tampil lengkap dengan label aksesibel, dan `aria-pressed` mengikuti
+  format pada posisi kursor.
+- Perintah bold/italic/underline/heading/list/blockquote/link benar-benar
+  mengubah dokumen editor; shortcut `Ctrl+I` berfungsi.
+- Tautan berbahaya (`javascript:`) ditolak di dialog tanpa menyisipkan apa pun;
+  URL tanpa protokol otomatis diberi `https://`.
+- **Gambar langsung**: disisipkan lewat dialog, benar-benar termuat di browser
+  (`naturalWidth > 0`), membawa `referrerpolicy="no-referrer"`, dan URL tidak
+  aman (termasuk URL halaman album) ditolak.
+- **Embed Imgur**: URL album `https://imgur.com/a/l4mKcOj` menjadi node
+  `imgurEmbed` dengan iframe `…/embed?pub=true` yang benar-benar memuat dokumen
+  Imgur berisi gambar (diverifikasi lewat frame Playwright). Kode embed resmi
+  diurai tanpa menyimpan/menjalankan `<script>`. `data-id` tidak valid dan host
+  palsu ditolak.
+- **Tempel URL**: menempel satu URL gambar memunculkan tawaran "Jadikan gambar"
+  vs "Biarkan sebagai tautan" (diuji dengan clipboard sungguhan).
+- Artikel kosong ditolak dengan pesan jelas, dan tidak ada baris database dibuat.
+- Media tersimpan di `submissions.body_json` (atribut hanya `src`/`alt` dan
+  `id`/`kind`), tetap utuh setelah halaman dimuat ulang, dan tampil di Pustaka
+  setelah disetujui — termasuk gambar yang benar-benar termuat dan tautan
+  fallback Imgur yang aman.
+- Embed yang gagal dimuat tetap menampilkan tautan fallback yang aman.
+- `<script>` di dalam teks tetap menjadi teks pada halaman publik.
+- Pengguna lain tidak dapat mengubah pengajuan (404), dan artikel final tidak
+  dapat diubah (409).
+- Editor tidak menimbulkan overflow horizontal pada viewport mobile.
 
 ## Cakupan keamanan yang diuji otomatis
 
@@ -76,6 +115,20 @@ npm run test        # Vitest: unit + komponen (jsdom)
 npm run test:e2e    # Playwright: membangun lalu mengetes server produksi
 npm run build       # produksi build
 ```
+
+## Prasyarat pengujian end-to-end
+
+`tests/e2e/article-editor.spec.ts` memakai **PostgreSQL sungguhan** (dari
+`.env.local` / `DATABASE_URL`) dan membuat datanya sendiri dengan awalan unik
+(`editor-e2e-…`), lalu menghapusnya kembali di `afterAll`.
+
+- Jalankan `npm run db:migrate` lebih dulu agar kolom `body_json` tersedia.
+- `playwright.config.ts` menyetel **kunci uji resmi Cloudflare Turnstile**
+  (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`) pada
+  proses `webServer`, sehingga alur pengajuan benar-benar melewati verifikasi
+  Siteverify tanpa mengubah konfigurasi produksi.
+- Data uji tidak menyentuh artikel pengguna yang sudah ada; jumlah artikel di
+  Pustaka dapat bertambah sementara selama pengujian berlangsung.
 
 ## Cakupan
 

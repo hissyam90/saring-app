@@ -22,8 +22,12 @@ fitur akun, Komunitas, dan Pustaka kontribusi ditambahkan, aplikasi juga memilik
 - **Autentikasi** berbasis cookie terenkripsi `iron-session` + hash bcrypt, dengan
   role `user`/`admin` yang selalu diverifikasi ulang di server.
 - **Migration terlacak** di `lib/db/migrations/` yang dijalankan release phase
-  Heroku.
+  Heroku. `0002_submission_rich_body.sql` menambahkan kolom `body_json` (JSONB)
+  untuk dokumen artikel kaya; kolom `body` tetap menyimpan proyeksi teks biasa
+  sehingga artikel lama tidak berubah.
 - **Cloudflare Turnstile** untuk form berisiko, diverifikasi server-side.
+- **Tiptap** untuk editor artikel; kontennya divalidasi terhadap allowlist lalu
+  dirender menjadi elemen React (tanpa HTML mentah).
 
 Tidak ada backend terpisah, layanan AI eksternal, atau database kedua.
 

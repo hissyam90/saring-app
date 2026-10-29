@@ -15,6 +15,7 @@ import type {
   User,
   UserWithHash,
 } from "./types";
+import type { RichDoc } from "@/lib/content/rich-text";
 
 export interface ListThreadsOptions {
   search?: string;
@@ -79,7 +80,10 @@ export interface Store {
     title: string;
     summary: string;
     category: string;
+    /** Proyeksi teks biasa, diturunkan server dari `bodyJson`. */
     body: string;
+    /** Dokumen rich text tervalidasi; `null`/tidak diisi untuk teks biasa. */
+    bodyJson?: RichDoc | null;
     references: string | null;
   }): Promise<Submission>;
   updateSubmission(
@@ -90,6 +94,7 @@ export interface Store {
       summary: string;
       category: string;
       body: string;
+      bodyJson?: RichDoc | null;
       references: string | null;
     },
   ): Promise<Submission | null>;

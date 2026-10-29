@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getStore } from "@/lib/db";
 import type { SubmissionStatus } from "@/lib/db/types";
 import { ModerationActions } from "@/components/admin/moderation-actions";
+import { RichContent } from "@/components/pustaka/rich-content";
 import { Panel, Pagination, Tag, formatDate } from "@/components/ui/primitives";
 import { clampPage } from "@/lib/api/helpers";
 
@@ -79,9 +80,13 @@ export default async function AdminArtikelPage({
                     <summary className="cursor-pointer text-xs font-semibold text-ink">
                       Baca isi lengkap
                     </summary>
-                    <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-ink-soft">
-                      {item.body}
-                    </p>
+                    <div className="mt-1.5">
+                      <RichContent
+                        doc={item.bodyJson}
+                        fallbackText={item.body}
+                        className="text-sm leading-6"
+                      />
+                    </div>
                     {item.references ? (
                       <p className="mt-2 border-t border-line pt-1.5 text-xs text-ink-muted">
                         Referensi: {item.references}

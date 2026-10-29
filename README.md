@@ -122,18 +122,51 @@ hanya diperlukan untuk menulis.
 - **Komunitas** (`/komunitas`): tanya jawab publik dengan pencarian, filter
   kategori, dan pagination. Pengguna terdaftar dapat membalas dan melaporkan
   konten; admin dapat menyembunyikan konten yang dilaporkan.
-- **Pengajuan artikel** (`/komunitas/artikel`): pengguna mengirim artikel untuk
-  ditinjau. Status: `pending`, `needs_revision`, `approved`, `rejected`, lengkap
-  dengan catatan admin. Hanya artikel `approved` yang terbit di Pustaka.
-- **Admin** (`/admin`): ringkasan angka nyata dari database, antrean artikel,
-  laporan, diskusi, dan pengguna. Semua aksi melewati satu endpoint yang
-  memeriksa role di server dan mencatat riwayat moderasi.
+- **Pengajuan artikel** (`/komunitas/artikel`): editor rich text (Tiptap) dengan
+  format lengkap, pratinjau, dan penghitung karakter. Status: `pending`,
+  `needs_revision`, `approved`, `rejected`, lengkap dengan catatan admin. Hanya
+  artikel `approved` yang terbit di Pustaka.
+- **Admin** (`/admin`): ringkasan angka nyata dari database, antrean artikel
+  (isi artikel ditinjau dengan formatnya), laporan, diskusi, dan pengguna. Semua
+  aksi melewati satu endpoint yang memeriksa role di server dan mencatat riwayat
+  moderasi.
 - **CAPTCHA**: registrasi, login, diskusi, balasan, artikel, dan laporan memakai
   Cloudflare Turnstile yang diverifikasi di server (Siteverify).
 
 Role minimal `user` dan `admin`. Pengguna baru tidak dapat menaikkan role
 sendiri; akun admin pertama dibuat lewat `scripts/bootstrap-admin.mjs` setelah
 akun terdaftar. Data disimpan di PostgreSQL dengan migration terlacak.
+
+### 6. Editor artikel (rich text)
+
+Halaman pengajuan artikel memakai editor Tiptap dengan toolbar: paragraf, H2,
+H3, tebal, miring, garis bawah, coret, kode sebaris, daftar butir/bernomor,
+kutipan, garis pemisah, tautan (sisip/ubah/hapus), **gambar**, **embed Imgur**,
+undo, dan redo. Mendukung shortcut `Ctrl+B`/`Ctrl+I`/`Ctrl+U`/`Ctrl+Z`, paste
+dari aplikasi lain dengan format yang didukung, placeholder, penghitung karakter,
+pratinjau, dan status fokus yang jelas.
+
+Area menulis minimal 380 px di desktop dan 300 px di ponsel, tumbuh mengikuti
+panjang tulisan (tanpa kotak bergulir sendiri), sehingga terasa seperti editor
+posting forum, bukan textarea.
+
+**Menyisipkan gambar langsung:** klik tombol **Sisipkan gambar**, masukkan URL
+berkas gambar HTTPS (mis. `https://i.imgur.com/L0pP68gl.jpg`) beserta teks
+alternatif. URL halaman (bukan berkas gambar) ditolak.
+
+**Menyematkan Imgur:** klik **Sematkan Imgur**, lalu masukkan URL album
+(`https://imgur.com/a/l4mKcOj`), URL postingan, atau tempel kode embed resmi
+Imgur. Album tampil sebagai embed resmi; postingan tunggal tampil sebagai gambar
+karena Imgur memblokir iframe halaman postingan. Script di dalam kode embed
+diabaikan.
+
+Menempel satu URL gambar/album ke dalam editor memunculkan pilihan: jadikan
+media, atau biarkan sebagai tautan biasa.
+
+Konten disimpan sebagai **dokumen JSON tervalidasi** di kolom
+`submissions.body_json` (JSONB), dengan kolom `body` tetap berisi proyeksi teks
+biasa. Format di luar allowlist dibuang di server; lihat
+[docs/SECURITY-AND-PRIVACY.md](docs/SECURITY-AND-PRIVACY.md#media-gambar-langsung-dan-embed-imgur).
 
 
 ## Tumpukan teknologi
@@ -143,6 +176,8 @@ akun terdaftar. Data disimpan di PostgreSQL dengan migration terlacak.
 - **Tailwind CSS 4**
 - **Lucide React** untuk ikon
 - **PostgreSQL** dengan driver `pg` (tanpa ORM), migration terlacak
+- **Tiptap 3** (`@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`,
+  `@tiptap/extensions`, `@tiptap/extension-image`) untuk editor artikel
 - **iron-session** untuk sesi cookie terenkripsi, **bcryptjs** untuk hash kata sandi
 - **zod** untuk validasi skema di server
 - **Cloudflare Turnstile** untuk CAPTCHA (Siteverify di server)

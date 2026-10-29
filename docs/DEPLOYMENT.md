@@ -18,7 +18,7 @@ proteksi web (proxy, WAF, rate limiting edge, Turnstile).
 | `package.json` | `build: next build`, `start: next start`, `engines.node: 22.x`, `db:migrate` |
 | `Procfile` | `release: node scripts/migrate.mjs` dan `web: npm start` |
 | `app.json` | metadata aplikasi + buildpack `heroku/nodejs` |
-| `lib/db/migrations/*.sql` | migration PostgreSQL terlacak |
+| `lib/db/migrations/*.sql` | migration PostgreSQL terlacak (termasuk `body_json` untuk artikel kaya) |
 | `scripts/migrate.mjs` | menjalankan migration yang belum diterapkan |
 | `scripts/bootstrap-admin.mjs` | menaikkan role satu akun yang sudah terdaftar menjadi admin |
 | `.env.example` | daftar variabel lingkungan tanpa nilai rahasia |

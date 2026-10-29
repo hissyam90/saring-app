@@ -15,10 +15,14 @@ import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { Pool } from "pg";
+import nextEnv from "@next/env";
 
 const MIGRATIONS_DIR = fileURLToPath(
   new URL("../lib/db/migrations/", import.meta.url),
 );
+
+const { loadEnvConfig } = nextEnv;
+loadEnvConfig(process.cwd(), true);
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {

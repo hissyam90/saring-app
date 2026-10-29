@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { THREAD_CATEGORIES } from "@/lib/db/types";
+import {
+  RICH_TEXT_LIMITS,
+  parseRichDoc,
+  richDocToPlainText,
+  type RichDoc,
+} from "@/lib/content/rich-text";
 
 const EMAIL = z.email({ message: "Format email tidak valid." }).max(254);
 
@@ -78,14 +84,83 @@ export const submissionSchema = z.object({
     .trim()
     .min(3, "Kategori wajib diisi.")
     .max(40, "Kategori maksimal 40 karakter."),
-  body: z
-    .string()
-    .trim()
-    .min(300, "Isi artikel minimal 300 karakter.")
-    .max(12000, "Isi artikel maksimal 12000 karakter."),
   references: z.string().trim().max(1000).optional().nullable(),
   captchaToken: z.string().optional(),
 });
+
+/** Field pengajuan yang sudah bersih dan siap disimpan ke store. */
+export interface SubmissionInput {
+  title: string;
+  summary: string;
+  category: string;
+  /** Dokumen rich text yang sudah dinormalisasi (allowlist ketat). */
+  bodyJson: RichDoc;
+  /** Proyeksi teks biasa, diturunkan di server dari `bodyJson`. */
+  body: string;
+  references: string | null;
+  captchaToken?: string;
+}
+
+export type SubmissionParseResult =
+  | { ok: true; data: SubmissionInput }
+  | { ok: false; error: string };
+
+/**
+ * Memvalidasi isi pengajuan artikel di server.
+ *
+ * Isi artikel **tidak** diterima sebagai HTML atau sebagai teks biasa dari
+ * klien. Klien mengirim dokumen Tiptap (`bodyJson`) yang kemudian:
+ *
+ * 1. divalidasi terhadap allowlist node/mark/atribut ({@link parseRichDoc}),
+ * 2. diproyeksikan menjadi teks biasa untuk kolom `body`,
+ * 3. diperiksa panjangnya memakai aturan lama (300–12000 karakter).
+ *
+ * Artikel kosong — termasuk dokumen yang hanya berisi markup kosong — ditolak.
+ */
+export function parseSubmissionInput(
+  input: Record<string, unknown>,
+): SubmissionParseResult {
+  const parsed = submissionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: firstError(parsed.error) };
+  }
+
+  const doc = parseRichDoc(input.bodyJson);
+  if (!doc.ok) return { ok: false, error: doc.error };
+
+  const body = richDocToPlainText(doc.doc);
+  if (body.length === 0) {
+    return {
+      ok: false,
+      error: "Isi artikel wajib diisi minimal 300 karakter.",
+    };
+  }
+  if (body.length < RICH_TEXT_LIMITS.minCharacters) {
+    return {
+      ok: false,
+      error: `Isi artikel minimal ${RICH_TEXT_LIMITS.minCharacters} karakter.`,
+    };
+  }
+  if (body.length > RICH_TEXT_LIMITS.maxCharacters) {
+    return {
+      ok: false,
+      error: `Isi artikel maksimal ${RICH_TEXT_LIMITS.maxCharacters} karakter.`,
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      title: parsed.data.title,
+      summary: parsed.data.summary,
+      category: parsed.data.category,
+      bodyJson: doc.doc,
+      body,
+      references: parsed.data.references || null,
+      captchaToken: parsed.data.captchaToken,
+    },
+  };
+}
 
 export const reportSchema = z.object({
   targetType: z.enum(["thread", "reply"]),
