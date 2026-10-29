@@ -26,7 +26,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-3">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center bg-ink text-lime">
+          <span className="flex h-9 w-9 items-center justify-center bg-graphite text-lime">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>

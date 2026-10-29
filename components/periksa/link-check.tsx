@@ -76,7 +76,7 @@ export function LinkCheck() {
           <Link2 className="h-5 w-5" aria-hidden="true" />
           <h2 className="text-base font-bold">Periksa tautan</h2>
         </div>
-        <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
+        <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-lime">
           Inspeksi teks · tidak dibuka
         </span>
       </div>
@@ -95,7 +95,7 @@ export function LinkCheck() {
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="https://situs.com atau bit.ly/abc123"
-          className="mt-2 w-full border-2 border-ink bg-paper px-3 py-3 font-mono text-sm text-ink placeholder:text-ink-muted/60"
+          className="mt-2 w-full border-2 border-ink bg-paper px-3 py-3 font-mono text-sm text-ink placeholder:text-placeholder"
         />
         <p className="mt-1.5 text-xs text-ink-muted">
           Tautan diperiksa sebagai teks. Saring tidak pernah membuka,
@@ -125,7 +125,7 @@ export function LinkCheck() {
             type="button"
             onClick={handleCheck}
             disabled={loading}
-            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-ink shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-on-lime shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -197,10 +197,10 @@ function ExternalPanel({
           <span
             className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               external.status === "threat"
-                ? "bg-coral text-white"
+                ? "bg-coral text-on-coral"
                 : external.inconclusive
-                  ? "bg-amber text-white"
-                  : "bg-ink text-paper"
+                  ? "bg-amber text-on-amber"
+                  : "bg-ink text-on-ink"
             }`}
           >
             {GSB_STATUS_LABEL[external.status]}
@@ -271,7 +271,7 @@ function ExternalPanel({
             type="button"
             onClick={onRetry}
             disabled={loading}
-            className="mt-3 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:bg-lime disabled:opacity-60"
+            className="mt-3 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:text-on-lime hover:bg-lime disabled:opacity-60"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -384,10 +384,10 @@ function LinkResult({
                 <span
                   className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                     finding.severity === "high"
-                      ? "bg-coral text-white"
+                      ? "bg-coral text-on-coral"
                       : finding.severity === "medium"
-                        ? "bg-amber text-white"
-                        : "bg-ink text-paper"
+                        ? "bg-amber text-on-amber"
+                        : "bg-ink text-on-ink"
                   }`}
                 >
                   {SEVERITY_LABELS[finding.severity]}
@@ -399,7 +399,7 @@ function LinkResult({
                 <figcaption className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
                   Bagian URL
                 </figcaption>
-                <blockquote className="break-all border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-paper">
+                <blockquote className="break-all border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-on-ink">
                   {finding.evidence}
                 </blockquote>
               </figure>

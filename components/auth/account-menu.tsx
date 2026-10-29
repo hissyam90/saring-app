@@ -39,8 +39,8 @@ export function AccountMenu({ variant }: { variant: "desktop" | "mobile" }) {
 
   const itemClass =
     variant === "desktop"
-      ? "flex items-center gap-2 px-2 py-2 text-sm font-semibold text-paper/70 transition-colors hover:bg-white/10 hover:text-paper"
-      : "flex min-h-11 items-center gap-2 px-3 py-2.5 text-sm font-semibold text-paper/70 hover:bg-white/10 hover:text-paper";
+      ? "flex items-center gap-2 px-2 py-2 text-sm font-semibold text-graphite-ink/75 transition-colors hover:bg-graphite-ink/10 hover:text-graphite-ink"
+      : "flex min-h-11 items-center gap-2 px-3 py-2.5 text-sm font-semibold text-graphite-ink/75 hover:bg-graphite-ink/10 hover:text-graphite-ink";
 
   // Sebelum status sesi diketahui, jangan tampilkan apa pun agar tidak
   // berkedip antara "Masuk" dan nama pengguna.
@@ -61,7 +61,7 @@ export function AccountMenu({ variant }: { variant: "desktop" | "mobile" }) {
 
   return (
     <div className={variant === "desktop" ? "flex flex-col gap-1" : "mt-3 flex flex-col gap-1"}>
-      <p className="px-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-paper/40">
+      <p className="px-2 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-graphite-ink/60">
         {user.displayName}
       </p>
       <Link href="/akun" className={itemClass}>

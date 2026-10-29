@@ -311,6 +311,50 @@ Saring **tidak** memiliki kontrol tema manual. Warna mengikuti
 - `color-scheme: light dark` dipasang pada `:root` agar kontrol bawaan peramban
   (scrollbar, input) ikut menyesuaikan.
 
+### Pasangan token (kontras terjaga di kedua tema)
+
+Kesalahan yang paling mudah terjadi adalah memakai token **permukaan** sebagai
+warna teks: `text-paper` di atas `bg-graphite` benar pada light mode, tetapi
+`paper` ikut menjadi gelap pada dark mode sehingga teks hilang. Karena itu setiap
+permukaan punya token "di atas"-nya sendiri:
+
+| Permukaan | Teks di atasnya | Light | Dark |
+|---|---|---|---|
+| `paper` (halaman) | `ink` / `ink-soft` / `ink-muted` | gelap di terang | terang di gelap |
+| `surface` (kartu) | `ink` / `ink-soft` / `ink-muted` | gelap di putih | terang di gelap |
+| `graphite` (nav, footer) | `graphite-ink` | terang | terang |
+| `ink` (chip/filter aktif) | `on-ink` | terang | gelap |
+| `lime` (tombol utama) | `on-lime` | gelap | gelap |
+| `coral` / `amber` / `safe` (badge) | `on-coral` / `on-amber` / `on-safe` | putih | gelap |
+
+Aturan praktis:
+
+- Jangan memakai `paper` sebagai `text-*` di atas permukaan gelap; pakai
+  `graphite-ink`.
+- Jangan memakai `ink`/`white` sebagai `text-*` di atas aksen; pakai `on-*`.
+- Placeholder memakai token `placeholder` (tanpa modifier opacity, karena
+  opacity menurunkan kontras di bawah 4,5:1).
+- `line` hanya untuk pemisah dekoratif. Batas kontrol interaktif memakai
+  `line-strong` (>= 3:1) atau `border-ink`.
+
+### Verifikasi kontras
+
+Dua lapis pemeriksaan, keduanya dijalankan pada build ini:
+
+```bash
+npm run audit:contrast   # token: pasangan warna light+dark, ambang WCAG
+npm run test:e2e         # tests/e2e/contrast.spec.ts: warna terhitung di browser
+```
+
+`scripts/contrast-audit.mjs` membaca token langsung dari `app/globals.css` lalu
+menghitung rasio pasangan teks/latar (termasuk teks beropacity yang dilebur ke
+latar). `tests/e2e/contrast.spec.ts` mengukur `color`/`background-color` hasil
+komputasi di Chromium untuk seluruh halaman utama pada light dan dark, termasuk
+editor, dialog media, panel notifikasi, dan menu mobile. Catatan penting:
+Tailwind v4 mengeluarkan warna beropacity sebagai `oklab(...)`, sehingga audit
+mengonversi oklab/`color(srgb)` ke sRGB — tanpa itu elemen beropacity akan
+terlewat (false negative).
+
 Identitas klien hanya diambil dari header yang ditulis proxy tepercaya
 (`SARING_TRUST_PROXY=cloudflare` → `cf-connecting-ip`; `heroku` → hop terakhir
 `x-forwarded-for`). Tanpa konfigurasi itu, semua request masuk satu bucket

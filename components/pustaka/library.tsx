@@ -111,7 +111,7 @@ export function Library({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cari topik, misalnya OTP, kurir, atau QRIS"
-              className="w-full min-w-0 border-2 border-ink bg-paper py-2.5 pl-9 pr-3 text-sm text-ink transition-colors placeholder:text-ink-muted/70 hover:border-ink focus:border-ink focus:outline-none"
+              className="w-full min-w-0 border-2 border-ink bg-paper py-2.5 pl-9 pr-3 text-sm text-ink transition-colors placeholder:text-placeholder hover:border-ink focus:border-ink focus:outline-none"
               aria-label="Cari topik pustaka"
             />
           </div>
@@ -134,8 +134,8 @@ export function Library({
                 aria-pressed={active}
                 className={`min-h-9 border-2 px-2.5 text-xs font-bold transition-colors ${
                   active
-                    ? "border-ink bg-ink text-paper"
-                    : "border-line bg-surface text-ink-soft hover:border-ink hover:text-ink"
+                    ? "border-ink bg-ink text-on-ink"
+                    : "border-line-strong bg-surface text-ink-soft hover:border-ink hover:text-ink"
                 }`}
               >
                 {category}
@@ -157,7 +157,7 @@ export function Library({
               setQuery("");
               setFilter("Semua");
             }}
-            className="mt-4 min-h-10 border-2 border-ink bg-lime px-4 text-sm font-bold text-ink"
+            className="mt-4 min-h-10 border-2 border-ink bg-lime px-4 text-sm font-bold text-on-lime"
           >
             Reset pencarian
           </button>

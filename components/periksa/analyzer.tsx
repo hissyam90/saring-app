@@ -82,7 +82,7 @@ export function Analyzer() {
             Tempel pesan, lihat sinyal yang terdeteksi beserta alasannya.
           </p>
         </div>
-        <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
+        <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-lime">
           Lokal · tanpa kirim data
         </span>
       </div>
@@ -114,7 +114,7 @@ export function Analyzer() {
           aria-invalid={Boolean(error)}
           rows={6}
           placeholder="Tempelkan isi pesan di sini…"
-          className="mt-2 w-full resize-y border-2 border-ink bg-paper px-3 py-3 text-sm leading-6 text-ink placeholder:text-ink-muted/60"
+          className="mt-2 w-full resize-y border-2 border-ink bg-paper px-3 py-3 text-sm leading-6 text-ink placeholder:text-placeholder"
         />
         <div id="message-help" className="sr-only">
           Maksimal {MAX_INPUT_LENGTH} karakter. Pesan diproses lokal dan tidak dikirim.
@@ -134,7 +134,7 @@ export function Analyzer() {
             type="button"
             onClick={handleAnalyze}
             disabled={status === "analyzing"}
-            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-ink shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-on-lime shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60"
           >
             {status === "analyzing" ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -172,7 +172,7 @@ export function Analyzer() {
                 type="button"
                 title={example.note}
                 onClick={() => applyExample(example, false)}
-                className="min-h-11 border-2 border-ink bg-surface px-3 py-2 text-xs font-semibold text-ink shadow-neo-sm transition-none hover:bg-lime active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                className="min-h-11 border-2 border-ink bg-surface px-3 py-2 text-xs font-semibold text-ink hover:text-on-lime shadow-neo-sm transition-none hover:bg-lime active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
               >
                 {example.label}
               </button>

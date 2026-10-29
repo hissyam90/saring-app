@@ -14,7 +14,7 @@ import { draftStateLabel, useDraftAutosave } from "./use-draft-autosave";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
 const inputClass =
-  "mt-1 w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70";
+  "mt-1 w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-placeholder";
 
 /**
  * Form pertanyaan Komunitas.

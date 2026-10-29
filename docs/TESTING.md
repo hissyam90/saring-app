@@ -38,6 +38,34 @@ flowchart LR
 | Kategori pertanyaan "Lainnya" | `tests/unit/thread-category.test.ts` | Lulus |
 | Adapter media lintas hosting | `tests/unit/media.test.ts` | Lulus |
 | UI, revisi, autosave, bookmark, notifikasi (E2E) | `tests/e2e/v16.spec.ts` | Lulus |
+| Kontras light/dark dari warna terhitung (E2E) | `tests/e2e/contrast.spec.ts` | Lulus |
+
+## Cakupan v17: kontras dan keterbacaan
+
+- **Token**: `npm run audit:contrast` mengukur pasangan teks/latar dari token di
+  `app/globals.css` untuk light dan dark. Semua pasangan yang diuji lolos ambang
+  (4,5:1 teks normal, 3:1 teks besar, 3:1 batas kontrol). Pemisah dekoratif
+  dicatat terpisah karena bukan batas kontrol.
+- **Halaman**: `tests/e2e/contrast.spec.ts` mengaudit 19 rute (beranda, periksa,
+  latihan, langkah, pustaka + detail, komunitas + detail + form, akun, artikel
+  tersimpan, 5 halaman admin, masuk, daftar) pada light **dan** dark, memakai
+  `color`/`background-color` hasil komputasi.
+- **Permukaan interaktif**: editor berisi teks, dialog media, panel notifikasi,
+  form masuk, pencarian Pustaka, dan menu navigasi mobile — pada kedua tema.
+- **Batas kontrol & placeholder**: isian latar kontrol harus berbeda >=3:1 dari
+  latar sekitar, atau border >=3:1; placeholder >=4,5:1.
+- **Tema**: perubahan preferensi sistem diterapkan tanpa reload, tanpa tombol
+  tema, tanpa `localStorage`/cookie tema.
+- **Stabilitas**: tidak ada peringatan hydration pada halaman yang diuji dan
+  tidak ada overflow horizontal.
+- **Screenshot**: `.tmp-audit/v17-home-light.png`, `v17-home-dark.png`,
+  `v17-article-dark.png`, `v17-community-dark.png`, `v17-admin-dark.png`,
+  `v17-mobile-dark.png`.
+
+Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
+`oklab(...)`; audit mengonversinya ke sRGB. Tanpa konversi itu, elemen beropacity
+(navbar, footer, badge) akan lolos secara palsu.
+
 
 ## Cakupan v16 yang diuji otomatis
 

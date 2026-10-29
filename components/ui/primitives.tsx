@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 type Tone = "primary" | "secondary" | "danger" | "ghost";
 
 const BUTTON_TONE: Record<Tone, string> = {
-  primary: "border-ink bg-lime text-ink hover:bg-lime-deep",
+  primary: "border-ink bg-lime text-on-lime hover:bg-lime-deep",
   secondary: "border-ink bg-surface text-ink hover:bg-paper",
-  danger: "border-ink bg-coral text-white hover:brightness-95",
+  danger: "border-ink bg-coral text-on-coral hover:brightness-95",
   ghost: "border-transparent bg-transparent text-ink hover:bg-paper",
 };
 
@@ -79,10 +79,10 @@ export function Tag({
   tone?: "neutral" | "warn" | "danger" | "success";
 }) {
   const tones = {
-    neutral: "bg-ink text-paper",
-    warn: "bg-amber text-white",
-    danger: "bg-coral text-white",
-    success: "bg-safe text-white",
+    neutral: "bg-ink text-on-ink",
+    warn: "bg-amber text-on-amber",
+    danger: "bg-coral text-on-coral",
+    success: "bg-safe text-on-safe",
   } as const;
   return (
     <span

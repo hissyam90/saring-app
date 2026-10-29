@@ -44,8 +44,8 @@ export default async function AdminArtikelPage({
             href={`/admin/artikel?status=${s.id}`}
             className={`min-h-9 border-2 px-2.5 py-1 text-xs font-bold ${
               filter === s.id
-                ? "border-ink bg-ink text-paper"
-                : "border-line bg-surface text-ink-soft hover:border-ink"
+                ? "border-ink bg-ink text-on-ink"
+                : "border-line-strong bg-surface text-ink-soft hover:border-ink"
             }`}
           >
             {s.label}

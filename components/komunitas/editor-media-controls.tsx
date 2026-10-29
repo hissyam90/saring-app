@@ -33,13 +33,13 @@ const PANEL =
   "absolute right-0 top-11 z-20 w-[min(24rem,calc(100vw-3rem))] border-2 border-ink bg-surface p-2.5 shadow-neo-sm";
 
 const INPUT =
-  "mt-1 w-full border-2 border-ink bg-paper px-2 py-1.5 text-sm text-ink placeholder:text-ink-muted/70";
+  "mt-1 w-full border-2 border-ink bg-paper px-2 py-1.5 text-sm text-ink placeholder:text-placeholder";
 
 const LABEL =
   "block text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted";
 
 const PRIMARY_BTN =
-  "inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-on-lime hover:bg-lime-deep disabled:cursor-not-allowed disabled:opacity-50";
 
 const SECONDARY_BTN =
   "inline-flex min-h-8 items-center gap-1 border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-paper";
@@ -241,7 +241,7 @@ export function MediaControl({ editor }: { editor: Editor }) {
         title="Sisipkan gambar atau media"
         className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border-2 transition-colors ${
           selected?.active || open
-            ? "border-ink bg-ink text-paper"
+            ? "border-ink bg-ink text-on-ink"
             : "border-transparent bg-surface text-ink-soft hover:border-ink hover:text-ink"
         }`}
       >

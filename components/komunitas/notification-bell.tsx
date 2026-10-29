@@ -123,8 +123,8 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
 
   const buttonClass =
     variant === "desktop"
-      ? "relative flex w-full items-center gap-2 px-2 py-2 text-sm font-semibold text-paper/70 transition-colors hover:bg-white/10 hover:text-paper"
-      : "relative inline-flex h-11 w-11 items-center justify-center text-paper";
+      ? "relative flex w-full items-center gap-2 px-2 py-2 text-sm font-semibold text-graphite-ink/75 transition-colors hover:bg-graphite-ink/10 hover:text-graphite-ink"
+      : "relative inline-flex h-11 w-11 items-center justify-center text-graphite-ink";
 
   return (
     <div ref={containerRef} className="relative">

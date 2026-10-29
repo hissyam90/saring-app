@@ -80,7 +80,7 @@ export function PhoneCheck() {
           <Phone className="h-5 w-5" aria-hidden="true" />
           <h2 className="text-base font-bold">Periksa nomor telepon</h2>
         </div>
-        <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
+        <span className="border-2 border-ink bg-lime px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-lime">
           Penilaian perilaku · bukan reputasi
         </span>
       </div>
@@ -107,7 +107,7 @@ export function PhoneCheck() {
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="0812-3456-7890 / 6281234567890 / +62 812 3456 7890"
-          className="mt-2 w-full border-2 border-ink bg-paper px-3 py-3 font-mono text-base text-ink placeholder:text-ink-muted/60"
+          className="mt-2 w-full border-2 border-ink bg-paper px-3 py-3 font-mono text-base text-ink placeholder:text-placeholder"
         />
         <p className="mt-1.5 text-xs text-ink-muted">
           Spasi, tanda hubung, dan kurung diabaikan. Nomor dinormalisasi di
@@ -130,7 +130,7 @@ export function PhoneCheck() {
                   className={`flex min-h-11 cursor-pointer items-start gap-2.5 border-2 px-3 py-2.5 text-sm transition-none ${
                     checked
                       ? "border-ink bg-lime-soft"
-                      : "border-line bg-surface hover:border-ink"
+                      : "border-line-strong bg-surface hover:border-ink"
                   }`}
                 >
                   <input
@@ -166,7 +166,7 @@ export function PhoneCheck() {
           <button
             type="button"
             onClick={handleCheck}
-            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-ink shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+            className="inline-flex h-11 items-center justify-center gap-2 border-2 border-ink bg-lime px-5 text-sm font-bold text-on-lime shadow-neo transition-none hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
           >
             <ScanSearch className="h-4 w-4" aria-hidden="true" />
             Nilai nomor ini

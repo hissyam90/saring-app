@@ -48,14 +48,14 @@ export function Checker() {
               onClick={() => setMode(tab.id)}
               className={`flex min-h-16 items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
                 active
-                  ? "bg-ink text-paper"
+                  ? "bg-ink text-on-ink"
                   : "bg-surface text-ink hover:bg-lime-soft"
               }`}
             >
               <span
                 className={`flex h-9 w-9 shrink-0 items-center justify-center border-2 ${
                   active
-                    ? "border-lime bg-lime text-ink"
+                    ? "border-lime bg-lime text-on-lime"
                     : "border-ink bg-paper text-ink"
                 }`}
               >
@@ -76,7 +76,7 @@ export function Checker() {
                 </span>
                 <span
                   className={`mt-0.5 block text-xs leading-4 ${
-                    active ? "text-paper/65" : "text-ink-muted"
+                    active ? "text-on-ink/70" : "text-ink-muted"
                   }`}
                 >
                   {tab.hint}

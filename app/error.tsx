@@ -26,7 +26,7 @@ export default function AppError({
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
       <div className="border-2 border-ink bg-surface p-6 shadow-neo">
-        <span className="flex h-10 w-10 items-center justify-center bg-coral text-white">
+        <span className="flex h-10 w-10 items-center justify-center bg-coral text-on-coral">
           <CircleAlert className="h-5 w-5" aria-hidden="true" />
         </span>
         <h1 className="mt-3 text-2xl font-black tracking-tight text-ink">
@@ -45,7 +45,7 @@ export default function AppError({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex min-h-11 items-center border-2 border-ink bg-lime px-4 text-sm font-bold text-ink hover:bg-lime-deep"
+            className="inline-flex min-h-11 items-center border-2 border-ink bg-lime px-4 text-sm font-bold text-on-lime hover:bg-lime-deep"
           >
             Coba lagi
           </button>

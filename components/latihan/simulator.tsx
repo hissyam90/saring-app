@@ -150,7 +150,7 @@ function Intro({ onStart }: { onStart: (mode: SessionMode) => void }) {
               onClick={() => onStart(option.id)}
               className="group flex min-h-14 items-center gap-3 border-2 border-ink bg-surface px-4 py-3 text-left transition-colors hover:bg-lime"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-ink font-mono text-sm font-bold text-lime">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-graphite font-mono text-sm font-bold text-lime">
                 {option.count}
               </span>
               <span className="min-w-0 flex-1">
@@ -237,8 +237,8 @@ function QuestionView({
                   disabled={selected !== null}
                   className={`min-h-11 border-2 px-3 py-2.5 text-left text-sm leading-6 transition-colors disabled:cursor-default ${
                     isChosen
-                      ? "border-ink bg-ink text-paper"
-                      : "border-line bg-surface text-ink hover:border-ink hover:bg-lime-soft"
+                      ? "border-ink bg-ink text-on-ink"
+                      : "border-line-strong bg-surface text-ink hover:border-ink hover:bg-lime-soft"
                   }`}
                 >
                   {option.label}
@@ -300,7 +300,7 @@ function QuestionView({
               <button
                 type="button"
                 onClick={onNext}
-                className="mt-3 inline-flex min-h-11 items-center gap-2 bg-ink px-4 py-2 text-sm font-bold text-paper hover:bg-ink-soft"
+                className="mt-3 inline-flex min-h-11 items-center gap-2 bg-ink px-4 py-2 text-sm font-bold text-on-ink hover:bg-ink-soft"
               >
                 {index + 1 >= total ? "Lihat hasil" : "Soal berikutnya"}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -467,7 +467,7 @@ function Summary({
         <button
           type="button"
           onClick={onRestart}
-          className="mt-4 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-lime px-4 py-2 text-sm font-bold text-ink"
+          className="mt-4 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-lime px-4 py-2 text-sm font-bold text-on-lime"
         >
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
           Mulai sesi baru

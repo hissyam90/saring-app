@@ -42,8 +42,8 @@ export default async function AdminLaporanPage({
             href={`/admin/laporan?status=${f.id}`}
             className={`min-h-9 border-2 px-2.5 py-1 text-xs font-bold ${
               filter === f.id
-                ? "border-ink bg-ink text-paper"
-                : "border-line bg-surface text-ink-soft hover:border-ink"
+                ? "border-ink bg-ink text-on-ink"
+                : "border-line-strong bg-surface text-ink-soft hover:border-ink"
             }`}
           >
             {f.label}
@@ -84,7 +84,7 @@ export default async function AdminLaporanPage({
                   {report.targetType === "thread" ? (
                     <Link
                       href={`/komunitas/${report.targetId}`}
-                      className="inline-flex min-h-9 items-center border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-lime"
+                      className="inline-flex min-h-9 items-center border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:text-on-lime hover:bg-lime"
                     >
                       Buka diskusi
                     </Link>

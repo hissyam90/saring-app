@@ -85,7 +85,7 @@ export function BookmarkButton({
         aria-label={saved ? "Hapus dari artikel tersimpan" : "Simpan artikel"}
         title={error ?? (saved ? "Tersimpan" : "Simpan artikel")}
         className={`inline-flex h-7 w-7 shrink-0 items-center justify-center border-2 border-ink ${
-          saved ? "bg-lime text-ink" : "bg-surface text-ink-soft hover:bg-lime-soft"
+          saved ? "bg-lime text-on-lime" : "bg-surface text-ink-soft hover:bg-lime-soft"
         } disabled:opacity-60`}
       >
         {saved ? (

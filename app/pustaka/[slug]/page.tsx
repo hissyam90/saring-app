@@ -46,7 +46,7 @@ function ArticleActions({
       {submissionId ? (
         <Link
           href={`/komunitas/artikel?edit=${submissionId}`}
-          className="inline-flex min-h-9 items-center gap-1.5 border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-lime"
+          className="inline-flex min-h-9 items-center gap-1.5 border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:text-on-lime hover:bg-lime"
         >
           Edit / ajukan revisi
         </Link>
@@ -158,7 +158,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 ) : null}
 
                 {section.callout ? (
-                  <p className="mt-4 border-l-4 border-lime bg-graphite px-4 py-3 text-sm leading-6 text-paper">
+                  <p className="mt-4 border-l-4 border-lime bg-graphite px-4 py-3 text-sm leading-6 text-graphite-ink">
                     {section.callout}
                   </p>
                 ) : null}
@@ -249,7 +249,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
           <Link
             href="/pustaka"
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 border-2 border-ink bg-surface px-3 text-sm font-bold text-ink hover:bg-lime"
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 border-2 border-ink bg-surface px-3 text-sm font-bold text-ink hover:text-on-lime hover:bg-lime"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Semua artikel
@@ -302,7 +302,7 @@ function AskCta({ slug }: { slug: string }) {
       </p>
       <Link
         href={`/komunitas/baru?artikel=${slug}`}
-        className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-ink px-4 text-sm font-bold text-paper"
+        className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-ink px-4 text-sm font-bold text-on-ink"
       >
         <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
         Tanyakan tentang artikel ini
@@ -403,7 +403,7 @@ function ContributionView({
 
         <Link
           href="/pustaka"
-          className="mt-4 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 text-sm font-bold text-ink hover:bg-lime"
+          className="mt-4 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 text-sm font-bold text-ink hover:text-on-lime hover:bg-lime"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Semua artikel

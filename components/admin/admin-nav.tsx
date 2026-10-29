@@ -44,8 +44,8 @@ export function AdminNav({ openCounts }: { openCounts: { reports: number; pendin
                 aria-current={active(item.href) ? "page" : undefined}
                 className={`flex min-h-11 shrink-0 items-center gap-2 border-2 px-3 py-2.5 text-sm font-semibold transition-colors lg:shrink ${
                   active(item.href)
-                    ? "border-ink bg-ink text-paper"
-                    : "border-line bg-surface text-ink hover:border-ink"
+                    ? "border-ink bg-ink text-on-ink"
+                    : "border-line-strong bg-surface text-ink hover:border-ink"
                 }`}
               >
                 <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />

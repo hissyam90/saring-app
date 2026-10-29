@@ -25,9 +25,9 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 const PRIORITY_CHIP: Record<GuideStep["priority"], string> = {
-  segera: "bg-coral text-white",
-  penting: "bg-amber text-white",
-  lanjutan: "bg-ink text-paper",
+  segera: "bg-coral text-on-coral",
+  penting: "bg-amber text-on-amber",
+  lanjutan: "bg-ink text-on-ink",
 };
 
 export function Guide({ initialSituation }: { initialSituation?: string }) {
@@ -61,8 +61,8 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                 aria-pressed={active}
                 className={`flex min-h-11 shrink-0 items-center gap-2 border-2 px-3 py-2.5 text-left text-sm font-semibold transition-colors lg:shrink ${
                   active
-                    ? "border-ink bg-ink text-paper"
-                    : "border-line bg-surface text-ink hover:border-ink"
+                    ? "border-ink bg-ink text-on-ink"
+                    : "border-line-strong bg-surface text-ink hover:border-ink"
                 }`}
               >
                 <ItemIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -79,7 +79,7 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
       <div className="min-w-0 border-2 border-ink bg-surface">
         <div className="border-b-2 border-ink px-4 py-3.5 sm:px-5">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-ink text-lime">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-graphite text-lime">
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">

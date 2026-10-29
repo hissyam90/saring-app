@@ -95,7 +95,7 @@ export default function Home() {
             <h1 className="mt-4 text-[2.15rem] font-black leading-[1.02] tracking-[-0.02em] text-ink sm:mt-5 sm:text-[3.9rem]">
               Berhenti
               <br className="hidden sm:block" /> sebentar.
-              <span className="mt-2 block w-fit border-2 border-ink bg-lime px-2 py-0.5 sm:mt-3 sm:px-3">
+              <span className="mt-2 block w-fit border-2 border-ink bg-lime px-2 py-0.5 text-on-lime sm:mt-3 sm:px-3">
                 Periksa sinyalnya.
               </span>
             </h1>
@@ -106,7 +106,7 @@ export default function Home() {
               Mulai dari pesan, nomor, atau tautan yang Anda terima.
             </p>
 
-            <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/60">
+            <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink/80">
               <span className="inline-flex items-center gap-1.5">
                 <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                 Tanpa akun
@@ -134,7 +134,7 @@ export default function Home() {
             <ul className="divide-y-2 divide-line">
               {MODES.map((mode) => (
                 <li key={mode.n} className="flex items-start gap-3 px-3 py-2.5">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border-2 border-ink bg-lime font-mono text-[10px] font-bold text-ink">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border-2 border-ink bg-lime font-mono text-[10px] font-bold text-on-lime">
                     {mode.n}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -171,7 +171,7 @@ export default function Home() {
           </div>
           <Link
             href="/periksa"
-            className="hidden items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink shadow-neo-sm transition-none hover:bg-lime sm:inline-flex"
+            className="hidden items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:text-on-lime shadow-neo-sm transition-none hover:bg-lime sm:inline-flex"
           >
             Buka halaman penuh
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -191,7 +191,7 @@ export default function Home() {
                 key={principle.title}
                 className="border-2 border-ink bg-surface p-4"
               >
-                <span className="flex h-8 w-8 items-center justify-center bg-ink text-lime">
+                <span className="flex h-8 w-8 items-center justify-center bg-graphite text-lime">
                   <principle.icon className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <h3 className="mt-2.5 text-base font-bold text-ink">

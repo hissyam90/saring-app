@@ -40,7 +40,7 @@ export default async function AdminDiskusiPage({
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Link
                   href={`/komunitas/${thread.id}`}
-                  className="inline-flex min-h-9 items-center border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-lime"
+                  className="inline-flex min-h-9 items-center border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:text-on-lime hover:bg-lime"
                 >
                   Lihat
                 </Link>

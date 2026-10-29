@@ -1,16 +1,32 @@
 @import "tailwindcss";
 
 @theme {
+  /* -------------------------------------------------------------------------
+   * Token semantik Saring.
+   *
+   * Prinsip: setiap token "permukaan" punya pasangan "di atas permukaan" agar
+   * kontras tetap benar ketika tema berganti. Jangan memakai `paper` sebagai
+   * warna teks di atas permukaan gelap: `paper` adalah warna *halaman* dan ikut
+   * menjadi gelap pada dark mode (itu penyebab teks navbar tak terbaca).
+   * ---------------------------------------------------------------------- */
+
+  /* Teks & permukaan */
   --color-ink: #151b2b;
   --color-ink-soft: #28334a;
   --color-ink-muted: #5c6373;
   --color-paper: #f5f2ea;
   --color-surface: #ffffff;
+  /* Garis dekoratif (pemisah antar blok). Tidak dipakai sebagai batas kontrol. */
   --color-line: #d8d1c2;
+  /* Garis untuk batas kontrol interaktif: memenuhi 3:1 terhadap permukaan. */
+  --color-line-strong: #8a8073;
+  --color-placeholder: #5c6373;
 
   /* Sidebar gelap khusus navigasi (dipisah dari hero) */
   --color-graphite: #111827;
   --color-graphite-soft: #1c2637;
+  /* Teks di atas permukaan graphite. Selalu terang, di kedua tema. */
+  --color-graphite-ink: #f5f2ea;
 
   /* Hero terang agar kontras dengan sidebar */
   --color-hero: #edf5b6;
@@ -29,6 +45,16 @@
   --color-ink-coral: #7d1f12;
   --color-safe: #1d7a54;
   --color-safe-soft: #e4f2ea;
+
+  /* ---------------------------------------------------------------------
+   * Warna teks di atas aksen. Dipisahkan dari aksen itu sendiri karena pada
+   * dark mode aksen menjadi lebih terang sehingga teks harus menjadi gelap.
+   * ------------------------------------------------------------------ */
+  --color-on-ink: #f5f2ea;
+  --color-on-lime: #151b2b;
+  --color-on-coral: #ffffff;
+  --color-on-amber: #ffffff;
+  --color-on-safe: #ffffff;
 
   --font-sans:
     "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial,
@@ -263,7 +289,7 @@ body {
   float: left;
   height: 0;
   pointer-events: none;
-  color: var(--color-ink-muted);
+  color: var(--color-placeholder);
   opacity: 0.75;
 }
 
@@ -279,13 +305,20 @@ body {
   @media (prefers-color-scheme: dark) {
     :root {
       --color-ink: #f1f3f8;
-      --color-ink-soft: #cfd6e4;
-      --color-ink-muted: #9aa4b8;
+      --color-ink-soft: #dbe2ee;
+      --color-ink-muted: #aab4c6;
       --color-paper: #0d131d;
       --color-surface: #161e2c;
-      --color-line: #2d3a4f;
+      /* Garis dekoratif: cukup terlihat pada latar gelap tanpa menyilaukan. */
+      --color-line: #3f4e6b;
+      /* Batas kontrol interaktif: >= 3:1 terhadap paper dan surface. */
+      --color-line-strong: #5b6e95;
+      --color-placeholder: #aab4c6;
+
       --color-graphite: #070b12;
       --color-graphite-soft: #121a27;
+      --color-graphite-ink: #f1f3f8;
+
       --color-hero: #1b2415;
       --color-hero-edge: #2a3a1e;
       --color-lime-soft: #25301a;
@@ -299,13 +332,21 @@ body {
       --color-ink-coral: #ffb3a5;
       --color-safe: #6fdcae;
       --color-safe-soft: #12281f;
+
+      /* Pada dark mode aksen menjadi terang, sehingga teks di atasnya harus
+         gelap. Ini yang membuat tombol lime/badge coral tetap terbaca. */
+      --color-on-ink: #0d131d;
+      --color-on-lime: #151b2b;
+      --color-on-coral: #1a0a06;
+      --color-on-amber: #241a08;
+      --color-on-safe: #06231a;
     }
 
     .shadow-neo,
     .shadow-neo-sm,
     .shadow-neo-lg,
     .shadow-neo-xl {
-      box-shadow: 2px 2px 0 0 var(--color-line);
+      box-shadow: 2px 2px 0 0 var(--color-line-strong);
     }
   }
 }

@@ -63,7 +63,7 @@ export function PhoneResult({
           <button
             type="button"
             onClick={onCopy}
-            className="inline-flex min-h-8 items-center gap-1.5 border-2 border-ink bg-surface px-2 py-1 text-[11px] font-bold text-ink hover:bg-lime"
+            className="inline-flex min-h-8 items-center gap-1.5 border-2 border-ink bg-surface px-2 py-1 text-[11px] font-bold text-ink hover:text-on-lime hover:bg-lime"
           >
             <Copy className="h-3.5 w-3.5" aria-hidden="true" />
             {copied ? "Tersalin" : "Salin"}
@@ -109,7 +109,7 @@ export function PhoneResult({
         </>
       ) : null}
 
-      <div className="mt-4 bg-graphite text-paper">
+      <div className="mt-4 bg-graphite text-graphite-ink">
         <div className="flex items-center gap-2 border-b border-white/15 px-4 py-2.5">
           <span className="h-2 w-2 bg-lime" aria-hidden="true" />
           <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-lime">
@@ -122,7 +122,7 @@ export function PhoneResult({
               <span className="mt-0.5 w-4 shrink-0 font-mono text-xs font-bold text-lime">
                 {index + 1}
               </span>
-              <span className="text-sm leading-6 text-paper/90">{step}</span>
+              <span className="text-sm leading-6 text-graphite-ink/90">{step}</span>
             </li>
           ))}
         </ol>
@@ -158,7 +158,7 @@ export function PhoneResult({
             href={officialSource.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:bg-lime"
+            className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:text-on-lime hover:bg-lime"
           >
             Buka {officialSource.label}
             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />

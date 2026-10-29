@@ -250,7 +250,7 @@ export function RichTextEditor({
           <button
             type="button"
             onClick={insertPendingAsMedia}
-            className="inline-flex min-h-8 items-center gap-1.5 border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep"
+            className="inline-flex min-h-8 items-center gap-1.5 border-2 border-ink bg-lime px-2.5 text-xs font-bold text-on-lime hover:bg-lime-deep"
           >
             <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
             {pendingMedia.kind === "embed" ? "Sematkan album" : "Jadikan gambar"}

@@ -13,17 +13,17 @@ import {
 const ACCENT: Record<Severity, { bar: string; chip: string; label: string }> = {
   high: {
     bar: "border-l-coral",
-    chip: "bg-coral text-white",
+    chip: "bg-coral text-on-coral",
     label: "Prioritas tinggi",
   },
   medium: {
     bar: "border-l-amber",
-    chip: "bg-amber text-white",
+    chip: "bg-amber text-on-amber",
     label: "Perlu perhatian",
   },
   low: {
     bar: "border-l-ink-muted",
-    chip: "bg-ink text-paper",
+    chip: "bg-ink text-on-ink",
     label: "Indikasi tambahan",
   },
 };
@@ -81,7 +81,7 @@ function SignalCard({ finding, index }: { finding: Finding; index: number }) {
           <figcaption className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
             Kutipan dari pesan
           </figcaption>
-          <blockquote className="border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-paper">
+          <blockquote className="border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-on-ink">
             {"\u201c"}
             {finding.evidence}
             {"\u201d"}
@@ -188,7 +188,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
 
       {/* 3. Langkah */}
       {result.verdict.actionSteps.length > 0 ? (
-        <div className="mt-5 bg-graphite text-paper">
+        <div className="mt-5 bg-graphite text-graphite-ink">
           <div className="flex items-center gap-2 border-b border-white/15 px-4 py-2.5">
             <span className="h-2 w-2 bg-lime" aria-hidden="true" />
             <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-lime">
@@ -201,7 +201,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
                 <span className="mt-0.5 w-4 shrink-0 font-mono text-xs font-bold text-lime">
                   {index + 1}
                 </span>
-                <span className="text-sm leading-6 text-paper/90">{step}</span>
+                <span className="text-sm leading-6 text-graphite-ink/90">{step}</span>
               </li>
             ))}
           </ol>
@@ -258,7 +258,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href="/langkah?kondisi=received-message"
-          className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-lime px-4 py-2 text-sm font-bold text-ink"
+          className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-lime px-4 py-2 text-sm font-bold text-on-lime"
         >
           <ListChecks className="h-4 w-4" aria-hidden="true" />
           Susun rencana tindakan

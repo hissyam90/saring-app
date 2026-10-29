@@ -52,7 +52,7 @@ export function ReplyForm({ threadId }: { threadId: string }) {
         minLength={10}
         maxLength={3000}
         rows={4}
-        className="w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70"
+        className="w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-placeholder"
         placeholder="Bantu dengan pengalaman atau langkah yang bisa dilakukan."
       />
       <TurnstileWidget siteKey={SITE_KEY} action="reply" onToken={onToken} />

@@ -85,7 +85,7 @@ export function DraftList({ drafts }: { drafts: DraftRow[] }) {
             </span>
             <Link
               href={draft.resumeHref}
-              className="inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep"
+              className="inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-on-lime hover:bg-lime-deep"
             >
               Lanjutkan
             </Link>

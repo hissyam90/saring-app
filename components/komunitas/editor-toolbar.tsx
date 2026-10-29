@@ -57,7 +57,7 @@ function ToolButton({
       title={shortcut ? `${label} (${shortcut})` : label}
       className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border-2 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         active
-          ? "border-ink bg-ink text-paper"
+          ? "border-ink bg-ink text-on-ink"
           : "border-transparent bg-surface text-ink-soft hover:border-ink hover:text-ink"
       }`}
     >
@@ -175,7 +175,7 @@ function LinkControl({ editor }: { editor: Editor }) {
             }}
             placeholder="https://contoh.go.id/artikel"
             aria-describedby={error ? "editor-link-error" : undefined}
-            className="mt-1 w-full border-2 border-ink bg-paper px-2 py-1.5 text-sm text-ink placeholder:text-ink-muted/70"
+            className="mt-1 w-full border-2 border-ink bg-paper px-2 py-1.5 text-sm text-ink placeholder:text-placeholder"
           />
           {error ? (
             <p
@@ -190,7 +190,7 @@ function LinkControl({ editor }: { editor: Editor }) {
             <button
               type="button"
               onClick={apply}
-              className="inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-ink hover:bg-lime-deep"
+              className="inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-on-lime hover:bg-lime-deep"
             >
               {activeHref ? "Perbarui" : "Sisipkan"}
             </button>

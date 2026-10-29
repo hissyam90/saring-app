@@ -715,11 +715,11 @@ test.describe("Editor artikel", () => {
     await form.getByLabel("Teks alternatif media").fill("Tangkapan layar");
     await form.getByRole("button", { name: "Sisipkan", exact: true }).click();
 
-    // Node gambar yang baru disisipkan masih terpilih. Pindahkan kursor agar
-    // dialog berikutnya menyisipkan embed baru, bukan memperbarui gambar.
-    await page.locator("#artikel-editor").click();
-    await page.keyboard.press("Control+End");
-    await page.keyboard.type(" ");
+    // Node gambar yang baru disisipkan masih terpilih. Pindahkan kursor ke
+    // setelah node (ArrowRight) lalu buat paragraf baru, agar dialog berikutnya
+    // menyisipkan embed baru alih-alih mengganti gambar.
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
 
     // Embed album Imgur.
     await form.getByRole("button", { name: "Sisipkan gambar atau media" }).click();
