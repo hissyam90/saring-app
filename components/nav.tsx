@@ -16,7 +16,6 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { NotificationBell } from "@/components/komunitas/notification-bell";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Beranda", icon: House },
@@ -125,18 +124,12 @@ export function Nav() {
             <p className="mt-3 border-t border-white/15 px-3 pt-3 text-xs leading-5 text-graphite-ink/65">
               Pesan &amp; tautan dianalisis di peramban Anda.
             </p>
-            <div className="px-1">
-              <ThemeToggle variant="mobile" />
-            </div>
             <AccountMenu variant="mobile" />
           </div>
         </div>
       ) : null}
 
-      {/* Desktop sidebar. graphite pekat, dipisah aksen lime dari area utama.
-          `overflow-y-auto` wajib: pada jendela pendek (mis. tinggi 520-600px)
-          kontrol tema, notifikasi, dan tautan akun ada di bagian bawah dan
-          akan terpotong tanpa area gulir. */}
+      {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col overflow-y-auto bg-graphite text-graphite-ink lg:flex">
         <div className="border-b border-white/10 px-5 py-6">
           <Link href="/" className="flex items-center gap-3 text-graphite-ink">
@@ -193,12 +186,7 @@ export function Nav() {
         </nav>
 
         <div className="border-t border-white/10 px-3 py-3">
-          <div className="px-1">
-            <ThemeToggle variant="desktop" />
-          </div>
-          <div className="mt-3">
-            <NotificationBell variant="desktop" />
-          </div>
+          <NotificationBell variant="desktop" />
           <AccountMenu variant="desktop" />
         </div>
 

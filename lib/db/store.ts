@@ -116,6 +116,11 @@ export interface Store {
   findSubmission(id: string): Promise<Submission | null>;
   listSubmissionsByAuthor(authorId: string): Promise<Submission[]>;
   listSubmissions(opts: ListSubmissionsOptions): Promise<Paged<Submission>>;
+  /**
+   * Soft archive artikel: menyembunyikan dari Pustaka tanpa menghapus data.
+   * Otorisasi (pemilik atau admin) diperiksa di route handler.
+   */
+  setSubmissionArchived(id: string, archived: boolean): Promise<Submission | null>;
   reviewSubmission(input: {
     id: string;
     status: SubmissionStatus;

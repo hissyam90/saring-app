@@ -498,13 +498,12 @@ test.describe("Kontrol tema", () => {
   const readStored = (page: Page) =>
     page.evaluate((key) => window.localStorage.getItem(key), THEME_STORAGE_KEY);
 
-  /** Grup tombol tema; di viewport kecil dibuka lewat menu navigasi. */
-  async function themeGroup(page: Page) {
+  /** Kontrol tema berada di halaman akun (bagian Preferensi tampilan). */
+  async function openThemePanel(page: Page) {
+    await page.goto("/akun");
     const group = page.getByRole("group", { name: "Pilihan tema tampilan" });
-    if (await group.first().isVisible()) return group.first();
-    await page.getByRole("button", { name: "Buka menu" }).click();
-    await group.first().waitFor({ state: "visible" });
-    return group.first();
+    await expect(group).toBeVisible();
+    return group;
   }
 
   test("default mengikuti sistem dan berubah tanpa reload", async ({ page }) => {
@@ -526,11 +525,12 @@ test.describe("Kontrol tema", () => {
 
   test("pilihan Gelap menang atas sistem terang dan bertahan setelah reload", async ({
     page,
+    context,
   }) => {
+    await loginAs(context, readerId, "user");
     await page.emulateMedia({ colorScheme: "light" });
-    await page.goto("/pustaka");
 
-    const group = await themeGroup(page);
+    const group = await openThemePanel(page);
     await group.getByRole("button", { name: "Gelap" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -548,11 +548,12 @@ test.describe("Kontrol tema", () => {
 
   test("pilihan Terang menang atas sistem gelap dan bertahan setelah reload", async ({
     page,
+    context,
   }) => {
+    await loginAs(context, readerId, "user");
     await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto("/pustaka");
 
-    const group = await themeGroup(page);
+    const group = await openThemePanel(page);
     await group.getByRole("button", { name: "Terang" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -563,15 +564,18 @@ test.describe("Kontrol tema", () => {
     expect(await readStored(page)).toBe("light");
   });
 
-  test("kembali ke Ikuti sistem memulihkan perilaku otomatis", async ({ page }) => {
+  test("kembali ke Ikuti sistem memulihkan perilaku otomatis", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, readerId, "user");
     await page.emulateMedia({ colorScheme: "light" });
-    await page.goto("/pustaka");
 
-    let group = await themeGroup(page);
+    let group = await openThemePanel(page);
     await group.getByRole("button", { name: "Gelap" }).click();
     expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
 
-    group = await themeGroup(page);
+    group = page.getByRole("group", { name: "Pilihan tema tampilan" });
     await group.getByRole("button", { name: "Ikuti sistem" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
     expect(await readStored(page)).toBe("system");
@@ -584,21 +588,43 @@ test.describe("Kontrol tema", () => {
 
   test("preferensi tidak dikirim ke server dan tidak memakai cookie", async ({
     page,
+    context,
   }) => {
-    await page.goto("/pustaka");
-    const group = await themeGroup(page);
+    await loginAs(context, readerId, "user");
+    const group = await openThemePanel(page);
     await group.getByRole("button", { name: "Gelap" }).click();
 
     const cookies = await page.context().cookies();
     expect(cookies.filter((cookie) => /theme/i.test(cookie.name))).toEqual([]);
 
     // Server tidak pernah melihat pilihan tema: HTML selalu tanpa atribut
-    // `data-theme`, dan atribut itu baru dipasang skrip di peramban. Karena itu
-    // tidak ada hydration mismatch dan tidak ada penyimpanan tema di PostgreSQL.
-    const response = await page.request.get("/pustaka");
+    // `data-theme`, dan atribut itu baru dipasang skrip di peramban.
+    const response = await page.request.get("/akun");
     const html = await response.text();
     expect(html).not.toMatch(/<html[^>]*\sdata-theme=/);
-    expect(html).toContain("saring.theme");
+  });
+
+  test("kontrol tema tidak lagi berada di navigasi", async ({ page, context }) => {
+    await loginAs(context, readerId, "user");
+    await page.goto("/");
+
+    // Sidebar desktop tidak memuat kontrol tema.
+    await expect(
+      page.locator("aside").getByRole("group", { name: "Pilihan tema tampilan" }),
+    ).toHaveCount(0);
+    await expect(page.locator("aside")).not.toContainText("Preferensi tampilan");
+
+    // Menu navigasi ponsel juga tidak memuatnya.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Buka menu" }).click();
+
+    const menu = page.getByRole("dialog", { name: "Menu navigasi" });
+    await expect(menu).toBeVisible();
+    await expect(
+      menu.getByRole("group", { name: "Pilihan tema tampilan" }),
+    ).toHaveCount(0);
+    await expect(menu).not.toContainText("Preferensi tampilan");
   });
 
   test("tema diterapkan sebelum first-paint (tanpa kilatan)", async ({ page }) => {
@@ -649,7 +675,7 @@ test.describe("Kontrol tema", () => {
     ).toBeLessThanOrEqual(marks.firstPaint as number);
   });
 
-  test("sidebar tetap bisa digulir sehingga kontrol tema terjangkau di jendela pendek", async ({
+  test("sidebar tetap bisa digulir sehingga kontrol akun terjangkau di jendela pendek", async ({
     page,
   }, testInfo) => {
     // Sidebar desktop hanya tampil pada lebar >= 1024px (breakpoint lg).
@@ -659,38 +685,25 @@ test.describe("Kontrol tema", () => {
     await page.goto("/");
 
     const sidebar = page.locator("aside");
-    const themeGroup = sidebar.getByRole("group", {
-      name: "Pilihan tema tampilan",
-    });
-    await expect(themeGroup).toHaveCount(1);
+    await expect(sidebar).toHaveCount(1);
 
-    // Gulir sidebar sampai bawah, lalu pastikan kontrol terakhir (bukan hanya
-    // kontrol tema) benar-benar berada di dalam viewport.
+    // Gulir sidebar sampai bawah, lalu pastikan kontrol terakhir (tautan akun)
+    // benar-benar berada di dalam viewport.
     const geometry = await page.evaluate(() => {
       const aside = document.querySelector("aside");
       if (!aside) return null;
       aside.scrollTop = aside.scrollHeight;
       const controls = [...aside.querySelectorAll("a, button")];
       const last = controls[controls.length - 1];
-      const theme = aside.querySelector(
-        '[role="group"][aria-label="Pilihan tema tampilan"]',
-      );
       return {
         overflowY: getComputedStyle(aside).overflowY,
         viewport: window.innerHeight,
         lastBottom: Math.round(last.getBoundingClientRect().bottom),
-        themeBottom: Math.round(
-          (theme ?? last).getBoundingClientRect().bottom,
-        ),
       };
     });
 
     expect(geometry).not.toBeNull();
     expect(geometry!.overflowY).toBe("auto");
-    expect(
-      geometry!.themeBottom,
-      "kontrol tema harus terlihat setelah sidebar digulir",
-    ).toBeLessThanOrEqual(geometry!.viewport);
     expect(
       geometry!.lastBottom,
       "tautan akun terakhir harus terlihat setelah sidebar digulir",
@@ -726,56 +739,258 @@ test.describe("Kontrol tema", () => {
   });
 });
 
-test.describe("Screenshot audit v18", () => {
-  test("mengambil screenshot ketiga mode tema", async ({
+/** Membaca token warna hasil komputasi di peramban. */
+const readTokens = (page: Page) =>
+  page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    const get = (name: string) => style.getPropertyValue(name).trim();
+    return {
+      lime: get("--color-lime"),
+      amber: get("--color-amber"),
+      coral: get("--color-coral"),
+      safe: get("--color-safe"),
+      limeSoft: get("--color-lime-soft"),
+      amberSoft: get("--color-amber-soft"),
+      coralSoft: get("--color-coral-soft"),
+      safeSoft: get("--color-safe-soft"),
+      paper: get("--color-paper"),
+      surface: get("--color-surface"),
+      graphite: get("--color-graphite"),
+      onLime: get("--color-on-lime"),
+    };
+  });
+
+const toRgb = (hex: string) => {
+  let h = hex.replace("#", "");
+  // Lightning CSS meminimalkan nilai seperti `#ffffff` menjadi `#fff`.
+  if (h.length === 3) {
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+};
+
+const luminance = (hex: string) => {
+  const [r, g, b] = toRgb(hex).map((value) => {
+    const c = value / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+const contrastOf = (a: string, b: string) => {
+  const la = luminance(a);
+  const lb = luminance(b);
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+/** Jarak kanal terbesar-minimal: rendah berarti warna mendekati abu-abu. */
+const chroma = (hex: string) => {
+  const [r, g, b] = toRgb(hex);
+  return Math.max(r, g, b) - Math.min(r, g, b);
+};
+
+test.describe("Warna aksen", () => {
+  test("aksen kuat tetap pekat dan kontras di light maupun dark", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "token tema sama untuk semua project");
+
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto("/");
+      const t = await readTokens(page);
+
+      // Aksen kuat: kontras >= 4,5:1 terhadap permukaan tempat teks aksen dipakai.
+      for (const accent of [t.coral, t.amber, t.safe]) {
+        expect(
+          contrastOf(accent, t.surface),
+          `${accent} vs surface (${scheme})`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(contrastOf(t.onLime, t.lime)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastOf(t.lime, t.graphite)).toBeGreaterThanOrEqual(4.5);
+
+      // Aksen kuat tidak boleh menjadi abu-abu/lumpur.
+      for (const accent of [t.coral, t.amber, t.safe, t.lime]) {
+        expect(chroma(accent), `${accent} terlalu kusam (${scheme})`).toBeGreaterThanOrEqual(90);
+      }
+    }
+  });
+
+  test("latar aksen lembut tetap berrona dan terpisah dari aksen kuat", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "token tema sama untuk semua project");
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    const t = await readTokens(page);
+
+    // Latar lembut bukan abu-abu gelap: masih punya rona yang jelas.
+    for (const soft of [t.limeSoft, t.amberSoft, t.coralSoft, t.safeSoft]) {
+      expect(chroma(soft), `${soft} terlalu kelabu`).toBeGreaterThanOrEqual(30);
+    }
+
+    // Peran terpisah: aksen kuat jelas berbeda dari latar lembutnya.
+    expect(contrastOf(t.coral, t.coralSoft)).toBeGreaterThanOrEqual(3);
+    expect(contrastOf(t.amber, t.amberSoft)).toBeGreaterThanOrEqual(3);
+    expect(contrastOf(t.safe, t.safeSoft)).toBeGreaterThanOrEqual(3);
+    expect(contrastOf(t.lime, t.limeSoft)).toBeGreaterThanOrEqual(3);
+
+    // Halaman tetap gelap, bukan ikut menjadi terang.
+    expect(luminance(t.paper)).toBeLessThan(0.05);
+    expect(luminance(t.surface)).toBeLessThan(0.06);
+  });
+
+  test("tombol primary benar-benar kontras di kedua tema", async ({ page }) => {
+    const parseRgb = (value: string) => {
+      const nums = value.match(/\d+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+      return `#${nums.map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+    };
+
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      // /masuk publik dan selalu memuat satu tombol primary.
+      await page.goto("/masuk");
+
+      const colors = await page.evaluate(() => {
+        const el =
+          document.querySelector<HTMLElement>("a.bg-lime, button.bg-lime") ?? null;
+        if (!el) return null;
+        const style = getComputedStyle(el);
+        return { color: style.color, background: style.backgroundColor };
+      });
+
+      expect(colors, `tombol primary tidak ditemukan (${scheme})`).not.toBeNull();
+      const ratio = contrastOf(
+        parseRgb(colors!.color),
+        parseRgb(colors!.background),
+      );
+      expect(ratio, `tombol primary (${scheme})`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+
+
+test.describe("Panel notifikasi", () => {
+  /** Tombol lonceng yang benar-benar tampil pada viewport saat ini. */
+  async function bellFor(page: Page, desktop: boolean) {
+    const scope = desktop ? page.locator("aside") : page.locator("header");
+    return scope.getByRole("button", { name: /^Notifikasi/ });
+  }
+
+  test("panel tetap di dalam layar dan tidak terpotong di desktop maupun mobile", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, adminId, "admin");
+
+    for (const viewport of [
+      { width: 1280, height: 800, desktop: true },
+      { width: 390, height: 844, desktop: false },
+    ]) {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
+      await page.goto("/komunitas");
+
+      const bell = await bellFor(page, viewport.desktop);
+      await expect(bell).toHaveCount(1);
+      await bell.click();
+
+      const panel = page.getByTestId("notification-panel");
+      await expect(panel).toBeVisible();
+
+      const box = await panel.boundingBox();
+      expect(box, "panel harus punya kotak").not.toBeNull();
+      const label = `${viewport.width}x${viewport.height}`;
+
+      expect(box!.x, `kiri ${label}`).toBeGreaterThanOrEqual(0);
+      expect(box!.y, `atas ${label}`).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width, `kanan ${label}`).toBeLessThanOrEqual(
+        viewport.width + 0.5,
+      );
+      expect(box!.y + box!.height, `bawah ${label}`).toBeLessThanOrEqual(
+        viewport.height + 0.5,
+      );
+
+      // Tidak terpotong: titik di dalam panel harus benar-benar milik panel,
+      // bukan tertutup sidebar atau area konten.
+      const onTop = await page.evaluate(() => {
+        const el = document.querySelector('[data-testid="notification-panel"]');
+        if (!el) return false;
+        const rect = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + Math.min(20, rect.height / 2),
+        );
+        return el.contains(hit);
+      });
+      expect(onTop, `panel tertutup elemen lain (${label})`).toBe(true);
+
+      await page.keyboard.press("Escape");
+      await expect(panel).toHaveCount(0);
+    }
+  });
+
+  test("panel dapat ditutup dengan Escape dan klik di luar", async ({
     page,
     context,
   }, testInfo) => {
-    // Satu project saja: dua project yang menulis berkas screenshot yang sama
-    // secara paralel dapat gagal karena berkas sedang dipakai.
-    test.skip(testInfo.project.name !== "chromium", "chromium only");
+    test.skip(testInfo.project.name !== "chromium", "cukup satu viewport");
 
     await loginAs(context, adminId, "admin");
-    await page.setViewportSize({ width: 1280, height: 900 });
-
-    const group = () =>
-      page.getByRole("group", { name: "Pilihan tema tampilan" });
-
-    // Mode "Ikuti sistem" dengan OS gelap (tanpa pilihan tersimpan).
-    await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto("/");
-    await page.evaluate(
-      (key) => window.localStorage.removeItem(key),
-      THEME_STORAGE_KEY,
-    );
-    await page.reload();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "system");
-    await page.screenshot({ path: ".tmp-audit/v18-theme-system.png" });
-
-    // Manual terang meskipun OS gelap.
-    await group().getByRole("button", { name: "Terang" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-    await page.screenshot({ path: ".tmp-audit/v18-theme-light.png" });
-
-    // Manual gelap.
-    await group().getByRole("button", { name: "Gelap" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    await page.screenshot({ path: ".tmp-audit/v18-theme-dark.png" });
-
-    // Admin pada mode gelap manual.
-    await page.goto("/admin");
-    await page.screenshot({ path: ".tmp-audit/v18-admin-dark.png" });
-
-    // Komunitas pada viewport ponsel, mode gelap manual.
-    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/komunitas");
-    await page.screenshot({ path: ".tmp-audit/v18-community-mobile.png" });
 
-    // Bersihkan preferensi agar tidak memengaruhi test lain di worker ini.
-    await page.evaluate(
-      (key) => window.localStorage.removeItem(key),
-      THEME_STORAGE_KEY,
-    );
+    const bell = await bellFor(page, true);
+    const panel = page.getByTestId("notification-panel");
+
+    await bell.click();
+    await expect(panel).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(bell).toBeFocused();
+
+    await bell.click();
+    await expect(panel).toBeVisible();
+    await page.mouse.click(900, 200);
+    await expect(panel).toHaveCount(0);
+
+    // Tombol tetap berfungsi lewat keyboard.
+    await bell.focus();
+    await page.keyboard.press("Enter");
+    await expect(panel).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+  });
+
+  test("varian desktop dan mobile tidak memicu permintaan notifikasi ganda", async ({
+    page,
+    context,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "cukup satu viewport");
+
+    await loginAs(context, adminId, "admin");
+
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/community/notifications")) requests.push(url);
+    });
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/komunitas");
+    await page.waitForTimeout(1500);
+
+    const initial = requests.filter((url) => !url.includes("/read"));
+    expect(initial.length, `permintaan awal: ${initial.join(", ")}`).toBe(1);
   });
 });
 

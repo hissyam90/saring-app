@@ -5,6 +5,8 @@ import { getStore } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { buttonClass, Panel, Tag, formatDate } from "@/components/ui/primitives";
 import { DraftList, type DraftRow } from "@/components/komunitas/draft-list";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { ArchiveArticleButton } from "@/components/komunitas/archive-article-button";
 import type { SubmissionStatus } from "@/lib/db/types";
 
 export const metadata: Metadata = { title: "Akun saya" };
@@ -79,6 +81,17 @@ export default async function AkunPage() {
       </div>
 
       <div className="mt-5 grid gap-4">
+        <Panel
+          title="Preferensi tampilan"
+          description="Berlaku di peramban ini dan tersimpan otomatis."
+        >
+          <ThemeToggle />
+          <p className="mt-3 text-xs leading-5 text-ink-muted">
+            <strong className="font-semibold text-ink">Ikuti sistem</strong>{" "}
+            mengikuti pengaturan terang/gelap perangkat Anda.
+          </p>
+        </Panel>
+
         <Panel title={`Draf saya (${draftRows.length})`}>
           <DraftList drafts={draftRows} />
         </Panel>
@@ -121,18 +134,28 @@ export default async function AkunPage() {
                   </span>
                   <Tag
                     tone={
-                      submission.status === "approved"
-                        ? "success"
-                        : submission.status === "rejected"
-                          ? "danger"
-                          : "warn"
+                      submission.archivedAt
+                        ? "neutral"
+                        : submission.status === "approved"
+                          ? "success"
+                          : submission.status === "rejected"
+                            ? "danger"
+                            : "warn"
                     }
                   >
-                    {STATUS_LABEL[submission.status]}
+                    {submission.archivedAt
+                      ? "Diarsipkan"
+                      : STATUS_LABEL[submission.status]}
                   </Tag>
                   <span className="font-mono text-[11px] text-ink-muted">
                     {formatDate(submission.createdAt)}
                   </span>
+                  {submission.status === "approved" ? (
+                    <ArchiveArticleButton
+                      submissionId={submission.id}
+                      archived={Boolean(submission.archivedAt)}
+                    />
+                  ) : null}
                 </li>
               ))}
             </ul>

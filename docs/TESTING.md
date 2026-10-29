@@ -40,38 +40,38 @@ flowchart LR
 | UI, revisi, autosave, bookmark, notifikasi (E2E) | `tests/e2e/v16.spec.ts` | Lulus |
 | Kontras tiga mode tema dari warna terhitung (E2E) | `tests/e2e/contrast.spec.ts` | Lulus |
 
-## Cakupan v18: tiga mode tema dan keterbacaan
+## Tema dan keterbacaan
 
-- **Token**: `npm run audit:contrast` mengukur pasangan teks/latar dari token di
-  `app/globals.css`. Semua pasangan yang diuji lolos ambang (4,5:1 teks normal,
-  3:1 teks besar, 3:1 batas kontrol dan cincin fokus). Pemisah dekoratif dicatat
-  terpisah karena bukan batas kontrol.
-- **Konsistensi palet**: skrip juga membandingkan dua blok palet gelap
-  (`[data-theme="dark"]` dan media query `prefers-color-scheme`) dan gagal bila
-  keduanya berbeda, serta memastikan setiap token punya nilai gelap.
-- **Halaman**: `tests/e2e/contrast.spec.ts` mengaudit 19 rute (beranda, periksa,
-  latihan, langkah, pustaka + detail, komunitas + detail + form, akun, artikel
-  tersimpan, 5 halaman admin, masuk, daftar) pada **empat** mode:
-  `system-terang`, `system-gelap`, `manual-terang` (sistem gelap + pilihan
-  Terang), dan `manual-gelap` (sistem terang + pilihan Gelap). Audit memakai
-  `color`/`background-color` hasil komputasi, dan pada setiap rute juga
-  memastikan warna latar `body` benar-benar sesuai mode yang dipilih.
-- **Permukaan interaktif**: editor berisi teks, dialog media, panel notifikasi,
-  form masuk, pencarian Pustaka, dan menu navigasi mobile — pada light dan dark.
-- **Batas kontrol & placeholder**: isian latar kontrol harus berbeda >=3:1 dari
-  latar sekitar, atau border >=3:1; placeholder >=4,5:1.
-- **Kontrol tema**: tiga tombol (Ikuti sistem / Terang / Gelap) terbukti
-  mengubah tema, mengalahkan preferensi sistem, bertahan setelah reload, dan
-  kembali ke perilaku otomatis. Preferensi hanya di `localStorage`
-  (`saring.theme`) — tidak ada cookie tema dan HTML dari server tidak memuat
-  atribut `data-theme`.
-- **Tanpa kilatan tema**: `data-theme` terbukti terpasang **sebelum**
-  `first-paint` (direkam lewat `MutationObserver` + `PerformanceObserver` di
-  peramban).
-- **Stabilitas**: tidak ada peringatan hydration pada halaman yang diuji dan
-  tidak ada overflow horizontal.
-- **Screenshot**: `.tmp-audit/v18-theme-system.png`, `v18-theme-light.png`,
-  `v18-theme-dark.png`, `v18-community-mobile.png`, `v18-admin-dark.png`.
+| Berkas | Cakupan |
+|---|---|
+| `scripts/contrast-audit.mjs` | Kontras pasangan token (teks normal 4,5:1, batas kontrol dan cincin fokus 3:1) untuk palet terang dan gelap, ditambah pemeriksaan bahwa dua blok palet gelap identik dan lengkap. |
+| `tests/e2e/contrast.spec.ts` | Kontras `color`/`background-color` hasil komputasi pada 19 rute × 4 mode, warna aksen, panel notifikasi, dan perilaku pemilih tema. |
+| `tests/unit/archive*.test.ts` | Aturan arsip artikel (pemilik/admin) dan hilangnya artikel dari Pustaka. |
+
+Yang diperiksa oleh `tests/e2e/contrast.spec.ts`:
+
+- **4 mode** — `system-terang`, `system-gelap`, `manual-terang`, `manual-gelap`.
+  Setiap rute juga diverifikasi warna latar `body`-nya, sehingga mode yang tidak
+  benar-benar aktif tidak bisa lolos.
+- **Permukaan interaktif** — editor berisi teks, dialog media, panel notifikasi,
+  form masuk, pencarian Pustaka, dan menu navigasi mobile.
+- **Batas kontrol dan placeholder** — isian latar kontrol berbeda >=3:1 dari
+  latar sekitar atau border >=3:1; placeholder >=4,5:1.
+- **Pemilih tema** — berada di `/akun` (bukan di navigasi), mengalahkan
+  preferensi sistem, bertahan setelah reload, dan `Ikuti sistem` memulihkan
+  perilaku otomatis. Preferensi hanya di `localStorage` (`saring.theme`); HTML
+  dari server tidak memuat atribut `data-theme`.
+- **Tanpa kilatan tema** — `data-theme` terpasang sebelum `first-paint`
+  (direkam lewat `MutationObserver` dan `PerformanceObserver`).
+- **Aksen** — aksen kuat (lime, coral, amber, safe) tetap berona dan kontras di
+  kedua tema; latar aksen lembut tidak menjadi abu-abu dan tetap terpisah dari
+  aksen kuatnya.
+- **Panel notifikasi** — sepenuhnya di dalam viewport desktop dan mobile, tidak
+  tertutup elemen lain, dapat ditutup dengan Escape dan klik di luar, dan hanya
+  satu permintaan notifikasi meskipun varian desktop dan mobile sama-sama
+  dirender.
+- **Stabilitas** — tidak ada peringatan hydration dan tidak ada overflow
+  horizontal.
 
 Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 `oklab(...)`; audit mengonversinya ke sRGB. Tanpa konversi itu, elemen beropacity
@@ -79,7 +79,8 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 
 
 
-## Cakupan v16 yang diuji otomatis
+
+## Media, revisi, dan interaksi komunitas
 
 - **Media lintas hosting**: gambar `i.postimg.cc`, `i.ibb.co`, `images2.imgbox.com`
   dan host HTTPS lain diterima; URL halaman galeri (postimg/imgbox/ibb) ditolak
@@ -97,8 +98,8 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 - **Kategori `Lainnya`**: default form, diterima validasi server, tersimpan, dan
   dapat difilter tanpa mengubah kategori pertanyaan lama.
 - **UI**: editor tidak meluap dengan URL panjang (desktop & mobile), search bar
-  Pustaka bergaris empat sisi di mode terang dan gelap, dan tema mengikuti sistem
-  tanpa kontrol manual di DOM maupun `localStorage`.
+  Pustaka bergaris empat sisi di mode terang dan gelap, dan warna mengikuti
+  preferensi sistem secara default.
 
 | Validasi & sanitasi konten kaya | `tests/unit/rich-text.test.ts` | Lulus |
 | Endpoint pengajuan artikel (konten, IDOR, status) | `tests/unit/submission-route.test.ts` | Lulus |
@@ -107,7 +108,7 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 | Editor Tiptap: toolbar, format, tautan | `tests/components/rich-text-editor.test.tsx` | Lulus |
 | Editor artikel end-to-end (PostgreSQL + Pustaka) | `tests/e2e/article-editor.spec.ts` | Lulus |
 
-## Cakupan editor artikel yang diuji otomatis
+## Editor artikel
 
 - **Ukuran area menulis**: tinggi `#artikel-editor` ≥ 360 px di desktop dan ≥ 280
   px di mobile walaupun dokumen kosong; `max-height: none` dan `overflow-y:
@@ -140,7 +141,7 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
   dapat diubah (409).
 - Editor tidak menimbulkan overflow horizontal pada viewport mobile.
 
-## Cakupan keamanan yang diuji otomatis
+## Keamanan dan otorisasi
 
 - **CAPTCHA**: token kosong/bukan string/terlalu panjang ditolak tanpa memanggil
   jaringan; `success` non-boolean ditolak; action berbeda ditolak; provider error,

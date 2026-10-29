@@ -76,6 +76,7 @@ const toSubmission = (r: Row): Submission => ({
   status: r.status as Submission["status"],
   reviewNote: r.review_note ? String(r.review_note) : null,
   slug: r.slug ? String(r.slug) : null,
+  archivedAt: r.archived_at ? iso(r.archived_at) : null,
   createdAt: iso(r.created_at),
   reviewedAt: r.reviewed_at ? iso(r.reviewed_at) : null,
 });
@@ -414,6 +415,7 @@ export function createPostgresStore(pool: Pool): Store {
         `select s.*, u.display_name as author_name
          from submissions s join users u on u.id = s.author_id
          where s.status = 'approved' and s.slug is not null
+           and s.archived_at is null
          order by s.reviewed_at desc nulls last`,
       );
       return rows.map(toPublished);
@@ -422,10 +424,21 @@ export function createPostgresStore(pool: Pool): Store {
       const rows = await q(
         `select s.*, u.display_name as author_name
          from submissions s join users u on u.id = s.author_id
-         where s.slug = $1 and s.status = 'approved' limit 1`,
+         where s.slug = $1 and s.status = 'approved' and s.archived_at is null
+         limit 1`,
         [slug],
       );
       return rows[0] ? toPublished(rows[0]) : null;
+    },
+
+    async setSubmissionArchived(id, archived) {
+      const rows = await q(
+        `update submissions
+            set archived_at = case when $2 then now() else null end
+          where id = $1 returning *`,
+        [id, archived],
+      );
+      return rows[0] ? toSubmission(rows[0]) : null;
     },
 
     // --- Revisi artikel publik ---------------------------------------------

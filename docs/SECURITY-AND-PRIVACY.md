@@ -301,7 +301,7 @@ tidak dapat dipakai sebagai jalur penulisan tak terbatas.
 ## Tema tampilan
 
 Saring memiliki **tiga pilihan tema**: Ikuti sistem (default), Terang, dan
-Gelap. Kontrolnya ada di navbar (sidebar desktop dan menu navigasi ponsel).
+Gelap. Kontrolnya ada di bagian **Preferensi tampilan** pada halaman `/akun`.
 
 - Preferensi disimpan **hanya di `localStorage`** peramban dengan kunci
   `saring.theme`. Tidak ada cookie tema, tidak ada permintaan jaringan, dan

@@ -96,6 +96,11 @@ export interface Submission {
   status: SubmissionStatus;
   reviewNote: string | null;
   slug: string | null;
+  /**
+   * Soft archive: bila terisi, artikel tidak tampil di Pustaka dan tidak dapat
+   * diakses lewat URL langsung. Artikel dan riwayat revisinya tetap utuh.
+   */
+  archivedAt: string | null;
   createdAt: string;
   reviewedAt: string | null;
 }

@@ -194,7 +194,7 @@ test.describe("UI: editor dan search bar", () => {
     expect(dark!.color).not.toBe(light!.color);
   });
 
-  test("tema mengikuti preferensi sistem dan kontrol tema tersedia", async ({
+  test("tema mengikuti preferensi sistem tanpa tombol di navigasi", async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: "dark" });
@@ -210,24 +210,13 @@ test.describe("UI: editor dan search bar", () => {
 
     expect(darkBody).not.toBe(lightBody);
 
-    // Kontrol tema ada dan menawarkan tiga pilihan. Di viewport ponsel kontrol
-    // berada di dalam menu navigasi, jadi menu dibuka lebih dulu.
-    const group = page.getByRole("group", { name: "Pilihan tema tampilan" });
-    if (!(await group.first().isVisible())) {
-      await page.getByRole("button", { name: "Buka menu" }).click();
-    }
-    await expect(group.first()).toBeVisible();
-    for (const label of ["Ikuti sistem", "Terang", "Gelap"]) {
-      await expect(
-        group.first().getByRole("button", { name: label }),
-      ).toBeVisible();
-    }
-
-    // Preferensi memakai kunci localStorage Saring (`saring.theme`), bukan
-    // cookie atau kolom database.
+    // Kontrol tema berada di halaman akun (lihat tests/e2e/contrast.spec.ts),
+    // bukan di sidebar atau menu navigasi.
     expect(
-      await page.evaluate(() => window.localStorage.getItem("saring.theme")),
-    ).toBeNull();
+      await page.locator("aside").getByRole("group", {
+        name: "Pilihan tema tampilan",
+      }).count(),
+    ).toBe(0);
   });
 });
 
@@ -413,8 +402,17 @@ test.describe("Revisi artikel publik", () => {
     await expect(page.getByText(/Versi publik saat ini/i).first()).toBeVisible();
     await expect(page.getByText(revisedTitle).first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Setujui & terbitkan" }).first().click();
-    await page.getByRole("button", { name: "Konfirmasi" }).first().click();
+    // Halaman ini mencantumkan semua revisi pending, termasuk milik pengujian
+    // lain. Batasi aksi ke kartu yang memuat judul revisi ini agar tidak
+    // menyetujui revisi yang salah.
+    const card = page
+      .locator("li")
+      .filter({ hasText: revisedTitle })
+      .first();
+    await expect(card).toBeVisible();
+
+    await card.getByRole("button", { name: "Setujui & terbitkan" }).click();
+    await card.getByRole("button", { name: "Konfirmasi" }).click();
 
     await expect
       .poll(

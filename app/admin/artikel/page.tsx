@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getStore } from "@/lib/db";
 import type { SubmissionStatus } from "@/lib/db/types";
 import { ModerationActions } from "@/components/admin/moderation-actions";
+import { ArchiveArticleButton } from "@/components/komunitas/archive-article-button";
 import { RichContent } from "@/components/pustaka/rich-content";
 import { Panel, Pagination, Tag, formatDate } from "@/components/ui/primitives";
 import { clampPage } from "@/lib/api/helpers";
@@ -65,6 +66,7 @@ export default async function AdminArtikelPage({
                   <Tag tone={item.status === "approved" ? "success" : item.status === "rejected" ? "danger" : "warn"}>
                     {item.status}
                   </Tag>
+                  {item.archivedAt ? <Tag tone="neutral">Diarsipkan</Tag> : null}
                   <span className="ml-auto text-[11px] text-ink-muted">
                     {item.authorName} · {formatDate(item.createdAt)}
                   </span>
@@ -122,6 +124,15 @@ export default async function AdminArtikelPage({
                       notePlaceholder="Alasan penolakan"
                     />
                   </div>
+
+                  {item.status === "approved" ? (
+                    <div className="mt-2">
+                      <ArchiveArticleButton
+                        submissionId={item.id}
+                        archived={Boolean(item.archivedAt)}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </li>
             ))}

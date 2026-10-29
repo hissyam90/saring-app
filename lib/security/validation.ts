@@ -305,6 +305,12 @@ export const revisionReviewSchema = z.object({
   note: z.string().trim().max(1000).optional().nullable(),
 });
 
+// --- Arsip artikel ---------------------------------------------------------
+
+export const archiveSubmissionSchema = z.object({
+  archived: z.boolean({ message: "Status arsip tidak valid." }),
+});
+
 /** Mengubah error zod menjadi pesan pertama yang bisa ditampilkan. */
 export function firstError(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Data tidak valid.";

@@ -182,6 +182,16 @@ const PAIRS = [
   ["teks di atas ink", "on-ink", "ink", 4.5, "teks"],
   ["teks hero", "ink", "hero", 4.5, "teks"],
 
+  // Aksen dipakai sebagai warna teks di atas permukaan (Tag, label status)
+  ["teks coral / halaman", "coral", "paper", 4.5, "teks"],
+  ["teks coral / kartu", "coral", "surface", 4.5, "teks"],
+  ["teks amber / halaman", "amber", "paper", 4.5, "teks"],
+  ["teks amber / kartu", "amber", "surface", 4.5, "teks"],
+  ["teks safe / halaman", "safe", "paper", 4.5, "teks"],
+  ["teks safe / kartu", "safe", "surface", 4.5, "teks"],
+  ["teks lime / graphite (footer)", "lime", "graphite", 4.5, "teks"],
+  ["teks ink-coral / halaman", "ink-coral", "paper", 4.5, "teks"],
+
   // Placeholder
   ["placeholder / kartu", "placeholder", "surface", 4.5, "teks"],
   ["placeholder / halaman", "placeholder", "paper", 4.5, "teks"],

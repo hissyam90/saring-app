@@ -63,6 +63,7 @@ interface MemSubmission {
   status: Submission["status"];
   reviewNote: string | null;
   slug: string | null;
+  archivedAt: string | null;
   createdAt: string;
   reviewedAt: string | null;
 }
@@ -317,6 +318,7 @@ export function createMemoryStore(): Store {
         status: "pending",
         reviewNote: null,
         slug: null,
+        archivedAt: null,
         createdAt: now(),
         reviewedAt: null,
       };
@@ -381,9 +383,16 @@ export function createMemoryStore(): Store {
       return toSub(s);
     },
 
+    async setSubmissionArchived(id, archived) {
+      const s = subs.get(id);
+      if (!s) return null;
+      s.archivedAt = archived ? now() : null;
+      return toSub(s);
+    },
+
     async listPublishedArticles() {
       return [...subs.values()]
-        .filter((s) => s.status === "approved" && s.slug)
+        .filter((s) => s.status === "approved" && s.slug && !s.archivedAt)
         .sort((a, b) => desc(a.reviewedAt ?? "", b.reviewedAt ?? ""))
         .map(
           (s): PublishedArticle => ({
@@ -723,7 +732,9 @@ export function createMemoryStore(): Store {
         threads: [...threads.values()].filter((t) => !t.removed).length,
         replies: [...replies.values()].filter((r) => !r.removed).length,
         pendingSubmissions: all.filter((s) => s.status === "pending").length,
-        publishedSubmissions: all.filter((s) => s.status === "approved").length,
+        publishedSubmissions: all.filter(
+          (s) => s.status === "approved" && !s.archivedAt,
+        ).length,
         openReports: [...reports.values()].filter((r) => r.status !== "resolved")
           .length,
         users: [...users.values()].filter((u) => !u.removed).length,
