@@ -268,8 +268,8 @@ sehingga dapat diuji tanpa peramban dan hasilnya deterministik.
 **Instalasi**
 
 ```bash
-git clone <url-repositori>
-cd saring
+git clone https://github.com/hissyam90/saring-app.git
+cd saring-app
 npm ci
 
 cp .env.example .env.local     # lalu isi nilainya
@@ -384,9 +384,9 @@ Rincian cakupan pengujian ada di [docs/TESTING.md](docs/TESTING.md).
 
 ## Deployment
 
-Target deployment: **Heroku** (Node.js buildpack resmi) dengan **Heroku Postgres**,
-diakses melalui **Cloudflare** pada domain `saring.app`. Aplikasi berjalan sebagai
-server Node.js (`next start`), bukan static export.
+Target deployment: **Heroku** (Node.js buildpack resmi, aplikasi `saring`) dengan
+**Heroku Postgres**, diakses melalui **Cloudflare** pada domain `saring.app`.
+Aplikasi berjalan sebagai server Node.js (`next start`), bukan static export.
 
 Ringkasan alur:
 
@@ -395,9 +395,40 @@ Ringkasan alur:
 3. `git push heroku main` — Heroku menjalankan `npm ci`, `next build`, lalu release
    phase migration, lalu `npm start`.
 4. Tambahkan custom domain di Heroku, baca **DNS Target** dari `heroku domains`,
-   lalu arahkan DNS di Name.com atau Cloudflare sesuai nilai tersebut.
-5. Aktifkan dan verifikasi sertifikat melalui ACM Heroku sebelum menyatakan HTTPS
-   aktif.
+   lalu arahkan DNS di Cloudflare sesuai nilai tersebut.
+
+### SSL/TLS
+
+Konfigurasi produksi saat ini:
+
+| Komponen | Keterangan |
+|---|---|
+| Registrar | **Name.com** — nameserver domain diarahkan ke Cloudflare |
+| DNS & proxy | **Cloudflare** (record `Proxied`, mode SSL/TLS **Full (strict)**) |
+| Hosting | **Heroku**, aplikasi `saring` |
+| Sertifikat origin | **Cloudflare Origin CA (RSA)** |
+
+Sertifikat origin dipasang manual ke Heroku, bukan lewat Automated Certificate
+Management (ACM). ACM Heroku **tidak** dipakai, karena TLS diterminasi di
+Cloudflare dan koneksi Cloudflare → Heroku divalidasi dengan Origin CA.
+
+```bash
+# Daftarkan kedua hostname sebagai custom domain pada aplikasi Heroku.
+heroku domains:add saring.app -a saring
+heroku domains:add www.saring.app -a saring
+
+# Pasang sertifikat Cloudflare Origin CA (RSA) untuk kedua domain sekaligus.
+# Berkas sertifikat dan private key dibuat di dashboard Cloudflare
+# (SSL/TLS > Origin Server > Create Certificate) dan tidak pernah di-commit.
+heroku certs:add <sertifikat-origin-ca.pem> <private-key.key> -a saring
+```
+
+Karena satu sertifikat mencakup `saring.app` dan `www.saring.app`, keduanya
+memakai sertifikat yang sama. Setelah terpasang, Cloudflare diatur ke
+**Full (strict)** agar koneksi ke origin tetap divalidasi.
+
+> Origin CA hanya dipercaya oleh Cloudflare. Jangan mengarahkan DNS langsung ke
+> Heroku tanpa proxy Cloudflare selama sertifikat ini yang dipakai.
 
 Konfigurasi yang sudah ada di repositori:
 
@@ -461,7 +492,7 @@ lebih dulu.
 
 - **Lisensi:** MIT (lihat `license` pada `package.json`).
 - **Produksi:** <https://saring.app>
-- **Repositori:** privat, akses terbatas untuk pemilik dan peninjau.
+- **Repositori:** publik — <https://github.com/hissyam90/saring-app>
 - **Panduan presentasi:** [docs/PANDUAN-PRESENTASI.md](docs/PANDUAN-PRESENTASI.md)
 - **Dokumentasi teknis:** [docs/](docs/) — arsitektur, alur data, sumber data,
   keamanan, pengujian, dan deployment.

@@ -5,6 +5,11 @@ on:
     branches: [master, main]
   pull_request:
 
+# Hak minimal untuk seluruh workflow. Job hanya membaca repositori; tidak ada
+# langkah yang perlu menulis ke GitHub (issue, PR, atau release).
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -68,14 +73,17 @@ jobs:
     # Diberikan ke seluruh langkah DAN diwarisi proses `webServer` Playwright
     # (Playwright menggabungkan process.env dengan `webServer.env`), sehingga
     # server produksi yang diuji memakai database & secret yang sama.
+    #
+    # SESSION_SECRET tidak ditulis di sini: nilainya dibuat acak 32 byte pada
+    # setiap workflow run dan diteruskan lewat $GITHUB_ENV (lihat langkah
+    # "Buat SESSION_SECRET khusus CI"). Dengan begitu tidak ada secret yang
+    # tersimpan di repositori, dan cookie sesi dari satu run tidak berlaku di
+    # run berikutnya.
     env:
       CI: "1"
       DATABASE_URL: postgresql://saring:saring_ci_only@127.0.0.1:5432/saring_test
       DATABASE_SSL: disable
       DATABASE_POOL_MAX: "5"
-      # Secret khusus CI. Bukan secret produksi dan tidak dipakai di luar job
-      # ini; cookie sesi yang dibuatnya hanya berlaku selama pengujian.
-      SESSION_SECRET: 6f1d0c1a4b2e5f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8
       # Kunci uji resmi Cloudflare Turnstile ("always passes"). Publik menurut
       # dokumentasi Cloudflare. Verifikasi Siteverify tetap berjalan sungguhan:
       # autentikasi, CAPTCHA, dan validasi tidak dimatikan.
@@ -89,6 +97,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      # SESSION_SECRET dibuat ulang setiap run: 32 byte acak dari modul crypto
+      # Node.js, ditulis ke $GITHUB_ENV sehingga tersedia untuk langkah
+      # berikutnya DAN untuk proses `webServer` Playwright. Nilainya hanya
+      # hidup selama job ini dan tidak pernah masuk repositori.
+      - name: Buat SESSION_SECRET khusus CI
+        run: |
+          node -e "const { randomBytes } = require('node:crypto'); process.stdout.write('SESSION_SECRET=' + randomBytes(32).toString('hex') + '\n');" >> "$GITHUB_ENV"
+          echo "SESSION_SECRET dibuat acak untuk run ini."
 
       # Pengaman: tolak menjalankan migration bila DATABASE_URL bukan database
       # uji di localhost. Mencegah salah konfigurasi menulis ke database nyata.
