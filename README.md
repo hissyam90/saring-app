@@ -413,15 +413,19 @@ Management (ACM). ACM Heroku **tidak** dipakai, karena TLS diterminasi di
 Cloudflare dan koneksi Cloudflare → Heroku divalidasi dengan Origin CA.
 
 ```bash
-# Daftarkan kedua hostname sebagai custom domain pada aplikasi Heroku.
+# Daftarkan hostname sebagai custom domain pada aplikasi Heroku.
+# Jalankan hanya bila domain tersebut belum terdaftar di aplikasi ini.
 heroku domains:add saring.app -a saring
 heroku domains:add www.saring.app -a saring
 
 # Pasang sertifikat Cloudflare Origin CA (RSA) untuk kedua domain sekaligus.
 # Berkas sertifikat dan private key dibuat di dashboard Cloudflare
 # (SSL/TLS > Origin Server > Create Certificate) dan tidak pernah di-commit.
-heroku certs:add <sertifikat-origin-ca.pem> <private-key.key> -a saring
+heroku certs:add path/to/origin.crt path/to/origin.key -a saring
 ```
+
+> Path `path/to/origin.crt` dan `path/to/origin.key` harus disesuaikan dengan
+> lokasi berkas sertifikat dan private key di komputer Anda.
 
 Karena satu sertifikat mencakup `saring.app` dan `www.saring.app`, keduanya
 memakai sertifikat yang sama. Setelah terpasang, Cloudflare diatur ke
