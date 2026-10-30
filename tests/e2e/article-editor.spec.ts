@@ -37,6 +37,17 @@ const TITLE = `Mengenali pesan kurir palsu ${suffix}`;
 const SUMMARY =
   "Panduan singkat mengenali pesan kurir palsu yang meminta biaya tambahan, beserta langkah aman yang bisa langsung dilakukan pembaca.";
 
+/**
+ * Gambar uji 1×1 PNG. Dipakai untuk memenuhi permintaan ke Imgur selama E2E
+ * agar hasil tes tidak bergantung pada ketersediaan atau kecepatan layanan
+ * eksternal tersebut.
+ */
+const TEST_IMAGE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+const TEST_IMAGE_DATA_URL = `data:image/png;base64,${TEST_IMAGE_PNG.toString("base64")}`;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl:
@@ -620,6 +631,17 @@ test.describe("Editor artikel", () => {
     page,
     context,
   }) => {
+    // Respons uji lokal untuk Imgur, agar hasil tes tidak bergantung pada
+    // ketersediaan atau kecepatan layanan eksternal (lihat catatan di tes
+    // "media tampil di Pustaka setelah artikel disetujui").
+    await context.route(/^https?:\/\/imgur\.com\//, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/html; charset=utf-8",
+        body: `<!doctype html><html><head><meta charset="utf-8"><title>Album uji</title></head><body><h1>Album uji Imgur</h1><img alt="gambar album uji" src="${TEST_IMAGE_DATA_URL}" width="4" height="4"></body></html>`,
+      }),
+    );
+
     await loginAs(context, authorId, "user");
     await openSubmissionPage(page);
     const form = newSubmissionForm(page);
@@ -646,24 +668,11 @@ test.describe("Editor artikel", () => {
       "imgur.com/a/l4mKcOj",
     );
 
-    // Verifikasi nyata: iframe memuat dokumen Imgur yang berisi gambar.
+    // Iframe benar-benar memuat dokumen embed yang berisi gambar.
+    const frame = page.frames().find((f) => f.url().includes("imgur.com/a/l4mKcOj"));
+    expect(frame, "iframe embed tidak memuat dokumen").toBeDefined();
     await expect
-      .poll(
-        async () => {
-          const frame = page
-            .frames()
-            .find((f) => f.url().includes("imgur.com/a/l4mKcOj"));
-          if (!frame) return 0;
-          try {
-            return await frame.evaluate(
-              () => document.querySelectorAll("img").length,
-            );
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 25_000 },
-      )
+      .poll(() => frame!.evaluate(() => document.querySelectorAll("img").length))
       .toBeGreaterThan(0);
   });
 
@@ -868,33 +877,91 @@ test.describe("Editor artikel", () => {
     expect(approved?.slug).toBeTruthy();
 
     await loginAs(context, authorId, "user");
+
+    /*
+     * Imgur tidak boleh menentukan hasil tes.
+     *
+     * `MediaEmbed` memakai batas waktu 9 detik: bila iframe belum memicu `load`
+     * (album lambat, diblokir, atau `loading="lazy"` belum terpicu di viewport
+     * ponsel), komponen mengganti iframe dengan fallback sehingga
+     * `article.locator("iframe")` tidak menemukan apa pun. Permintaan ke Imgur
+     * karena itu dipenuhi dari respons uji lokal: jalur embed berhasil menjadi
+     * deterministik, sementara jalur gagal tetap diuji terpisah oleh tes
+     * "embed yang gagal dimuat menampilkan fallback tautan aman".
+     */
+    const embedRequests: { url: string; referer: string | null }[] = [];
+    await context.route(/^https?:\/\/imgur\.com\//, async (route) => {
+      embedRequests.push({
+        url: route.request().url(),
+        referer: route.request().headers()["referer"] ?? null,
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "text/html; charset=utf-8",
+        body: [
+          "<!doctype html><html><head><meta charset=\"utf-8\">",
+          "<title>Album uji</title></head>",
+          "<body><h1>Album uji Imgur</h1>",
+          "<img alt=\"gambar album uji\" src=\"",
+          TEST_IMAGE_DATA_URL,
+          "\" width=\"4\" height=\"4\"></body></html>",
+        ].join(""),
+      });
+    });
+
+    const imageRequests: { url: string; referer: string | null }[] = [];
+    await context.route(/^https?:\/\/i\.imgur\.com\//, async (route) => {
+      imageRequests.push({
+        url: route.request().url(),
+        referer: route.request().headers()["referer"] ?? null,
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: TEST_IMAGE_PNG,
+      });
+    });
+
     await page.goto(`/pustaka/${approved!.slug}`);
 
     const article = page.locator("article").first();
-    await expect(article.locator("img").first()).toHaveAttribute(
-      "src",
-      "https://i.imgur.com/L0pP68gl.jpg",
-    );
-    await expect(article.locator("iframe")).toHaveAttribute(
+
+    // Gambar artikel: URL tetap persis, dan benar-benar termuat.
+    const image = article.locator("img").first();
+    await expect(image).toHaveAttribute("src", "https://i.imgur.com/L0pP68gl.jpg");
+    await expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
+    await expect
+      .poll(async () => await image.evaluate((el: HTMLImageElement) => el.naturalWidth), {
+        timeout: 10_000,
+      })
+      .toBeGreaterThan(0);
+
+    // Embed: iframe bertahan (tidak diganti fallback) dan atributnya benar.
+    const iframe = article.locator("iframe");
+    await expect(iframe).toHaveAttribute(
       "src",
       "https://imgur.com/a/l4mKcOj/embed?pub=true",
     );
-    await expect(article.locator("iframe")).toHaveAttribute(
-      "referrerpolicy",
-      "no-referrer",
+    await expect(iframe).toHaveAttribute("referrerpolicy", "no-referrer");
+    await expect(iframe).toHaveAttribute(
+      "sandbox",
+      /allow-scripts/,
     );
 
-    // Gambar benar-benar termuat di halaman publik.
+    // Iframe benar-benar memuat dokumen embed (bukan hanya ada di DOM).
+    const frame = page.frames().find((f) => f.url().includes("imgur.com/a/l4mKcOj"));
+    expect(frame, "iframe embed tidak memuat dokumen").toBeDefined();
     await expect
-      .poll(
-        async () =>
-          await article
-            .locator("img")
-            .first()
-            .evaluate((el: HTMLImageElement) => el.naturalWidth),
-        { timeout: 20_000 },
-      )
+      .poll(() => frame!.evaluate(() => document.querySelectorAll("img").length))
       .toBeGreaterThan(0);
+
+    // `referrerPolicy="no-referrer"` benar-benar diterapkan: permintaan ke Imgur
+    // tidak membawa header Referer. Ini menutup risiko hotlink ditolak (403).
+    expect(embedRequests.length).toBeGreaterThan(0);
+    expect(imageRequests.length).toBeGreaterThan(0);
+    for (const request of [...embedRequests, ...imageRequests]) {
+      expect(request.referer, `Referer terkirim ke ${request.url}`).toBeNull();
+    }
 
     // Tautan fallback yang aman selalu tersedia.
     const fallback = article.getByRole("link", { name: /Buka di Imgur/i });
@@ -905,6 +972,7 @@ test.describe("Editor artikel", () => {
     await expect(article).not.toContainText("<blockquote");
     await expect(article).not.toContainText("embed.js");
   });
+
 
 
 

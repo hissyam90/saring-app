@@ -1014,51 +1014,85 @@ test.describe("Tata letak halaman akun", () => {
         const heading = document.querySelector("main h1");
         if (!main || !heading) return null;
 
-        // Kontainer = leluhur terdekat h1 yang membatasi lebar konten.
+        // Kontainer halaman akun = leluhur terdekat h1 yang memberi padding
+        // horizontal. Halaman ini memakai `max-w-none`, jadi lebarnya mengikuti
+        // area konten dan tepinya ditentukan oleh padding responsif.
         let container: HTMLElement | null = heading as HTMLElement;
         while (container && container !== main) {
-          const maxWidth = getComputedStyle(container).maxWidth;
-          if (maxWidth && maxWidth !== "none") break;
+          if (parseFloat(getComputedStyle(container).paddingLeft) > 0) break;
           container = container.parentElement;
         }
+        if (!container || container === main) return null;
 
+        const style = getComputedStyle(container);
+        const padLeft = parseFloat(style.paddingLeft);
+        const padRight = parseFloat(style.paddingRight);
         const mainRect = main.getBoundingClientRect();
-        const box = (container ?? heading).getBoundingClientRect();
+        const box = container.getBoundingClientRect();
+
+        // Tepi kotak isi, yaitu di dalam padding.
+        const contentLeft = box.left + padLeft;
+        const contentRight = box.right - padRight;
+
+        const panels = [...document.querySelectorAll("main section")].map((panel) => {
+          const rect = panel.getBoundingClientRect();
+          return { left: rect.left, right: rect.right, width: rect.width };
+        });
 
         return {
-          leftGap: Math.round(box.left - mainRect.left),
-          rightGap: Math.round(mainRect.right - box.right),
-          panelLefts: [...document.querySelectorAll("main section")].map((panel) =>
-            Math.round(panel.getBoundingClientRect().left),
-          ),
+          padLeft,
+          padRight,
+          leftGap: contentLeft - mainRect.left,
+          rightGap: mainRect.right - contentRight,
+          contentLeft,
+          contentRight,
+          contentWidth: contentRight - contentLeft,
+          panels,
+          overflow:
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
         };
       });
 
       expect(geometry, "struktur halaman akun tidak ditemukan").not.toBeNull();
       const label = `${viewport.width}x${viewport.height}`;
 
-      // Rata kiri: jarak kiri hanya selebar padding konten (16/24 px).
-      expect(geometry!.leftGap, `jarak kiri (${label})`).toBeGreaterThanOrEqual(0);
-      expect(geometry!.leftGap, `jarak kiri (${label})`).toBeLessThanOrEqual(24);
+      // Padding responsif Tailwind: 16px di bawah 640px, 24px mulai 640px.
+      const expectedPad = viewport.width >= 640 ? 24 : 16;
+      expect(geometry!.padLeft, `padding kiri (${label})`).toBe(expectedPad);
+      expect(geometry!.padRight, `padding kanan (${label})`).toBe(expectedPad);
 
-      // Desktop: max-w-3xl lebih sempit dari area konten, jadi sisa ruang ada
-      // di kanan. Bila tercentang, kedua sisi akan hampir sama.
-      if (viewport.width >= 1024) {
-        expect(
-          geometry!.rightGap,
-          `sisa ruang kanan harus lebih besar dari kiri (${label})`,
-        ).toBeGreaterThan(geometry!.leftGap + 40);
+      // Kedua sisi mengikuti padding, bukan hasil centering. Toleransi 1px untuk
+      // pembulatan sub-piksel, dan maksimum 24px sesuai padding terbesar.
+      for (const [side, gap, pad] of [
+        ["kiri", geometry!.leftGap, geometry!.padLeft],
+        ["kanan", geometry!.rightGap, geometry!.padRight],
+      ] as const) {
+        expect(Math.abs(gap - pad), `jarak ${side} ≈ padding (${label})`).toBeLessThanOrEqual(1);
+        expect(gap, `jarak ${side} tidak melebihi padding (${label})`).toBeLessThanOrEqual(24);
       }
 
-      // Semua panel (preferensi, draf, pertanyaan, pengajuan) mulai di garis
-      // kiri yang sama.
-      expect(geometry!.panelLefts.length).toBeGreaterThan(0);
-      for (const left of geometry!.panelLefts) {
-        expect(
-          Math.abs(left - geometry!.panelLefts[0]),
-          `panel rata kiri (${label})`,
-        ).toBeLessThanOrEqual(1);
+      // Sisi kiri dan kanan simetris: tidak ada ruang sisa yang menumpuk di satu sisi.
+      expect(
+        Math.abs(geometry!.leftGap - geometry!.rightGap),
+        `kiri dan kanan seimbang (${label})`,
+      ).toBeLessThanOrEqual(1);
+
+      // Setiap panel mengisi lebar kontainer: tepi kanannya sejajar dengan tepi
+      // kanan kotak isi kontainer, bukan hanya tepi kirinya.
+      expect(geometry!.panels.length, `jumlah panel (${label})`).toBeGreaterThan(0);
+      for (const panel of geometry!.panels) {
+        expect(Math.abs(panel.left - geometry!.contentLeft), `panel tepi kiri (${label})`)
+          .toBeLessThanOrEqual(1);
+        expect(Math.abs(panel.right - geometry!.contentRight), `panel tepi kanan (${label})`)
+          .toBeLessThanOrEqual(1);
+        expect(Math.abs(panel.width - geometry!.contentWidth), `panel lebar penuh (${label})`)
+          .toBeLessThanOrEqual(1);
       }
+
+      // Tidak ada luapan horizontal pada kedua viewport.
+      expect(geometry!.overflow, `overflow horizontal (${label})`).toBeLessThanOrEqual(1);
+
     }
   });
 });
