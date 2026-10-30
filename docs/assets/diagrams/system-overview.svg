@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 812" width="1000" height="812" role="img" aria-labelledby="diagTitle diagDesc" preserveAspectRatio="xMidYMid meet">
-  <title id="diagTitle">Arsitektur Saring: pemeriksaan lokal di peramban dan intelijen URL opsional melalui server</title>
-  <desc id="diagDesc">Tiga lapisan: browser menjalankan Checker dan lib/analysis sepenuhnya lokal tanpa fetch; server Next.js menyediakan route /api/url-reputation dengan consent dan adapter PhishTank; layanan eksternal hanya PhishTank (opsional, butuh app key) serta handoff manual ke AduanNomor dan sumber OJK.</desc>
+  <title id="diagTitle">Arsitektur Saring: pemeriksaan lokal di peramban, server Next.js, PostgreSQL, dan intelijen URL opsional</title>
+  <desc id="diagDesc">Empat lapisan: browser menjalankan Unified Checker dan lib/analysis sepenuhnya lokal; server Next.js menangani autentikasi, API komunitas, moderasi admin, dan route /api/url-reputation dengan consent; PostgreSQL menyimpan akun, artikel, revisi, draf, bookmark, dan notifikasi; layanan eksternal hanya Google Safe Browsing (opsional, butuh API key), Cloudflare Turnstile, serta handoff manual ke sumber OJK.</desc>
 
   <style>
     text{font-family:'Segoe UI',Arial,Helvetica,sans-serif;fill:#151b2b}
@@ -24,7 +24,7 @@
   <rect width="1000" height="812" fill="#f5f2ea"/>
 
   <text x="28" y="42" style="font-size:24px;font-weight:700">Arsitektur Saring</text>
-  <text x="28" y="64" class="note">Pemeriksaan berjalan lokal di peramban; hanya reputasi URL yang dapat keluar ke server — dan itu pun sesudah consent.</text>
+  <text x="28" y="64" class="note">Pemeriksaan pesan, nomor, dan struktur tautan berjalan lokal di peramban; hanya reputasi URL yang dapat keluar ke server — dan itu pun sesudah consent.</text>
 
   <!-- 1. BROWSER -->
   <rect x="28" y="86" width="470" height="424" class="grp"/>
@@ -46,9 +46,9 @@
   <rect x="48" y="378" width="430" height="44" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
   <text x="263" y="406" class="ttl">Latihan · Langkah · Pustaka</text>
 
-  <text x="48" y="448" class="note">Pesan dan tautan tidak pernah dikirim ke server.</text>
-  <text x="48" y="468" class="note">Tanpa localStorage, cookie, akun, atau analitik.</text>
-  <text x="48" y="488" class="note">State hanya di memori React.</text>
+  <text x="48" y="448" class="note">Pesan dan struktur tautan tidak dikirim ke server.</text>
+  <text x="48" y="468" class="note">Pilihan tema disimpan di localStorage peramban.</text>
+  <text x="48" y="488" class="note">Tanpa analitik pihak ketiga dan tanpa layanan AI.</text>
 
   <!-- 2. SERVER -->
   <rect x="28" y="536" width="470" height="252" class="grp"/>
@@ -60,69 +60,68 @@
   <text x="263" y="616" class="ttl">POST /api/url-reputation</text>
   <text x="263" y="636" class="det">wajib consent = true · validasi URL · no-store</text>
 
-  <rect x="48" y="660" width="430" height="52" fill="#fde7e1" stroke="#151b2b" stroke-width="2.5"/>
-  <text x="263" y="682" class="ttl">lib/reputation/phishtank.ts</text>
-  <text x="263" y="702" class="det">adapter server · timeout 8 detik</text>
+  <rect x="48" y="660" width="430" height="52" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="263" y="682" class="ttl">Autentikasi &amp; API komunitas</text>
+  <text x="263" y="702" class="det">sesi cookie · CSRF · CAPTCHA · moderasi</text>
 
-  <text x="48" y="734" class="note">Kredensial hanya di server: PHISHTANK_APP_KEY (opsional).</text>
-  <text x="48" y="754" class="note">Tanpa database, tanpa auth, tanpa layanan berbayar.</text>
+  <text x="48" y="734" class="note">Kredensial hanya di server: SESSION_SECRET, DATABASE_URL, API key.</text>
+  <text x="48" y="754" class="note">Semua otorisasi diperiksa ulang di server, bukan dari cookie.</text>
   <text x="48" y="774" class="note">URL yang diperiksa tidak disimpan.</text>
 
-  <!-- 3. EXTERNAL -->
-  <rect x="536" y="86" width="416" height="300" class="grp"/>
-  <text x="556" y="116" class="hd">3 · LAYANAN EKSTERNAL</text>
+  <!-- 3. DATABASE -->
+  <rect x="536" y="86" width="416" height="150" class="grp"/>
+  <text x="556" y="116" class="hd">3 · DATABASE</text>
   <line x1="536" y1="130" x2="952" y2="130" stroke="#151b2b" stroke-width="2"/>
 
   <rect x="556" y="144" width="376" height="66" fill="#fff3cf" stroke="#151b2b" stroke-width="2.5"/>
-  <text x="744" y="170" class="ttl">PhishTank API</text>
-  <text x="744" y="192" class="det">opsional · butuh app key · rate limit</text>
+  <text x="744" y="170" class="ttl">Heroku Postgres</text>
+  <text x="744" y="192" class="det">akun · artikel · revisi · draf · notifikasi</text>
 
-  <rect x="556" y="224" width="376" height="66" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
-  <text x="744" y="250" class="ttl">AduanNomor — Komdigi</text>
-  <text x="744" y="272" class="det">handoff manual · tanpa API publik</text>
+  <!-- 4. EXTERNAL -->
+  <rect x="536" y="256" width="416" height="180" class="grp"/>
+  <text x="556" y="286" class="hd">4 · LAYANAN EKSTERNAL</text>
+  <line x1="536" y1="300" x2="952" y2="300" stroke="#151b2b" stroke-width="2"/>
 
-  <rect x="556" y="304" width="376" height="66" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
-  <text x="744" y="330" class="ttl">OJK — IASC · Kontak 157</text>
-  <text x="744" y="352" class="det">tautan resmi untuk pelaporan</text>
+  <rect x="556" y="314" width="376" height="52" fill="#fff3cf" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="744" y="336" class="ttl">Google Safe Browsing</text>
+  <text x="744" y="356" class="det">opsional · butuh API key</text>
+
+  <rect x="556" y="376" width="376" height="52" fill="#ffffff" stroke="#151b2b" stroke-width="2.5"/>
+  <text x="744" y="398" class="ttl">Cloudflare Turnstile</text>
+  <text x="744" y="418" class="det">verifikasi CAPTCHA di server</text>
 
   <!-- STATUS -->
-  <rect x="536" y="410" width="416" height="180" class="grp"/>
-  <text x="556" y="440" class="hd">STATUS HASIL URL</text>
-  <line x1="536" y1="454" x2="952" y2="454" stroke="#151b2b" stroke-width="2"/>
+  <rect x="536" y="456" width="416" height="180" class="grp"/>
+  <text x="556" y="486" class="hd">STATUS HASIL URL</text>
+  <line x1="536" y1="500" x2="952" y2="500" stroke="#151b2b" stroke-width="2"/>
 
-  <rect x="558" y="468" width="11" height="11" fill="#f16b5b" stroke="#151b2b" stroke-width="1.5"/>
-  <text x="578" y="478" class="lg">match — ada di database PhishTank</text>
+  <rect x="558" y="514" width="11" height="11" fill="#f16b5b" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="524" class="lg">threat — terdaftar di Safe Browsing</text>
 
-  <rect x="558" y="494" width="11" height="11" fill="#e4f2ea" stroke="#151b2b" stroke-width="1.5"/>
-  <text x="578" y="504" class="lg">no-match — bukan bukti aman</text>
+  <rect x="558" y="540" width="11" height="11" fill="#e4f2ea" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="550" class="lg">no-match — bukan bukti aman</text>
 
-  <rect x="558" y="520" width="11" height="11" fill="#fff3cf" stroke="#151b2b" stroke-width="1.5"/>
-  <text x="578" y="530" class="lg">rate-limited (509) — coba lagi nanti</text>
+  <rect x="558" y="566" width="11" height="11" fill="#fff3cf" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="576" class="lg">not-configured / unavailable</text>
 
-  <rect x="558" y="546" width="11" height="11" fill="#d8d1c2" stroke="#151b2b" stroke-width="1.5"/>
-  <text x="578" y="556" class="lg">unavailable — layanan tidak terjangkau</text>
+  <rect x="558" y="592" width="11" height="11" fill="#d8d1c2" stroke="#151b2b" stroke-width="1.5"/>
+  <text x="578" y="602" class="lg">invalid-response — respons tak valid</text>
 
-  <text x="556" y="578" class="note">Kegagalan maupun no-match tidak ditampilkan sebagai “aman”.</text>
+  <text x="556" y="624" class="note">Kegagalan maupun no-match tidak ditampilkan sebagai “aman”.</text>
 
   <!-- LEGEND -->
-  <rect x="536" y="610" width="416" height="178" class="grp"/>
-  <text x="556" y="640" class="hd">LEGENDA</text>
-  <line x1="536" y1="654" x2="952" y2="654" stroke="#151b2b" stroke-width="2"/>
+  <rect x="536" y="656" width="416" height="132" class="grp"/>
+  <text x="556" y="686" class="hd">LEGENDA</text>
+  <line x1="536" y1="700" x2="952" y2="700" stroke="#151b2b" stroke-width="2"/>
 
-  <rect x="558" y="668" width="22" height="14" fill="#d8f36a" stroke="#151b2b" stroke-width="2"/>
-  <text x="590" y="680" class="lg">Komponen lokal di peramban</text>
+  <rect x="558" y="714" width="22" height="14" fill="#d8f36a" stroke="#151b2b" stroke-width="2"/>
+  <text x="590" y="726" class="lg">Komponen lokal di peramban</text>
 
-  <rect x="558" y="692" width="22" height="14" fill="#fff3cf" stroke="#151b2b" stroke-width="2"/>
-  <text x="590" y="704" class="lg">Komponen server / adapter</text>
+  <rect x="558" y="738" width="22" height="14" fill="#fff3cf" stroke="#151b2b" stroke-width="2"/>
+  <text x="590" y="750" class="lg">Komponen server / adapter</text>
 
-  <rect x="558" y="716" width="22" height="14" fill="#ffffff" stroke="#151b2b" stroke-width="2"/>
-  <text x="590" y="728" class="lg">Pihak ketiga / handoff manual</text>
-
-  <line x1="556" y1="748" x2="582" y2="748" class="flow"/>
-  <text x="590" y="753" class="lg">Aliran data otomatis</text>
-
-  <line x1="556" y1="770" x2="582" y2="770" class="manual"/>
-  <text x="590" y="775" class="lg">Pengguna membuka sumber sendiri</text>
+  <line x1="556" y1="770" x2="582" y2="770" class="flow"/>
+  <text x="590" y="775" class="lg">Aliran data otomatis</text>
 
   <!-- FLOWS -->
   <path d="M263 262 V280" class="flow"/>
@@ -131,11 +130,12 @@
   <path d="M263 510 V534" class="flow"/>
   <text x="272" y="528" class="cap">consent</text>
 
-  <path d="M498 247 H556" class="manual"/>
+  <!-- Server ke database (data akun, artikel, revisi, draf, notifikasi). -->
+  <path d="M498 600 H516 V190 H536" class="flow"/>
 
-  <path d="M498 686 H516 V334 H556" class="flow"/>
-  <text x="520" y="326" class="cap">HTTPS</text>
+  <!-- Server ke Google Safe Browsing, hanya setelah consent. -->
+  <path d="M498 700 H528 V340 H556" class="flow"/>
 
-  <path d="M932 177 H972 V506 H954" class="flow"/>
-  <text x="978" y="344" class="cap" transform="rotate(90 978 344)">respons</text>
+  <!-- Respons kembali ke server. -->
+  <path d="M932 356 H976 V802 H500" class="flow"/>
 </svg>

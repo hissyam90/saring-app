@@ -4,8 +4,13 @@ Target deployment Saring adalah **Heroku** (Node.js buildpack resmi) dengan
 **PostgreSQL** sebagai database utama. Aplikasi berjalan sebagai server Node.js
 (`next start`), bukan static export.
 
-Domain dikelola di **Name.com**, dan **Cloudflare** dipakai sebagai lapisan
-proteksi web (proxy, WAF, rate limiting edge, Turnstile).
+- **Aplikasi Heroku:** `saring`
+- **Domain produksi:** `saring.app` dan `www.saring.app`
+- **Registrar:** Name.com — **Cloudflare** dipakai sebagai lapisan proteksi web
+  (proxy, WAF, rate limiting edge, Turnstile)
+
+Contoh perintah di dokumen ini memakai nama aplikasi `saring`. Sesuaikan bila Anda
+memakai nama lain.
 
 > Dokumen ini hanya menjelaskan konfigurasi. Tidak ada secret, credential, atau
 > nilai DNS yang ditulis di sini. Semua nilai rahasia dibuat di dashboard
@@ -18,7 +23,7 @@ proteksi web (proxy, WAF, rate limiting edge, Turnstile).
 | `package.json` | `build: next build`, `start: next start`, `engines.node: 22.x`, `db:migrate` |
 | `Procfile` | `release: node scripts/migrate.mjs` dan `web: npm start` |
 | `app.json` | metadata aplikasi + buildpack `heroku/nodejs` |
-| `lib/db/migrations/*.sql` | migration PostgreSQL terlacak (`0002` artikel kaya, `0003` revisi/draf/bookmark/notifikasi) |
+| `lib/db/migrations/*.sql` | migration PostgreSQL terlacak (`0002` artikel kaya, `0003` revisi/draf/bookmark/notifikasi, `0004` arsip artikel) |
 | `scripts/migrate.mjs` | menjalankan migration yang belum diterapkan |
 | `scripts/bootstrap-admin.mjs` | menaikkan role satu akun yang sudah terdaftar menjadi admin |
 | `.env.example` | daftar variabel lingkungan tanpa nilai rahasia |
@@ -40,15 +45,15 @@ data.
 ## 3. Provision PostgreSQL
 
 ```bash
-heroku addons:create heroku-postgresql:<plan> -a <nama-app>
-heroku config -a <nama-app>        # memastikan DATABASE_URL tersedia
+heroku addons:create heroku-postgresql:<plan> -a saring
+heroku config -a saring        # memastikan DATABASE_URL tersedia
 ```
 
 Heroku menyetel `DATABASE_URL` otomatis. Jangan menyalin nilainya ke dokumen,
 issue, atau kode. Bila memakai database eksternal, set manual:
 
 ```bash
-heroku config:set DATABASE_URL=... -a <nama-app>
+heroku config:set DATABASE_URL=... -a saring
 ```
 
 ### Tabel yang dibuat migration
@@ -98,7 +103,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Set melalui CLI tanpa menuliskan nilainya ke riwayat shell bersama:
 
 ```bash
-heroku config:set SESSION_SECRET="$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')" -a <nama-app>
+heroku config:set SESSION_SECRET="$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')" -a saring
 ```
 
 `SARING_TURNSTILE_BYPASS` dan `SARING_ALLOW_MEMORY_STORE` adalah alat
@@ -118,28 +123,58 @@ web: npm start
 Perintah manual:
 
 ```bash
-heroku run npm run db:migrate -a <nama-app>        # terapkan yang tertunda
-heroku run npm run db:migrate:status -a <nama-app> # lihat status
+heroku run npm run db:migrate -a saring        # terapkan yang tertunda
+heroku run npm run db:migrate:status -a saring # lihat status
 ```
 
 Setiap migration berjalan dalam satu transaksi: bila gagal, tidak ada perubahan
 yang tersimpan dan deploy dibatalkan. Tidak ada operasi destruktif otomatis.
 
-Membuat admin pertama (akun harus sudah terdaftar lewat `/daftar`):
+### Membuat administrator pertama
+
+Aplikasi tidak menyertakan akun admin bawaan dan tidak menyimpan kredensial di
+repositori. Administrator pertama dibuat dari akun yang sudah terdaftar, dengan
+urutan berikut:
+
+**1. Daftarkan akun lewat `/daftar`.**
+
+Buka `https://saring.app/daftar` dan daftarkan akun yang akan dijadikan admin.
+Registrasi melewati CAPTCHA Turnstile, jadi `NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY`
+dan `CLOUDFLARE_TURNSTILE_SECRET_KEY` harus sudah disetel lebih dulu. Akun baru
+selalu berperan `user`.
+
+**2. Jalankan skrip bootstrap pada aplikasi Heroku.**
 
 ```bash
-heroku run node scripts/bootstrap-admin.mjs email@contoh.test -a <nama-app>
+heroku run node scripts/bootstrap-admin.mjs email@contoh.test -a saring
 ```
 
-Skrip tidak membuat akun atau password, dan tidak menyimpan kredensial di
-repositori.
+Skrip membaca `DATABASE_URL` dari environment Heroku, mencari akun berdasarkan
+email, lalu menaikkan role menjadi `admin`. Bila email tidak ditemukan, skrip
+berhenti dan meminta akun didaftarkan lebih dulu. Bila akun sudah admin, tidak ada
+perubahan yang dilakukan.
+
+**3. Keluar lalu masuk kembali.**
+
+Sesi menyimpan role pada cookie, sehingga role baru belum terbaca pada sesi yang
+sedang berjalan. Lakukan logout, lalu login lagi dengan akun tersebut.
+
+**4. Verifikasi akses `/admin`.**
+
+Buka `https://saring.app/admin`. Pengguna biasa mendapat `404` (bukan `403`),
+sehingga tampilnya dashboard menandakan role sudah benar. Sebagai pemeriksaan
+tambahan, pastikan tautan **Admin** muncul di sidebar akun tersebut.
+
+Skrip tidak membuat akun maupun kata sandi, dan tidak menuliskan kredensial ke
+repositori. Perintah di atas memakai nama aplikasi produksi `saring`; ganti bila
+Anda memakai nama aplikasi lain.
 
 ## 6. Deploy
 
 ```bash
 heroku login
-heroku create <nama-app>
-heroku buildpacks:set heroku/nodejs -a <nama-app>
+heroku create saring
+heroku buildpacks:set heroku/nodejs -a saring
 git push heroku main
 ```
 
@@ -167,8 +202,8 @@ sehat selama proses web berjalan; endpoint ini untuk pemantauan kesiapan.
 1. Tambahkan domain di Heroku lalu baca **DNS Target**:
 
    ```bash
-   heroku domains:add www.namadomain-anda.com -a <nama-app>
-   heroku domains -a <nama-app>
+   heroku domains:add www.saring.app -a saring
+   heroku domains -a saring
    ```
 
 2. Di Cloudflare, tambahkan zone untuk domain tersebut (Cloudflare memberikan
@@ -251,4 +286,3 @@ terlindungi (fail closed) dan UI menampilkan pemberitahuan.
   repositori/dokumen ini.
 - Tidak ada credential atau nilai DNS nyata yang ditulis ke kode atau dokumen.
 - Tidak ada perubahan `.env.local` atau pembacaan nilai secret ke laporan.
-
