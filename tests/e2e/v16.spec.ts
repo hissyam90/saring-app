@@ -138,12 +138,6 @@ test.describe("UI: editor dan search bar", () => {
 
     expect(metrics.docOverflow).toBeLessThanOrEqual(1);
     expect(metrics.editorOverflow).toBeLessThanOrEqual(1);
-
-    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: `.tmp-audit/v16-ui-mobile.png`,
-      fullPage: false,
-    });
   });
 
   test("search bar Pustaka punya border empat sisi pada mode terang dan gelap", async ({
@@ -175,11 +169,6 @@ test.describe("UI: editor dan search bar", () => {
       expect(light![side]).toBe("2px");
     }
     expect(light!.bodyBg).toBe("rgb(245, 242, 234)");
-
-    await page.screenshot({
-      path: ".tmp-audit/v15-pustaka-search-desktop.png",
-      fullPage: false,
-    });
 
     await page.emulateMedia({ colorScheme: "dark" });
     await page.reload();
@@ -233,11 +222,6 @@ test.describe("Kategori pertanyaan", () => {
     await expect(select).toHaveValue("lainnya");
     await expect(select.locator("option:checked")).toHaveText("Lainnya");
 
-    await page.screenshot({
-      path: ".tmp-audit/v16-community-default-category.png",
-      fullPage: false,
-    });
-
     // Pengguna tetap dapat memilih kategori lain.
     await select.selectOption("phishing");
     await expect(select).toHaveValue("phishing");
@@ -274,12 +258,6 @@ test.describe("Media universal", () => {
       "src",
       "https://i.postimg.cc/abcd1234/contoh.jpg",
     );
-
-    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: ".tmp-audit/v16-media-editor.png",
-      fullPage: false,
-    });
   });
 
   test("menolak halaman galeri yang belum didukung embed", async ({
@@ -385,11 +363,6 @@ test.describe("Revisi artikel publik", () => {
 
     await page.goto(`/pustaka/${slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(originalTitle);
-
-    await page.screenshot({
-      path: ".tmp-audit/v16-published-article-revision.png",
-      fullPage: false,
-    });
   });
 
   test("admin melihat perbandingan dan menyetujui revisi", async ({
@@ -478,7 +451,6 @@ test.describe("Autosave draf", () => {
     // Daftar draf muncul di Akun Saya.
     await page.goto("/akun");
     await expect(page.getByText(draftTitle)).toBeVisible();
-    await page.screenshot({ path: ".tmp-audit/v16-drafts.png", fullPage: false });
 
     // Melanjutkan draf memulihkan isi form.
     await page.goto(`/komunitas/artikel?draft=${draftId}`);
@@ -517,7 +489,6 @@ test.describe("Bookmark artikel", () => {
 
     await page.goto("/akun/tersimpan");
     await expect(page.getByText("Nomor baru, minta pinjaman").first()).toBeVisible();
-    await page.screenshot({ path: ".tmp-audit/v16-bookmarks.png", fullPage: false });
 
     // Bertahan setelah halaman dimuat ulang (data di database, bukan state).
     await page.reload();
@@ -575,10 +546,6 @@ test.describe("Notifikasi", () => {
 
     await bell.click();
     await expect(page.getByText(/membalas pertanyaan Anda/i).first()).toBeVisible();
-    await page.screenshot({
-      path: ".tmp-audit/v16-notifications.png",
-      fullPage: false,
-    });
 
     await page.getByRole("button", { name: "Tandai semua" }).click();
     await expect(page.getByText("dibaca").first()).toBeVisible();
@@ -624,6 +591,133 @@ test.describe("Moderasi laporan", () => {
     );
     return result.rows[0] as { status: string; resolved_at: Date | null };
   }
+
+  /** Laporan atas sebuah balasan, beserta judul diskusi induknya. */
+  async function createReplyReport() {
+    const marker = randomUUID().slice(0, 8);
+    const threadTitle = `Diskusi induk laporan ${marker}`;
+    const replyBody = `Balasan yang dilaporkan ${marker} berisi tuduhan tanpa bukti.`;
+
+    const thread = await pool.query(
+      `insert into threads (author_id, title, category, body)
+       values ($1, $2, 'lainnya', $3) returning id`,
+      [authorId, threadTitle, "Isi pertanyaan induk untuk uji laporan balasan."],
+    );
+    const reply = await pool.query(
+      `insert into replies (thread_id, author_id, body)
+       values ($1, $2, $3) returning id`,
+      [thread.rows[0].id, readerId, replyBody],
+    );
+    const report = await pool.query(
+      `insert into reports (reporter_id, target_type, target_id, reason)
+       values ($1, 'reply', $2, $3) returning id`,
+      [authorId, reply.rows[0].id, "Balasan melanggar pedoman"],
+    );
+
+    return {
+      reportId: String(report.rows[0].id),
+      threadId: String(thread.rows[0].id),
+      threadTitle,
+      replyBody,
+    };
+  }
+
+  test("laporan balasan menampilkan konteks dan tautan diskusi induk", async ({
+    page,
+    context,
+  }) => {
+    const fixture = await createReplyReport();
+
+    try {
+      await loginAs(context, adminId, "admin");
+      await page.goto("/admin/laporan?status=open");
+
+      const item = page
+        .locator("li")
+        .filter({ hasText: "Balasan melanggar pedoman" })
+        .first();
+      await expect(item).toBeVisible();
+
+      // Konteks: judul diskusi induk dan isi balasan yang dilaporkan.
+      await expect(item).toContainText(fixture.threadTitle);
+      await expect(item).toContainText(fixture.replyBody);
+
+      // Tautan menuju diskusi INDUK, bukan ke id balasan.
+      const link = item.getByRole("link", { name: "Buka diskusi" });
+      await expect(link).toHaveAttribute("href", `/komunitas/${fixture.threadId}`);
+      const probe = await page.request.get(`/komunitas/${fixture.threadId}`);
+      expect(probe.status()).toBe(200);
+    } finally {
+      await pool.query(`delete from reports where id = $1`, [fixture.reportId]);
+    }
+  });
+
+  test("aksi status mengikuti keadaan laporan dan tidak mengulang transisi", async ({
+    page,
+    context,
+  }) => {
+    const fixture = await createReplyReport();
+
+    try {
+      await loginAs(context, adminId, "admin");
+
+      const rowFor = async () => {
+        const row = page
+          .locator("li")
+          .filter({ hasText: "Balasan melanggar pedoman" })
+          .first();
+        await expect(row).toBeVisible();
+        return row;
+      };
+
+      // open: boleh ditinjau atau diselesaikan; belum ada "Buka lagi".
+      await page.goto("/admin/laporan?status=open");
+      let row = await rowFor();
+      await expect(row.getByRole("button", { name: "Tandai ditinjau" })).toBeVisible();
+      await expect(row.getByRole("button", { name: "Selesaikan" })).toBeVisible();
+      await expect(row.getByRole("button", { name: "Buka lagi" })).toHaveCount(0);
+
+      // reviewing: "Tandai ditinjau" tidak lagi ditawarkan.
+      expect((await reportState(fixture.reportId)).status).toBe("open");
+      const review = await context.request.post("/api/admin/moderate", {
+        data: {
+          action: "set-report-status",
+          reportId: fixture.reportId,
+          status: "reviewing",
+        },
+      });
+      expect(review.status()).toBe(200);
+      expect((await reportState(fixture.reportId)).status).toBe("reviewing");
+
+      await page.goto("/admin/laporan?status=reviewing");
+      row = await rowFor();
+      await expect(row.getByRole("button", { name: "Tandai ditinjau" })).toHaveCount(0);
+      await expect(row.getByRole("button", { name: "Selesaikan" })).toBeVisible();
+      await expect(row.getByRole("button", { name: "Buka lagi" })).toBeVisible();
+
+      // resolved: hanya "Buka lagi"; laporan tetap ada (tidak dihapus).
+      const resolve = await context.request.post("/api/admin/moderate", {
+        data: {
+          action: "set-report-status",
+          reportId: fixture.reportId,
+          status: "resolved",
+        },
+      });
+      expect(resolve.status()).toBe(200);
+
+      await page.goto("/admin/laporan?status=resolved");
+      row = await rowFor();
+      await expect(row.getByRole("button", { name: "Buka lagi" })).toBeVisible();
+      await expect(row.getByRole("button", { name: "Selesaikan" })).toHaveCount(0);
+      await expect(row.getByRole("button", { name: "Tandai ditinjau" })).toHaveCount(0);
+
+      const still = await reportState(fixture.reportId);
+      expect(still.status).toBe("resolved");
+      expect(still.resolved_at).not.toBeNull();
+    } finally {
+      await pool.query(`delete from reports where id = $1`, [fixture.reportId]);
+    }
+  });
 
   test("transisi open → reviewing → resolved → open menyimpan status dan resolved_at", async ({
     browser,
@@ -731,56 +825,50 @@ test.describe("Moderasi laporan", () => {
 });
 
 
-test.describe("Audit visual", () => {
-  test("mengambil screenshot audit pada desktop dan mobile", async ({
-    page,
-    context,
-  }) => {
+test.describe("Tata letak editor dan Pustaka", () => {
+  test("tidak ada overflow horizontal di ponsel", async ({ page, context }) => {
     await loginAs(context, authorId, "user");
 
-    // Desktop: editor kosong (area tulis + toolbar).
+    /** Mengukur luapan horizontal beserta elemen yang melampaui viewport. */
+    const measureOverflow = () =>
+      page.evaluate(() => {
+        const viewport = document.documentElement.clientWidth;
+        const offenders: string[] = [];
+        document.querySelectorAll<HTMLElement>("*").forEach((el) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.right > viewport + 0.5) {
+            offenders.push(
+              `${el.tagName}.${(el.className || "").toString().slice(0, 40)} right=${Math.round(rect.right)}`,
+            );
+          }
+        });
+        return {
+          diff: document.documentElement.scrollWidth - viewport,
+          offenders: offenders.slice(0, 6),
+        };
+      });
+
+    // Desktop dulu agar editor dirender pada lebar penuh, lalu ponsel.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/komunitas/artikel");
-    await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: ".tmp-audit/v15-editor-desktop.png",
-      fullPage: false,
-    });
+    await expect(page.locator("#artikel-editor")).toBeVisible();
 
-    // Mobile: editor.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
     await page.locator("#artikel-editor").scrollIntoViewIfNeeded();
-    await page.screenshot({
-      path: ".tmp-audit/v15-editor-mobile.png",
-      fullPage: false,
-    });
 
-    // Mobile: search bar Pustaka.
+    const editor = await measureOverflow();
+    expect(
+      editor.diff,
+      `Editor — Offenders: ${editor.offenders.join(" | ")}`,
+    ).toBeLessThanOrEqual(1);
+
     await page.goto("/pustaka");
-    await page.screenshot({
-      path: ".tmp-audit/v15-pustaka-search-mobile.png",
-      fullPage: false,
-    });
-
-    // Tidak ada overflow horizontal pada viewport mobile.
-    const overflow = await page.evaluate(() => {
-      const viewport = document.documentElement.clientWidth;
-      const offenders: string[] = [];
-      document.querySelectorAll<HTMLElement>("*").forEach((el) => {
-        const rect = el.getBoundingClientRect();
-        if (rect.right > viewport + 0.5) {
-          offenders.push(
-            `${el.tagName}.${(el.className || "").toString().slice(0, 40)} right=${Math.round(rect.right)}`,
-          );
-        }
-      });
-      return {
-        diff: document.documentElement.scrollWidth - viewport,
-        offenders: offenders.slice(0, 6),
-      };
-    });
-    expect(overflow.diff, `Offenders: ${overflow.offenders.join(" | ")}`).toBeLessThanOrEqual(1);
+    const pustaka = await measureOverflow();
+    expect(
+      pustaka.diff,
+      `Pustaka — Offenders: ${pustaka.offenders.join(" | ")}`,
+    ).toBeLessThanOrEqual(1);
   });
 });
 

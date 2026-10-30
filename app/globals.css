@@ -149,6 +149,23 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+ * Teks isi rata kanan-kiri (seperti Justify di pengolah kata).
+ *
+ * Hanya dipakai pada paragraf/deskripsi panjang. Heading, judul panel, tombol,
+ * label, metadata, dan elemen interaktif tetap rata kiri agar tidak ada celah
+ * antarkata yang aneh pada teks pendek.
+ *
+ * `text-justify: inter-word` membatasi perenggangan pada jarak antarkata saja
+ * (bukan di dalam kata). `overflow-wrap` mencegah teks melebar keluar kotak
+ * pada layar sempit.
+ * ------------------------------------------------------------------------ */
+.saring-justify {
+  text-align: justify;
+  text-justify: inter-word;
+  overflow-wrap: break-word;
+}
+
+/* ---------------------------------------------------------------------------
  * Editor artikel (Tiptap)
  *
  * ProseMirror merender konten di luar React, jadi gaya tulisannya diletakkan di

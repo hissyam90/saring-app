@@ -9,6 +9,7 @@ import {
   getServerNotificationFeed,
   markAllNotificationsRead,
   markNotificationRead,
+  retryNotifications,
   subscribeNotifications,
 } from "@/lib/notification-feed";
 
@@ -138,12 +139,34 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
               ) : null}
             </div>
 
-            {!loaded ? (
+            {feed.error ? (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-2 border-b border-line bg-coral-soft px-3 py-2"
+              >
+                <p className="text-[11px] font-semibold leading-4 text-ink">
+                  {feed.error}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void retryNotifications()}
+                  className="border border-ink bg-surface px-1.5 py-0.5 text-[11px] font-bold text-ink"
+                >
+                  Coba lagi
+                </button>
+              </div>
+            ) : null}
+
+            {!loaded && !feed.error ? (
               <p className="px-3 py-4 text-sm text-ink-muted">Memuat notifikasi…</p>
-            ) : items.length === 0 ? (
+            ) : items.length === 0 && !feed.error ? (
               <p className="px-3 py-4 text-sm text-ink-muted">
                 Belum ada notifikasi. Anda akan diberi tahu saat pertanyaan
                 dibalas atau artikel ditinjau.
+              </p>
+            ) : items.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-ink-muted">
+                Belum ada notifikasi yang dapat ditampilkan.
               </p>
             ) : (
               <ul className="grid divide-y divide-line">

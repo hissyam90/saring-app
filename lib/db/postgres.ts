@@ -11,6 +11,7 @@ import type {
   PublishedArticle,
   Reply,
   Report,
+  ReportWithContext,
   RevisionStatus,
   Role,
   Submission,
@@ -79,6 +80,17 @@ const toSubmission = (r: Row): Submission => ({
   archivedAt: r.archived_at ? iso(r.archived_at) : null,
   createdAt: iso(r.created_at),
   reviewedAt: r.reviewed_at ? iso(r.reviewed_at) : null,
+});
+
+const toReportWithContext = (r: Row): ReportWithContext => ({
+  ...toReport(r),
+  context: {
+    threadId: r.ctx_thread_id ? String(r.ctx_thread_id) : null,
+    threadTitle: r.ctx_thread_title ? String(r.ctx_thread_title) : null,
+    replyId: r.ctx_reply_id ? String(r.ctx_reply_id) : null,
+    replyBody: r.ctx_reply_body ? String(r.ctx_reply_body) : null,
+    replyAuthorName: r.ctx_reply_author ? String(r.ctx_reply_author) : null,
+  },
 });
 
 const toPublished = (r: Row): PublishedArticle => ({
@@ -830,6 +842,44 @@ export function createPostgresStore(pool: Pool): Store {
         [...params, opts.pageSize, (opts.page - 1) * opts.pageSize],
       );
       return { items: rows.map(toReport), total: Number(totalRows[0].n) };
+    },
+    async listReportsWithContext(opts: ListReportsOptions) {
+      const params: unknown[] = [];
+      let filter = "true";
+      if (opts.status) {
+        params.push(opts.status);
+        filter = `r.status = $${params.length}`;
+      }
+      const totalRows = await q(
+        `select count(*)::int as n from reports r where ${filter}`,
+        params,
+      );
+      // Satu kueri gabungan: target `thread` memakai join langsung, target
+      // `reply` memakai join balasan lalu diskusi induknya. Tidak ada kueri
+      // tambahan per baris.
+      const rows = await q(
+        `select r.*,
+                coalesce(rt.id, pt.id) as ctx_thread_id,
+                coalesce(rt.title, pt.title) as ctx_thread_title,
+                rp.id as ctx_reply_id,
+                rp.body as ctx_reply_body,
+                ru.display_name as ctx_reply_author
+           from reports r
+           left join threads rt
+                  on r.target_type = 'thread' and rt.id = r.target_id
+           left join replies rp
+                  on r.target_type = 'reply' and rp.id = r.target_id
+           left join threads pt on pt.id = rp.thread_id
+           left join users ru on ru.id = rp.author_id
+          where ${filter}
+          order by r.created_at desc
+          limit $${params.length + 1} offset $${params.length + 2}`,
+        [...params, opts.pageSize, (opts.page - 1) * opts.pageSize],
+      );
+      return {
+        items: rows.map(toReportWithContext),
+        total: Number(totalRows[0].n),
+      };
     },
     async resolveReport(input) {
       // `$2` hanya untuk kolom enum `status`; kondisi `resolved_at` memakai

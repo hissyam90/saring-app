@@ -228,6 +228,23 @@ export interface Report {
   createdAt: string;
 }
 
+/**
+ * Konteks konten yang dilaporkan, agar moderator dapat meninjau laporan tanpa
+ * membuka halaman lain. Untuk target `reply`, `threadId`/`threadTitle` menunjuk
+ * diskusi induk dan `replyBody` memuat isi balasan yang dilaporkan.
+ */
+export interface ReportContext {
+  threadId: string | null;
+  threadTitle: string | null;
+  replyId: string | null;
+  replyBody: string | null;
+  replyAuthorName: string | null;
+}
+
+export interface ReportWithContext extends Report {
+  context: ReportContext;
+}
+
 export interface ModerationEntry {
   id: string;
   actorName: string;

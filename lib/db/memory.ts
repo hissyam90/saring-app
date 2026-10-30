@@ -11,6 +11,7 @@ import type {
   PublishedArticle,
   Reply,
   Report,
+  ReportWithContext,
   RevisionStatus,
   Role,
   Submission,
@@ -692,6 +693,31 @@ export function createMemoryStore(): Store {
         .filter((r) => (opts.status ? r.status === opts.status : true))
         .sort((a, b) => desc(a.createdAt, b.createdAt))
         .map((r) => ({ ...r }));
+      return page(all, opts.page, opts.pageSize);
+    },
+    async listReportsWithContext(opts: ListReportsOptions) {
+      const all = [...reports.values()]
+        .filter((r) => (opts.status ? r.status === opts.status : true))
+        .sort((a, b) => desc(a.createdAt, b.createdAt))
+        .map((r): ReportWithContext => {
+          const reply =
+            r.targetType === "reply" ? replies.get(r.targetId) ?? null : null;
+          const thread = reply
+            ? threads.get(reply.threadId) ?? null
+            : r.targetType === "thread"
+              ? threads.get(r.targetId) ?? null
+              : null;
+          return {
+            ...r,
+            context: {
+              threadId: thread?.id ?? null,
+              threadTitle: thread?.title ?? null,
+              replyId: reply?.id ?? null,
+              replyBody: reply?.body ?? null,
+              replyAuthorName: reply ? name(reply.authorId) : null,
+            },
+          };
+        });
       return page(all, opts.page, opts.pageSize);
     },
     async resolveReport(input) {

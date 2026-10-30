@@ -16,6 +16,25 @@ const FILTERS: { id: ReportStatus | "all"; label: string }[] = [
 
 const PAGE_SIZE = 20;
 
+/**
+ * Transisi status yang relevan untuk tiap keadaan. Aksi yang akan menghasilkan
+ * status yang sama tidak ditampilkan.
+ */
+const NEXT_STATUS: Record<
+  ReportStatus,
+  { status: ReportStatus; label: string; tone: "primary" | "secondary" }[]
+> = {
+  open: [
+    { status: "reviewing", label: "Tandai ditinjau", tone: "secondary" },
+    { status: "resolved", label: "Selesaikan", tone: "primary" },
+  ],
+  reviewing: [
+    { status: "resolved", label: "Selesaikan", tone: "primary" },
+    { status: "open", label: "Buka lagi", tone: "secondary" },
+  ],
+  resolved: [{ status: "open", label: "Buka lagi", tone: "secondary" }],
+};
+
 export default async function AdminLaporanPage({
   searchParams,
 }: {
@@ -26,7 +45,7 @@ export default async function AdminLaporanPage({
   const filter = params.status && valid.has(params.status) ? params.status : "open";
   const page = clampPage(params.halaman);
 
-  const result = await getStore().listReports({
+  const result = await getStore().listReportsWithContext({
     status: filter === "all" ? undefined : (filter as ReportStatus),
     page,
     pageSize: PAGE_SIZE,
@@ -75,37 +94,53 @@ export default async function AdminLaporanPage({
                 <p className="mt-0.5 text-[11px] text-ink-muted">
                   Target: {report.targetType} · id {report.targetId.slice(0, 8)}
                 </p>
+                {report.context.threadTitle ? (
+                  <p className="mt-0.5 text-xs leading-5 text-ink">
+                    Diskusi:{" "}
+                    <span className="font-semibold">
+                      {report.context.threadTitle}
+                    </span>
+                  </p>
+                ) : null}
+                {report.targetType === "reply" ? (
+                  <div className="mt-1 border-l-2 border-l-line pl-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                      Balasan yang dilaporkan
+                      {report.context.replyAuthorName
+                        ? ` · ${report.context.replyAuthorName}`
+                        : ""}
+                    </p>
+                    <p className="mt-0.5 line-clamp-4 text-xs leading-5 text-ink-soft">
+                      {report.context.replyBody ?? "Balasan tidak tersedia."}
+                    </p>
+                  </div>
+                ) : null}
                 {report.details ? (
                   <p className="mt-1 text-xs leading-5 text-ink-soft">
                     {report.details}
                   </p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {report.targetType === "thread" ? (
+                  {report.context.threadId ? (
                     <Link
-                      href={`/komunitas/${report.targetId}`}
+                      href={`/komunitas/${report.context.threadId}`}
                       className="inline-flex min-h-9 items-center border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:text-on-lime hover:bg-lime"
                     >
                       Buka diskusi
                     </Link>
                   ) : null}
-                  <ModerationActions
-                    label="Tandai ditinjau"
-                    payload={{ action: "set-report-status", reportId: report.id, status: "reviewing" }}
-                    tone="secondary"
-                  />
-                  <ModerationActions
-                    label="Selesaikan"
-                    payload={{ action: "set-report-status", reportId: report.id, status: "resolved" }}
-                    tone="primary"
-                  />
-                  {report.status === "resolved" ? (
+                  {NEXT_STATUS[report.status].map((next) => (
                     <ModerationActions
-                      label="Buka lagi"
-                      payload={{ action: "set-report-status", reportId: report.id, status: "open" }}
-                      tone="secondary"
+                      key={next.status}
+                      label={next.label}
+                      payload={{
+                        action: "set-report-status",
+                        reportId: report.id,
+                        status: next.status,
+                      }}
+                      tone={next.tone}
                     />
-                  ) : null}
+                  ))}
                 </div>
               </li>
             ))}

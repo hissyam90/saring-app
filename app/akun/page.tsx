@@ -49,7 +49,7 @@ export default async function AkunPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+    <div className="w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">
       <header className="mb-5">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
           Akun
@@ -57,7 +57,7 @@ export default async function AkunPage() {
         <h1 className="mt-1 text-3xl font-black tracking-tight text-ink">
           {user.displayName}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-ink-muted">
+        <p className="saring-justify mt-2 text-sm leading-6 text-ink-muted">
           Role: <span className="font-semibold text-ink">{user.role}</span>. Email
           tidak ditampilkan di halaman publik.
         </p>
@@ -86,7 +86,7 @@ export default async function AkunPage() {
           description="Berlaku di peramban ini dan tersimpan otomatis."
         >
           <ThemeToggle />
-          <p className="mt-3 text-xs leading-5 text-ink-muted">
+          <p className="saring-justify mt-3 text-xs leading-5 text-ink-muted">
             <strong className="font-semibold text-ink">Ikuti sistem</strong>{" "}
             mengikuti pengaturan terang/gelap perangkat Anda.
           </p>

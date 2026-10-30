@@ -994,3 +994,226 @@ test.describe("Panel notifikasi", () => {
   });
 });
 
+test.describe("Tata letak halaman akun", () => {
+  test("kontainer akun rata kiri terhadap area konten di desktop dan mobile", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, readerId, "user");
+
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/akun");
+      await expect(page.getByRole("heading", { level: 1, name: /./ })).toBeVisible();
+
+      const geometry = await page.evaluate(() => {
+        const main = document.querySelector("main");
+        const heading = document.querySelector("main h1");
+        if (!main || !heading) return null;
+
+        // Kontainer = leluhur terdekat h1 yang membatasi lebar konten.
+        let container: HTMLElement | null = heading as HTMLElement;
+        while (container && container !== main) {
+          const maxWidth = getComputedStyle(container).maxWidth;
+          if (maxWidth && maxWidth !== "none") break;
+          container = container.parentElement;
+        }
+
+        const mainRect = main.getBoundingClientRect();
+        const box = (container ?? heading).getBoundingClientRect();
+
+        return {
+          leftGap: Math.round(box.left - mainRect.left),
+          rightGap: Math.round(mainRect.right - box.right),
+          panelLefts: [...document.querySelectorAll("main section")].map((panel) =>
+            Math.round(panel.getBoundingClientRect().left),
+          ),
+        };
+      });
+
+      expect(geometry, "struktur halaman akun tidak ditemukan").not.toBeNull();
+      const label = `${viewport.width}x${viewport.height}`;
+
+      // Rata kiri: jarak kiri hanya selebar padding konten (16/24 px).
+      expect(geometry!.leftGap, `jarak kiri (${label})`).toBeGreaterThanOrEqual(0);
+      expect(geometry!.leftGap, `jarak kiri (${label})`).toBeLessThanOrEqual(24);
+
+      // Desktop: max-w-3xl lebih sempit dari area konten, jadi sisa ruang ada
+      // di kanan. Bila tercentang, kedua sisi akan hampir sama.
+      if (viewport.width >= 1024) {
+        expect(
+          geometry!.rightGap,
+          `sisa ruang kanan harus lebih besar dari kiri (${label})`,
+        ).toBeGreaterThan(geometry!.leftGap + 40);
+      }
+
+      // Semua panel (preferensi, draf, pertanyaan, pengajuan) mulai di garis
+      // kiri yang sama.
+      expect(geometry!.panelLefts.length).toBeGreaterThan(0);
+      for (const left of geometry!.panelLefts) {
+        expect(
+          Math.abs(left - geometry!.panelLefts[0]),
+          `panel rata kiri (${label})`,
+        ).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
+test.describe("Justify teks halaman akun", () => {
+  test("paragraf panjang rata kanan-kiri, heading dan kontrol tetap rata kiri", async ({
+    page,
+    context,
+  }) => {
+    await loginAs(context, readerId, "user");
+
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/akun");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+      const styles = await page.evaluate(() => {
+        const main = document.querySelector("main");
+        if (!main) return null;
+        const pick = (el: Element | null) => {
+          if (!el) return null;
+          const s = getComputedStyle(el);
+          return {
+            textAlign: s.textAlign,
+            // `textJustify` belum ada di tipe DOM, jadi dibaca lewat getPropertyValue.
+            textJustify: s.getPropertyValue("text-justify").trim(),
+          };
+        };
+        const justified = [...main.querySelectorAll("p.saring-justify")];
+        return {
+          justified: justified.map((p) => ({
+            ...pick(p),
+            text: (p.textContent ?? "").trim().slice(0, 40),
+          })),
+          heading: pick(main.querySelector("h1")),
+          panelTitle: pick(main.querySelector("section h2")),
+          button: pick(main.querySelector("section button")),
+          link: pick(main.querySelector("a")),
+          metadata: pick(main.querySelector("span.font-mono")),
+        };
+      });
+
+      expect(styles, "halaman akun tidak ditemukan").not.toBeNull();
+      const label = `${viewport.width}x${viewport.height}`;
+
+      // Paragraf isi benar-benar dijustify dengan perenggangan antarkata saja.
+      expect(styles!.justified.length, `jumlah paragraf (${label})`).toBeGreaterThan(0);
+      for (const p of styles!.justified) {
+        expect(p.textAlign, `text-align "${p.text}" (${label})`).toBe("justify");
+        expect(p.textJustify, `text-justify "${p.text}" (${label})`).toBe("inter-word");
+      }
+
+      // Elemen non-prosa tidak boleh ikut dijustify.
+      for (const [name, value] of [
+        ["heading", styles!.heading],
+        ["judul panel", styles!.panelTitle],
+        ["tombol", styles!.button],
+        ["tautan", styles!.link],
+        ["metadata", styles!.metadata],
+      ] as const) {
+        if (!value) continue;
+        expect(value.textAlign, `${name} tidak boleh justify (${label})`).not.toBe(
+          "justify",
+        );
+      }
+
+      // Justify tidak boleh menyebabkan luapan horizontal (terutama ponsel).
+      const overflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(overflow, `overflow horizontal (${label})`).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+test.describe("Panel notifikasi saat gagal", () => {
+  const NOTIFICATIONS = "**/api/community/notifications";
+  const READ = "**/api/community/notifications/read";
+
+  async function openPanel(page: Page) {
+    const bell = page.locator("aside").getByRole("button", { name: /^Notifikasi/ });
+    await bell.click();
+    const panel = page.getByTestId("notification-panel");
+    await expect(panel).toBeVisible();
+    return panel;
+  }
+
+  test("menampilkan state gagal, bukan status memuat terus-menerus", async ({
+    page,
+    context,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "cukup satu viewport");
+
+    await loginAs(context, adminId, "admin");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.route(NOTIFICATIONS, (route) => route.fulfill({ status: 500, body: "{}" }));
+
+    await page.goto("/komunitas");
+    const panel = await openPanel(page);
+
+    await expect(panel.getByText(/Memuat notifikasi/i)).toHaveCount(0);
+    await expect(panel.getByText("Notifikasi gagal dimuat.")).toBeVisible();
+
+    // Setelah endpoint sehat, "Coba lagi" memuat data.
+    await page.unroute(NOTIFICATIONS);
+    await panel.getByRole("button", { name: "Coba lagi" }).click();
+    await expect(panel.getByText("Notifikasi gagal dimuat.")).toHaveCount(0);
+    await expect(
+      panel.getByText(/Belum ada notifikasi|Tandai semua/),
+    ).toBeVisible();
+  });
+
+  test("tandai semua yang gagal memulihkan state belum dibaca", async ({
+    page,
+    context,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "cukup satu viewport");
+
+    // Notifikasi nyata di database uji agar badge pasti belum dibaca.
+    const dedupe = randomUUID();
+    const inserted = await pool.query(
+      `insert into notifications (user_id, kind, title, dedupe_key)
+       values ($1, 'thread_reply', 'Notifikasi uji panel', $2) returning id`,
+      [adminId, dedupe],
+    );
+
+    try {
+      await loginAs(context, adminId, "admin");
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto("/komunitas");
+
+      const badge = page.locator('aside button[aria-label^="Notifikasi, "]');
+      await expect(badge).toHaveAttribute("aria-label", /belum dibaca/);
+      const before = await badge.getAttribute("aria-label");
+
+      // Penulisan status baca gagal.
+      await page.route(READ, (route) => route.fulfill({ status: 500, body: "{}" }));
+
+      const panel = await openPanel(page);
+      await panel.getByRole("button", { name: "Tandai semua" }).click();
+
+      await expect(panel.getByText("Status baca gagal disimpan.")).toBeVisible();
+      // Snapshot dipulihkan: badge belum dibaca tidak hilang.
+      await expect(badge).toHaveAttribute("aria-label", before!);
+      await expect(panel.getByRole("button", { name: "Tandai semua" })).toBeVisible();
+    } finally {
+      await pool.query(`delete from notifications where id = $1`, [
+        inserted.rows[0].id,
+      ]);
+    }
+  });
+});
+

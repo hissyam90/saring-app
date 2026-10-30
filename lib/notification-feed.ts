@@ -23,11 +23,21 @@ export interface NotificationItem {
 export interface NotificationFeed {
   items: NotificationItem[];
   unread: number;
+  /** Pernah berhasil dimuat minimal sekali. */
   loaded: boolean;
+  /** Pesan kegagalan terakhir; `null` bila pemuatan terakhir berhasil. */
+  error: string | null;
 }
 
-const EMPTY: NotificationFeed = { items: [], unread: 0, loaded: false };
+const EMPTY: NotificationFeed = {
+  items: [],
+  unread: 0,
+  loaded: false,
+  error: null,
+};
 const REFRESH_MS = 60_000;
+const LOAD_ERROR = "Notifikasi gagal dimuat.";
+const READ_ERROR = "Status baca gagal disimpan.";
 
 let snapshot: NotificationFeed = EMPTY;
 const listeners = new Set<() => void>();
@@ -47,11 +57,24 @@ async function refresh(): Promise<void> {
       const response = await fetch("/api/community/notifications", {
         cache: "no-store",
       });
-      if (!response.ok) return;
-      const data = (await response.json()) as NotificationFeed;
-      publish({ items: data.items, unread: data.unread, loaded: true });
+      if (!response.ok) {
+        // Simpan data terakhir yang valid, tetapi tandai gagal agar panel
+        // tidak terus menampilkan status memuat.
+        publish({ ...snapshot, error: LOAD_ERROR });
+        return;
+      }
+      const data = (await response.json()) as {
+        items: NotificationItem[];
+        unread: number;
+      };
+      publish({
+        items: data.items,
+        unread: data.unread,
+        loaded: true,
+        error: null,
+      });
     } catch {
-      // Jaringan bermasalah: snapshot terakhir dipertahankan.
+      publish({ ...snapshot, error: LOAD_ERROR });
     } finally {
       inFlight = null;
     }
@@ -100,7 +123,29 @@ function patch(update: (current: NotificationFeed) => NotificationFeed) {
   publish(update(snapshot));
 }
 
-export async function markNotificationRead(id: string): Promise<void> {
+/**
+ * Memulihkan snapshot sebelum aksi optimistis lalu menyinkronkan ulang dari
+ * server. Dipakai saat penulisan status baca gagal agar state lokal tidak
+ * menyimpang dari database.
+ */
+async function recoverFromReadFailure(before: NotificationFeed): Promise<void> {
+  publish({ ...before, error: READ_ERROR });
+  // Sinkronisasi ulang bersifat otoritatif; bila berhasil, error dibersihkan
+  // oleh `refresh()`.
+  await refresh();
+}
+
+async function postRead(body: Record<string, unknown>): Promise<boolean> {
+  const response = await fetch("/api/community/notifications/read", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return response.ok;
+}
+
+export async function markNotificationRead(id: string): Promise<boolean> {
+  const before = snapshot;
   const readAt = new Date().toISOString();
   patch((current) => ({
     ...current,
@@ -109,31 +154,37 @@ export async function markNotificationRead(id: string): Promise<void> {
     ),
     unread: Math.max(0, current.unread - 1),
   }));
+
+  let ok = false;
   try {
-    await fetch("/api/community/notifications/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+    ok = await postRead({ id });
   } catch {
-    // Status baca akan tersinkron pada refresh berikutnya.
+    ok = false;
   }
+  if (!ok) await recoverFromReadFailure(before);
+  return ok;
 }
 
-export async function markAllNotificationsRead(): Promise<void> {
+export async function markAllNotificationsRead(): Promise<boolean> {
+  const before = snapshot;
   const readAt = new Date().toISOString();
   patch((current) => ({
     ...current,
     items: current.items.map((item) => ({ ...item, readAt: item.readAt ?? readAt })),
     unread: 0,
   }));
+
+  let ok = false;
   try {
-    await fetch("/api/community/notifications/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ all: true }),
-    });
+    ok = await postRead({ all: true });
   } catch {
-    // Idem.
+    ok = false;
   }
+  if (!ok) await recoverFromReadFailure(before);
+  return ok;
+}
+
+/** Mencoba memuat ulang notifikasi (dipakai tombol "Coba lagi" di panel). */
+export function retryNotifications(): Promise<void> {
+  return refresh();
 }

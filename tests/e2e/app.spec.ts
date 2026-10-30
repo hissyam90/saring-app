@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-const ROUTES = [
-  { path: "/", heading: "Berhenti sebentar. Periksa sinyalnya." },
+const ROUTES: { path: string; heading: string; tagline?: string }[] = [
+  {
+    path: "/",
+    heading: "Saring Sebelum Sharing.",
+    // Kalimat pendukung hero yang tampil bersama heading utama.
+    tagline: "Periksa Sebelum Percaya.",
+  },
   { path: "/periksa", heading: "Periksa pesan" },
   { path: "/latihan", heading: "Latihan keputusan" },
   { path: "/langkah", heading: "Langkah selanjutnya" },
@@ -16,8 +21,39 @@ test.describe("Routes", () => {
       await expect(
         page.getByRole("heading", { level: 1, name: route.heading }),
       ).toBeVisible();
+
+      if (route.tagline) {
+        await expect(page.getByText(route.tagline, { exact: true })).toBeVisible();
+      }
     });
   }
+});
+
+test.describe("Navigasi utama", () => {
+  test("memuat seluruh tautan halaman dengan tujuan yang benar", async ({
+    page,
+  }, testInfo) => {
+    // Sidebar desktop disembunyikan pada viewport ponsel.
+    test.skip(testInfo.project.name !== "chromium", "sidebar desktop");
+
+    await page.goto("/");
+    const nav = page.getByRole("navigation", { name: "Navigasi utama" });
+    await expect(nav).toBeVisible();
+
+    for (const [label, href] of [
+      ["Beranda", "/"],
+      ["Periksa", "/periksa"],
+      ["Latihan", "/latihan"],
+      ["Langkah", "/langkah"],
+      ["Pustaka", "/pustaka"],
+      ["Komunitas", "/komunitas"],
+    ] as const) {
+      await expect(nav.getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        href,
+      );
+    }
+  });
 });
 
 test.describe("Pustaka", () => {

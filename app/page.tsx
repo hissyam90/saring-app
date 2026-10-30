@@ -92,15 +92,18 @@ export default function Home() {
               Pendamping kepercayaan digital
             </p>
 
-            <h1 className="mt-4 text-[2.15rem] font-black leading-[1.02] tracking-[-0.02em] text-ink sm:mt-5 sm:text-[3.9rem]">
-              Berhenti
-              <br className="hidden sm:block" /> sebentar.
-              <span className="mt-2 block w-fit border-2 border-ink bg-lime px-2 py-0.5 text-on-lime sm:mt-3 sm:px-3">
-                Periksa sinyalnya.
-              </span>
-            </h1>
+            <div className="flex flex-col gap-4 sm:gap-6 max-w-4xl">
+              <h1 className="text-[2.5rem] sm:text-[4.5rem] font-extrabold leading-[1.1] tracking-tight text-ink">
+                Saring Sebelum <span className="italic font-serif text-ink">Sharing</span>.
+              </h1>
+              <div className="w-fit transform -rotate-1 sm:-rotate-2 hover:rotate-0 transition-transform duration-300">
+                <span className="block border-[3px] border-ink bg-lime px-4 py-2 text-[1.8rem] sm:text-[3.2rem] font-black tracking-tight text-on-lime shadow-[6px_6px_0px_0px_#000]">
+                  Periksa Sebelum Percaya.
+                </span>
+              </div>
+            </div>
 
-            <p className="mt-4 max-w-[34ch] text-sm font-medium leading-6 text-ink/80 sm:mt-5 sm:text-base sm:leading-7">
+            <p className="mt-4 max-w-[50ch] text-sm font-medium leading-6 text-ink/80 sm:mt-5 sm:text-base sm:leading-7">
               Belum tentu penipuan. Belum tentu aman. Kenali tandanya sebelum
               bertindak.
               Mulai dari pesan, nomor, atau tautan yang Anda terima.

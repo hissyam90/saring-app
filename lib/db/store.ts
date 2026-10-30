@@ -14,6 +14,7 @@ import type {
   Report,
   ReportStatus,
   ReportTarget,
+  ReportWithContext,
   RevisionStatus,
   Role,
   Submission,
@@ -227,6 +228,14 @@ export interface Store {
     details: string | null;
   }): Promise<Report>;
   listReports(opts: ListReportsOptions): Promise<Paged<Report>>;
+  /**
+   * Daftar laporan beserta konteks konten yang dilaporkan (judul diskusi dan,
+   * untuk target balasan, isi balasannya). Diambil dengan satu kueri gabungan
+   * agar tidak ada kueri tambahan per baris.
+   */
+  listReportsWithContext(
+    opts: ListReportsOptions,
+  ): Promise<Paged<ReportWithContext>>;
   resolveReport(input: {
     id: string;
     status: ReportStatus;
