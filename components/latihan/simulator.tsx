@@ -13,6 +13,7 @@ import {
   createRandom,
   pickSessionScenarios,
   scoreSession,
+  SCENARIOS,
   SESSION_MODES,
 } from "@/data/scenarios";
 import type {
@@ -103,8 +104,8 @@ function Intro({ onStart }: { onStart: (mode: SessionMode) => void }) {
           Mulai sesi latihan
         </h2>
         <p className="mt-1 text-sm leading-6 text-ink-muted">
-          Pilih panjang sesi. Soal diambil acak dari bank {18} skenario, tanpa
-          pengulangan dalam satu sesi.
+          Pilih panjang sesi. Soal diambil acak dari bank {SCENARIOS.length}{" "}
+          skenario, tanpa pengulangan dalam satu sesi.
         </p>
       </div>
 
