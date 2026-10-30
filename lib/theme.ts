@@ -7,17 +7,18 @@
  *     tema sudah benar sebelum halaman digambar,
  *   - `components/theme-toggle.tsx` (client component) membaca/menulis pilihan.
  *
- * Tiga nilai yang sah: `system`, `light`, `dark`. Nilai `system` tidak diubah
- * menjadi terang/gelap oleh JavaScript: CSS yang memutuskan lewat
- * `prefers-color-scheme`, sehingga perubahan preferensi sistem langsung
- * berlaku tanpa reload dan tanpa listener tambahan.
+ * Tiga nilai yang sah: `light`, `dark`, `system`. Default untuk pengunjung baru
+ * adalah `light` agar tampilan pertama selalu terang, terlepas dari pengaturan
+ * sistem operasi. Nilai `system` hanya berlaku bila pengguna memilihnya sendiri
+ * (atau sudah memilihnya sebelum default berubah): CSS lalu mengikuti
+ * `prefers-color-scheme` lewat selektor `:root[data-theme="system"]`.
  */
 
 export const THEME_STORAGE_KEY = "saring.theme";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
-export const DEFAULT_THEME: ThemeChoice = "system";
+export const DEFAULT_THEME: ThemeChoice = "light";
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
   return value === "system" || value === "light" || value === "dark";
@@ -28,9 +29,12 @@ export function isThemeChoice(value: unknown): value is ThemeChoice {
  *
  * - Hanya menulis atribut `data-theme` pada `<html>`; tidak menyentuh React
  *   state, sehingga tidak mungkin terjadi hydration mismatch.
- * - Nilai tak dikenal atau localStorage yang diblokir jatuh ke `system`.
- * - Nilai valid disimpan kembali agar atribut halaman baru selalu terisi.
+ * - Tanpa preferensi tersimpan, nilai tak dikenal, atau localStorage yang
+ *   diblokir, atribut diisi `light` sehingga pengunjung baru tidak pernah
+ *   melihat dark mode walau sistemnya gelap.
+ * - Pilihan tersimpan (`light`, `dark`, `system`) tidak ditimpa, sehingga
+ *   preferensi pengguna lama tetap berlaku.
  */
 export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(
   THEME_STORAGE_KEY,
-)};var v=window.localStorage.getItem(k);if(v!=="light"&&v!=="dark"){v="system";}document.documentElement.setAttribute("data-theme",v);}catch(e){document.documentElement.setAttribute("data-theme","system");}})();`;
+)};var v=window.localStorage.getItem(k);if(v!=="light"&&v!=="dark"&&v!=="system"){v="light";}document.documentElement.setAttribute("data-theme",v);}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;

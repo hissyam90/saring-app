@@ -30,7 +30,12 @@ loadEnvConfig(process.cwd(), true);
  */
 declare global {
   interface Window {
-    __themeMarks: { themeAt: number | null; firstPaint: number | null };
+    __themeMarks: {
+      themeAt: number | null;
+      firstPaint: number | null;
+      /** Nilai `data-theme` saat atribut pertama kali terpasang. */
+      value?: string | null;
+    };
   }
 }
 
@@ -141,6 +146,19 @@ async function primeTheme(page: Page, mode: ThemeMode) {
   await page.evaluate(
     ({ key, value }) => window.localStorage.setItem(key, value),
     { key: THEME_STORAGE_KEY, value: mode.stored },
+  );
+}
+
+/**
+ * Menyetel preferensi tema tersimpan untuk pengujian yang tidak memakai
+ * `ThemeMode`. Default pengunjung baru adalah `light`, jadi palet gelap harus
+ * diminta secara eksplisit agar tetap benar-benar diuji.
+ */
+async function storeTheme(page: Page, value: "light" | "dark" | "system") {
+  await page.goto("/");
+  await page.evaluate(
+    ({ key, value }) => window.localStorage.setItem(key, value),
+    { key: THEME_STORAGE_KEY, value },
   );
 }
 
@@ -430,6 +448,8 @@ test.describe("Kontras permukaan interaktif", () => {
     }) => {
       await loginAs(context, readerId, "user");
       await page.emulateMedia({ colorScheme: scheme });
+      // Palet gelap harus diminta eksplisit (default pengunjung baru: light).
+      await storeTheme(page, scheme);
 
       // Editor berisi teks + toolbar.
       await page.goto("/komunitas/artikel");
@@ -481,12 +501,13 @@ test.describe("Kontras permukaan interaktif", () => {
 /**
  * Kontrol tema.
  *
- * Membuktikan tiga mode bekerja sungguhan di peramban:
- *   - "Ikuti sistem" (default) mengikuti `prefers-color-scheme`,
+ * Membuktikan perilaku tema di peramban:
+ *   - default pengunjung baru adalah "light", bukan mengikuti sistem,
+ *   - "Ikuti sistem" mengikuti `prefers-color-scheme` bila dipilih,
  *   - "Terang" dan "Gelap" mengalahkan preferensi sistem dan bertahan setelah
  *     reload,
  *   - pilihan disimpan di localStorage saja (bukan cookie/PostgreSQL),
- *   - tema sudah benar sebelum first-paint (tidak ada kilatan).
+ *   - tema sudah benar sebelum first-paint (tidak ada kilatan dark mode).
  */
 test.describe("Kontrol tema", () => {
   const bodyBg = (page: Page) =>
@@ -506,21 +527,115 @@ test.describe("Kontrol tema", () => {
     return group;
   }
 
-  test("default mengikuti sistem dan berubah tanpa reload", async ({ page }) => {
-    await page.emulateMedia({ colorScheme: "light" });
+  test("pengunjung baru mendapat light mode meski sistem gelap", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/pustaka");
 
-    // Tanpa pilihan tersimpan, nilai default adalah "system".
-    expect(await themeHtml(page)).toBe("system");
+    // Tanpa pilihan tersimpan, default adalah "light" — bukan "system".
+    expect(await themeHtml(page)).toBe("light");
     expect(await readStored(page)).toBeNull();
     expect(await bodyBg(page)).toBe("rgb(245, 242, 234)");
 
-    // Ubah preferensi sistem tanpa memuat ulang halaman.
+    // Preferensi sistem tidak boleh mengubah tampilan bagi pengunjung baru.
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect.poll(() => bodyBg(page)).toBe("rgb(245, 242, 234)");
+  });
+
+  test("preferensi gelap tersimpan tetap menghasilkan dark mode", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/pustaka");
+    await page.evaluate(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: THEME_STORAGE_KEY, value: "dark" },
+    );
+
+    await page.reload();
+
+    expect(await themeHtml(page)).toBe("dark");
+    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+    // Bertahan walau sistem berganti ke terang.
+    await page.emulateMedia({ colorScheme: "light" });
+    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+  });
+
+  test("preferensi terang tersimpan tetap terang meski sistem gelap", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/pustaka");
+    await page.evaluate(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: THEME_STORAGE_KEY, value: "light" },
+    );
+
+    await page.reload();
+
+    expect(await themeHtml(page)).toBe("light");
+    expect(await bodyBg(page)).toBe("rgb(245, 242, 234)");
+  });
+
+  test("preferensi system tersimpan tetap mengikuti pengaturan OS", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/pustaka");
+    await page.evaluate(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: THEME_STORAGE_KEY, value: "system" },
+    );
+
+    await page.reload();
+    expect(await themeHtml(page)).toBe("system");
+    expect(await bodyBg(page)).toBe("rgb(245, 242, 234)");
+
+    // Mengikuti OS tanpa reload.
     await page.emulateMedia({ colorScheme: "dark" });
     await expect.poll(() => bodyBg(page)).toBe("rgb(13, 19, 29)");
 
     await page.emulateMedia({ colorScheme: "light" });
     await expect.poll(() => bodyBg(page)).toBe("rgb(245, 242, 234)");
+  });
+
+  test("pengunjung baru tidak melihat kilatan dark mode", async ({ page }) => {
+    // Sistem gelap: tanpa default light, frame pertama akan tampil gelap.
+    await page.emulateMedia({ colorScheme: "dark" });
+
+    await page.addInitScript(() => {
+      window.__themeMarks = { themeAt: null, firstPaint: null, value: null };
+      const record = () => {
+        if (
+          document.documentElement?.hasAttribute("data-theme") &&
+          window.__themeMarks.themeAt === null
+        ) {
+          window.__themeMarks.themeAt = performance.now();
+          window.__themeMarks.value =
+            document.documentElement.getAttribute("data-theme");
+        }
+      };
+      new MutationObserver(record).observe(document, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
+      record();
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.name === "first-paint") {
+            window.__themeMarks.firstPaint = entry.startTime;
+          }
+        }
+      }).observe({ type: "paint", buffered: true });
+    });
+
+    await page.goto("/pustaka");
+    await page.waitForTimeout(250);
+
+    const marks = await page.evaluate(() => window.__themeMarks);
+    expect(marks.themeAt, "atribut data-theme tidak pernah dipasang").not.toBeNull();
+    expect(marks.firstPaint, "first-paint tidak terukur").not.toBeNull();
+    // Tema sudah "light" saat atribut dipasang, yaitu sebelum paint pertama.
+    expect(marks.value, "tema pada frame pertama").toBe("light");
+    expect(
+      marks.themeAt as number,
+      "data-theme harus terpasang sebelum first-paint",
+    ).toBeLessThanOrEqual(marks.firstPaint as number);
+    expect(await bodyBg(page)).toBe("rgb(245, 242, 234)");
   });
 
   test("pilihan Gelap menang atas sistem terang dan bertahan setelah reload", async ({
@@ -800,8 +915,21 @@ test.describe("Warna aksen", () => {
     test.skip(testInfo.project.name !== "chromium", "token tema sama untuk semua project");
 
     for (const scheme of ["light", "dark"] as const) {
+      // Tema disetel eksplisit agar kedua palet benar-benar diuji, tanpa
+      // bergantung pada preferensi sistem (default pengunjung baru: light).
       await page.emulateMedia({ colorScheme: scheme });
       await page.goto("/");
+      await page.evaluate(
+        ({ key, value }) => window.localStorage.setItem(key, value),
+        { key: THEME_STORAGE_KEY, value: scheme },
+      );
+      await page.reload();
+      expect(
+        await page.evaluate(() =>
+          document.documentElement.getAttribute("data-theme"),
+        ),
+        `tema ${scheme} aktif`,
+      ).toBe(scheme);
       const t = await readTokens(page);
 
       // Aksen kuat: kontras >= 4,5:1 terhadap permukaan tempat teks aksen dipakai.
@@ -826,8 +954,20 @@ test.describe("Warna aksen", () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "token tema sama untuk semua project");
 
+    // Palet gelap kini hanya berlaku bila dipilih (default pengunjung baru
+    // adalah light), jadi tema gelap disetel eksplisit.
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/");
+    await page.evaluate(
+      (key) => window.localStorage.setItem(key, "dark"),
+      THEME_STORAGE_KEY,
+    );
+    await page.reload();
+    expect(
+      await page.evaluate(() =>
+        document.documentElement.getAttribute("data-theme"),
+      ),
+    ).toBe("dark");
     const t = await readTokens(page);
 
     // Latar lembut bukan abu-abu gelap: masih punya rona yang jelas.
@@ -854,6 +994,8 @@ test.describe("Warna aksen", () => {
 
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
+      // Tema diminta eksplisit agar kedua palet benar-benar diuji.
+      await storeTheme(page, scheme);
       // /masuk publik dan selalu memuat satu tombol primary.
       await page.goto("/masuk");
 

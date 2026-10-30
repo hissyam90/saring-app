@@ -90,17 +90,18 @@
  * Pemilihan tema.
  *
  * Tiga nilai `data-theme` pada <html>:
- *   "system" (default) -> mengikuti prefers-color-scheme
- *   "light"            -> selalu terang
+ *   "light"  (default) -> selalu terang
  *   "dark"             -> selalu gelap
+ *   "system"           -> mengikuti prefers-color-scheme (hanya bila pengguna
+ *                         memilih "Ikuti sistem")
  *
  * Aturannya:
- *   - Palet terang adalah nilai default di `@theme`, sehingga tanpa JavaScript
- *     dan tanpa atribut apa pun halaman tetap terbaca.
+ *   - Palet terang adalah nilai default di `@theme`, sehingga tanpa atribut apa
+ *     pun (mis. JavaScript mati) halaman memakai light mode.
  *   - Pilihan manual menang atas preferensi sistem: blok `[data-theme="dark"]`
- *     berada di luar media query, sedangkan media query mengecualikan
- *     `[data-theme="light"]`.
- *   - Blok token gelap ditulis dua kali (manual + sistem) karena CSS tidak punya
+ *     berada di luar media query, sedangkan media query hanya berlaku untuk
+ *     `[data-theme="system"]`.
+ *   - Blok token gelap ditulis dua kali (manual + system) karena CSS tidak punya
  *     cara menggabungkan selektor atribut dengan media query. Kesamaan isinya
  *     diperiksa otomatis oleh `npm run audit:contrast`.
  * ------------------------------------------------------------------------ */
@@ -117,7 +118,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root[data-theme="system"] {
     color-scheme: dark;
   }
 }
@@ -356,10 +357,10 @@ body {
  * Palet gelap Saring.
  *
  * Ditulis dua kali dengan sengaja:
- *   1. `[data-theme="dark"]`  -> pilihan manual pengguna, berlaku di mana pun.
- *   2. media query            -> pilihan "Ikuti sistem" (dan kondisi tanpa
- *                                JavaScript), dengan mengecualikan pilihan
- *                                manual "light".
+ *   1. `[data-theme="dark"]`   -> pilihan manual pengguna, berlaku di mana pun.
+ *   2. `[data-theme="system"]` -> pilihan "Ikuti sistem", mengikuti
+ *                                 `prefers-color-scheme`. Tanpa atribut tema
+ *                                 (default light) blok ini tidak berlaku.
  *
  * Kedua blok harus berisi nilai yang sama persis. `npm run audit:contrast`
  * membandingkan keduanya dan gagal bila ada perbedaan, sehingga duplikasi ini
@@ -407,9 +408,9 @@ body {
   --color-on-safe: #06231a;
 }
 
-/* 2. Pilihan "Ikuti sistem" (atau atribut belum dipasang / JavaScript mati). */
+/* 2. Pilihan "Ikuti sistem": hanya aktif bila pengguna memilihnya. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root[data-theme="system"] {
     --color-ink: #f1f3f8;
     --color-ink-soft: #dbe2ee;
     --color-ink-muted: #aab4c6;

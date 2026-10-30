@@ -300,8 +300,11 @@ tidak dapat dipakai sebagai jalur penulisan tak terbatas.
 
 ## Tema tampilan
 
-Saring memiliki **tiga pilihan tema**: Ikuti sistem (default), Terang, dan
-Gelap. Kontrolnya ada di bagian **Preferensi tampilan** pada halaman `/akun`.
+Saring memiliki **tiga pilihan tema**: Terang (default), Gelap, dan Ikuti
+sistem. Kontrolnya ada di bagian **Preferensi tampilan** pada halaman `/akun`.
+Pengunjung baru selalu mendapat tampilan Terang, terlepas dari pengaturan
+dark/light sistem operasinya; mode Gelap atau Ikuti sistem hanya berlaku setelah
+pengguna memilihnya sendiri.
 
 - Preferensi disimpan **hanya di `localStorage`** peramban dengan kunci
   `saring.theme`. Tidak ada cookie tema, tidak ada permintaan jaringan, dan

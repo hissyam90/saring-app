@@ -57,12 +57,14 @@ Yang diperiksa oleh `tests/e2e/contrast.spec.ts`:
   form masuk, pencarian Pustaka, dan menu navigasi mobile.
 - **Batas kontrol dan placeholder** — isian latar kontrol berbeda >=3:1 dari
   latar sekitar atau border >=3:1; placeholder >=4,5:1.
-- **Pemilih tema** — berada di `/akun` (bukan di navigasi), mengalahkan
-  preferensi sistem, bertahan setelah reload, dan `Ikuti sistem` memulihkan
-  perilaku otomatis. Preferensi hanya di `localStorage` (`saring.theme`); HTML
-  dari server tidak memuat atribut `data-theme`.
+- **Pemilih tema** — berada di `/akun` (bukan di navigasi). Default pengunjung
+  baru adalah **Terang** (tidak mengikuti OS); preferensi tersimpan `dark`,
+  `light`, maupun `system` tetap dihormati, bertahan setelah reload, dan
+  `Ikuti sistem` mengikuti pengaturan OS. Preferensi hanya di `localStorage`
+  (`saring.theme`); HTML dari server tidak memuat atribut `data-theme`.
 - **Tanpa kilatan tema** — `data-theme` terpasang sebelum `first-paint`
-  (direkam lewat `MutationObserver` dan `PerformanceObserver`).
+  (direkam lewat `MutationObserver` dan `PerformanceObserver`), termasuk untuk
+  pengunjung baru pada sistem gelap.
 - **Aksen** — aksen kuat (lime, coral, amber, safe) tetap berona dan kontras di
   kedua tema; latar aksen lembut tidak menjadi abu-abu dan tetap terpisah dari
   aksen kuatnya.

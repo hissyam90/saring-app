@@ -64,6 +64,10 @@ const light = parseTokens(themeBlock);
  * karena selektor `:root[data-theme="dark"]` juga dipakai pada aturan
  * `color-scheme` yang lebih pendek di awal berkas; yang kita butuhkan adalah
  * blok token di bagian akhir.
+ *
+ * Blok gelap "Ikuti sistem" memakai selektor `:root[data-theme="system"]` di
+ * dalam `@media (prefers-color-scheme: dark)`. Tanpa atribut tema, palet terang
+ * yang berlaku (default light).
  */
 const manualDarkStart = css.lastIndexOf(':root[data-theme="dark"]');
 const manualDarkBlock =
@@ -72,7 +76,7 @@ const systemDarkIndex = css.lastIndexOf('@media (prefers-color-scheme: dark)');
 const systemDarkBlock =
   systemDarkIndex === -1
     ? null
-    : ruleBody(css, ':root:not([data-theme="light"])', systemDarkIndex);
+    : ruleBody(css, ':root[data-theme="system"]', systemDarkIndex);
 const manualDark = parseTokens(manualDarkBlock);
 const systemDark = parseTokens(systemDarkBlock);
 
@@ -80,7 +84,9 @@ const problems = [];
 
 if (!manualDarkBlock) problems.push('Blok :root[data-theme="dark"] tidak ditemukan.');
 if (!systemDarkBlock)
-  problems.push('Blok gelap di dalam @media (prefers-color-scheme: dark) tidak ditemukan.');
+  problems.push(
+    'Blok :root[data-theme="system"] di dalam @media (prefers-color-scheme: dark) tidak ditemukan.',
+  );
 
 // Palet gelap harus identik pada kedua jalur (manual dan mengikuti sistem).
 const darkKeys = new Set([...Object.keys(manualDark), ...Object.keys(systemDark)]);

@@ -19,6 +19,9 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 3100;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const PASSWORD = "kata-sandi-uji-yang-panjang-123";
 
+/** Kunci localStorage preferensi tema. Harus sama dengan `lib/theme.ts`. */
+const THEME_STORAGE_KEY = "saring.theme";
+
 const suffix = randomUUID().slice(0, 8);
 const AUTHOR_EMAIL = `v16-author-${suffix}@contoh.test`;
 const ADMIN_EMAIL = `v16-admin-${suffix}@contoh.test`;
@@ -170,6 +173,12 @@ test.describe("UI: editor dan search bar", () => {
     }
     expect(light!.bodyBg).toBe("rgb(245, 242, 234)");
 
+    // Mode gelap dipilih manual: default pengunjung baru kini light, jadi
+    // preferensi sistem saja tidak lagi mengubah tema.
+    await page.evaluate(
+      (key) => window.localStorage.setItem(key, "dark"),
+      THEME_STORAGE_KEY,
+    );
     await page.emulateMedia({ colorScheme: "dark" });
     await page.reload();
     const dark = await readBorders();
@@ -177,27 +186,25 @@ test.describe("UI: editor dan search bar", () => {
     for (const side of ["top", "right", "bottom", "left"] as const) {
       expect(dark![side]).toBe("2px");
     }
-    // Tema mengikuti preferensi sistem; kontrol manual ada di navbar tetapi
-    // tidak mengubah apa pun sampai pengguna memilih.
     expect(dark!.bodyBg).not.toBe(light!.bodyBg);
     expect(dark!.color).not.toBe(light!.color);
   });
 
-  test("tema mengikuti preferensi sistem tanpa tombol di navigasi", async ({
+  test("pengunjung baru selalu light; kontrol tema tidak ada di navigasi", async ({
     page,
   }) => {
+    // Default baru: light meski sistem gelap.
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/");
-    const darkBody = await page.evaluate(
+    const bodyWithDarkOs = await page.evaluate(
       () => getComputedStyle(document.body).backgroundColor,
     );
-
-    await page.emulateMedia({ colorScheme: "light" });
-    const lightBody = await page.evaluate(
-      () => getComputedStyle(document.body).backgroundColor,
-    );
-
-    expect(darkBody).not.toBe(lightBody);
+    expect(bodyWithDarkOs).toBe("rgb(245, 242, 234)");
+    expect(
+      await page.evaluate(() =>
+        document.documentElement.getAttribute("data-theme"),
+      ),
+    ).toBe("light");
 
     // Kontrol tema berada di halaman akun (lihat tests/e2e/contrast.spec.ts),
     // bukan di sidebar atau menu navigasi.
