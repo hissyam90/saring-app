@@ -49,7 +49,7 @@ export default async function AkunPage() {
   });
 
   return (
-    <div className="w-full max-w-3xl px-4 py-8 text-left sm:px-6 sm:py-10">
+    <div className="w-full max-w-none px-4 py-8 text-left sm:px-6 sm:py-10">
       <header className="mb-5">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
           Akun
