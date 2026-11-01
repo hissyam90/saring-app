@@ -44,7 +44,7 @@ const LOST_PHONE_REASON =
 
 // 2. Permintaan uang
 const MONEY_VERB =
-  /(?:pinjem(?:in|kan)?|pinjam(?:in|kan)?|minjem(?:in)?|minjam(?:in)?|talang(?:in)?|bantuin?\s*(?:duit|uang|dana)|butuh\s*(?:duit|uang|dana|modal)|kirim(?:in)?\s*(?:duit|uang)|transfer(?:in)?)/i;
+  /(?:pinjem(?:in|kan)?|pinjam(?:in|kan)?|minjem(?:in)?|minjam(?:in)?|talang(?:in)?|bantuin?\s*(?:duit|uang|dana)|butuh\s*(?:duit|uang|dana|modal)|kirim(?:in)?\s*(?:duit|uang|dana)|minta\s*(?:duit|uang|dana)|transfer(?:in)?\s*(?:ke|dulu|sekarang|ya|dong|sejumlah)|\btf\s*(?:ke|dulu|sekarang|ya|dong)|(?:tolong|bisa|boleh|mohon|harap)\s+(?:transfer|kirim|bayar|setor))/i;
 
 const MONEY_AMOUNT =
   /\b\d[\d.,]*\s*(?:rb|ribu|k|jt|juta|gopek|cepek)?\b|\b(?:duit|uang|dana|biaya|modal)\b/i;

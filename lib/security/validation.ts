@@ -34,6 +34,23 @@ export const loginSchema = z.object({
   captchaToken: z.string().optional(),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: EMAIL,
+  captchaToken: z.string().optional(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z
+    .string()
+    .trim()
+    .min(20, "Tautan reset tidak valid.")
+    .max(200, "Tautan reset tidak valid."),
+  password: z
+    .string()
+    .min(10, "Kata sandi minimal 10 karakter.")
+    .max(128, "Kata sandi maksimal 128 karakter."),
+});
+
 export const threadSchema = z.object({
   title: z
     .string()

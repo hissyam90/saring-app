@@ -4,7 +4,7 @@
 
 | Sumber | Tujuan | Integrasi | Credential | Status aktual |
 |---|---|---|---|---|
-| Rule engine lokal | Sinyal bahasa pesan | Client-side | Tidak | Aktif dan diuji |
+| Rule engine lokal | Sinyal bahasa pesan | Client-side | Tidak | Aktif dan diuji (aturan per klausa) |
 | Heuristik URL | Struktur hostname/URL | Client-side | Tidak | Aktif dan diuji |
 | Google Safe Browsing v5 | Reputasi URL | Route server `POST /api/url-reputation` | `GOOGLE_SAFE_BROWSING_API_KEY` (server) | **Provider utama.** Live test 28/10/2026: HTTP 200, no-match dan threat terbaca |
 | PhishTank | Catatan phishing komunitas | Tidak dipakai runtime | - | **Legacy.** Tanpa app key ditolak HTTP 403 |

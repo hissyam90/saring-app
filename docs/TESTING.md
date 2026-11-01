@@ -14,6 +14,7 @@ flowchart LR
 | Area | File | Status |
 |---|---|---|
 | Rule engine dan URL | `tests/unit/analysis.test.ts` | Lulus |
+| Kualitas deteksi: konteks klausa, false positive, kombinasi sinyal | `tests/unit/analysisQuality.test.ts` | Lulus |
 | Normalisasi nomor | `tests/unit/phone.test.ts` | Lulus |
 | Google Safe Browsing adapter mock | `tests/unit/googleSafeBrowsing.test.ts` | Lulus; live diuji terpisah |
 | Decoder protobuf | `tests/unit/gsbProtobuf.test.ts` | Lulus, memakai byte nyata |
@@ -22,8 +23,14 @@ flowchart LR
 | Grid Pustaka dan filter | `tests/components/library.test.tsx` | Lulus |
 | Simulator dan ringkasan | `tests/components/simulator.test.tsx` | Lulus |
 | Rencana tindakan | `tests/components/guide.test.tsx` | Lulus |
+| Sinkronisasi sidebar (user/admin/logout) | `tests/components/auth-menu.test.tsx` | Lulus |
+| Pengarah hasil pemeriksaan ke `/langkah` | `tests/components/result-view.test.tsx` | Lulus |
 | Analyzer dan mode checker | `tests/components/analyzer.test.tsx`, `checker-modes.test.tsx` | Lulus |
 | Rute, Pustaka, Latihan, Langkah, mobile | `tests/e2e/app.spec.ts` | Lulus |
+| Reset kata sandi: token, store, template, Resend | `tests/unit/password-reset.test.ts` | Lulus |
+| Route forgot/reset password | `tests/unit/password-reset-route.test.ts` | Lulus |
+| Keamanan reset password (E2E, tanpa email) | `tests/e2e/password-reset-security.spec.ts` | Lulus |
+| Reset kata sandi lewat email sungguhan (Testmail) | `tests/e2e/password-reset-email.spec.ts` | Opt-in, lihat bagian E2E email |
 | Turnstile (Siteverify) | `tests/unit/turnstile.test.ts` | Lulus |
 | Rate limit dan identitas klien | `tests/unit/rate-limit.test.ts` | Lulus |
 | Pemeriksaan origin/CSRF | `tests/unit/origin.test.ts` | Lulus |
@@ -170,8 +177,22 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 - **Latihan**: 18 skenario, tepat satu opsi bernilai 100 per skenario, mode sesi
   memilih jumlah soal tanpa duplikasi, pengacak deterministik, dan `scoreSession`
   mencakup poin penuh, poin parsial, 0 poin, ringkasan kategori, serta sesi kosong.
-- **Rencana tindakan**: lima bagian tampil untuk setiap kondisi, kondisi awal
-  dari `?kondisi=`, dan tidak ada janji pengembalian dana.
+- **Pusat Bantuan & Pelaporan**: lima bagian tampil untuk setiap kondisi, kondisi
+  awal dari `?kondisi=`, checklist bukti interaktif hanya di halaman, kanal resmi
+  AduanNomor dan AduanKonten, serta tidak ada janji pengembalian dana.
+- **Sinkronisasi sidebar**: `AccountMenu` memuat ulang status dari
+  `/api/auth/me` saat event `saring:auth-changed` diterima; test menegaskan menu
+  anonim, user, admin, dan logout berubah tanpa reload. Test juga menegaskan
+  kegagalan jaringan/HTTP 5xx tidak mengubah status terakhir, respons lama tidak
+  menimpa hasil baru, dan kegagalan logout menampilkan pesan error tanpa
+  mengubah tampilan menjadi anonim.
+- **Pengarah hasil pemeriksaan**: sinyal tautan, kredensial, dan permintaan uang
+  dapat menghasilkan beberapa pilihan sekaligus (mis. URL + transfer, URL + OTP,
+  OTP + transfer, ketiganya), tanpa tautan duplikat dan tanpa menyimpulkan
+  pengguna sudah menjadi korban. Pilihan "belum" selalu berlabel "Saya baru
+  menerima pesan"; pilihan "sudah" diurutkan menurut prioritas (transfer →
+  kredensial → tautan) dan teks bantuan prioritas hanya muncul saat lebih dari
+  satu sinyal terdeteksi.
 - **Homepage**: section daftar fitur yang duplikat sudah dihapus dan diganti
   bagian "Kalau sudah terlanjur". Footer memuat batasan, bukan mengulang
   prinsip privasi.
@@ -222,6 +243,78 @@ Catatan untuk database bersama: bila role database tidak boleh membuat database
 baru, E2E dapat diarahkan ke schema terpisah lewat parameter `options`
 (`-c search_path=<schema>`), sehingga tabel `public` tidak tersentuh.
 
+## E2E email (Testmail)
+
+Menguji alur **lupa kata sandi → email sungguhan (Resend) → Testmail → reset
+kata sandi → login ulang**, termasuk pemeriksaan hash token di database.
+
+### Yang dibutuhkan
+
+1. Akun [Testmail](https://testmail.app). **Namespace** dan **API Key** diambil
+   dari konsol Testmail.
+2. Akun Resend dengan **domain pengirim terverifikasi**. Tanpa domain
+   terverifikasi, email tidak terkirim dan pengujian email akan gagal.
+3. PostgreSQL uji yang sudah dimigrasikan (`npm run db:migrate`), karena test
+   membaca tabel `password_reset_tokens` dan `users.session_version`.
+
+### Variabel lingkungan
+
+| Variabel | Keterangan |
+|---|---|
+| `TESTMAIL_NAMESPACE` | Namespace Testmail (mis. `18k91`) |
+| `TESTMAIL_APIKEY` | API key Testmail; hanya untuk test, jangan di production |
+| `RESEND_API_KEY` | API key Resend; hanya dibaca di server |
+| `RESEND_FROM` | Alamat pengirim terverifikasi, mis. `Saring <no-reply@saring.app>` |
+| `SARING_APP_ORIGIN` | **Wajib di production** (mis. `https://saring.app`). Tanpa nilai ini, tautan reset tidak dibuat agar header Host tidak dapat menentukan domain. Di E2E nilainya diisi `http://127.0.0.1:<port>` oleh `playwright.config.ts`. |
+
+Simpan nilainya di `.env.local` (sudah di-gitignore). Dokumentasi ini tidak
+memuat nilai rahasia apa pun.
+
+### Menjalankan
+
+```bash
+npm run test:e2e:email
+```
+
+Perintah tersebut:
+
+- memuat `.env.local`,
+- berhenti dengan pesan konfigurasi jelas bila salah satu variabel belum diset —
+  **tanpa** memanggil API Testmail dan tanpa dianggap berhasil,
+- menjalankan `tests/e2e/password-reset-email.spec.ts` dengan `SARING_EMAIL_E2E=1`.
+
+`npm run test:e2e` tidak menjalankan spec ini: `playwright.config.ts`
+mengabaikannya kecuali `SARING_EMAIL_E2E=1`, sehingga E2E biasa tidak
+bergantung pada layanan eksternal.
+
+**Isolasi email.** Hanya `npm run test:e2e:email` (yang menyetel
+`SARING_EMAIL_E2E=1`) yang meneruskan kredensial Resend ke server uji. Run E2E
+lain — termasuk `password-reset-security.spec.ts` — menjalankan server dengan
+`RESEND_API_KEY`/`RESEND_FROM` kosong, sehingga route lupa kata sandi berhenti
+sebagai `not-configured` dan **tidak pernah** memanggil Resend. Ini bukan mock:
+spec email tetap memakai Resend dan Testmail sungguhan.
+
+### Cara membaca hasil
+
+- Setiap run memakai tag acak `saring-reset-<acak>`; email dari run lain tidak
+  ikut terbaca.
+- Polling maksimal 120 detik dengan interval 2 detik. Bila habis, pesan error
+  menampilkan tag dan masalah terakhir.
+- Tautan reset tidak pernah dicetak ke terminal atau log.
+- Bila email tidak diterima, test **gagal** (bukan dilewati).
+
+### Menonaktifkan
+
+Kosongkan atau hapus `TESTMAIL_APIKEY`/`RESEND_API_KEY`; perintah akan berhenti
+dengan pesan konfigurasi. Spec juga melewati dirinya sendiri (dengan alasan
+tertulis) bila dijalankan langsung tanpa konfigurasi.
+
+### Batasan
+
+- Testmail hanya menerima email; pengiriman tetap melalui Resend.
+- Bila domain Resend belum terverifikasi, E2E email akan gagal/timeout. Itu
+  kondisi yang benar: pengujian tidak boleh diklaim berhasil.
+
 ## Cakupan
 
 ### Unit (`tests/unit/analysis.test.ts`)
@@ -249,6 +342,11 @@ Menguji mesin aturan tanpa peramban:
 
 - `app.spec.ts`. kelima rute dimuat langsung tanpa 404; alur analisis nyata;
   kontrol & pemberitahuan tetap berfungsi di viewport seluler; menu seluler terbuka.
+- `password-reset-security.spec.ts` (tanpa layanan email): respons forgot password
+  setara untuk email terdaftar/tidak, token tidak valid/kedaluwarsa/dipakai ulang
+  ditolak, kata sandi lama tidak dapat dipakai lagi sedangkan kata sandi baru
+  berhasil login, sesi lama dicabut, dan token/kata sandi/kunci layanan tidak
+  muncul di respons maupun aset browser.
 
 Playwright menjalankan server produksi (`npm run build && npm run start`),
 bukan server dev, agar menguji artefak yang benar-benar digunakan saat rilis.

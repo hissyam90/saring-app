@@ -17,6 +17,20 @@ export interface RateLimitResult {
 export const RATE_LIMITS = {
   login: { name: "login", limit: 8, windowSeconds: 300 },
   register: { name: "register", limit: 5, windowSeconds: 3600 },
+  /** Permintaan tautan reset per alamat IP. */
+  passwordReset: { name: "password-reset", limit: 5, windowSeconds: 900 },
+  /** Permintaan tautan reset per alamat email (mencegah pemboman satu akun). */
+  passwordResetEmail: {
+    name: "password-reset-email",
+    limit: 3,
+    windowSeconds: 3600,
+  },
+  /** Percobaan memakai token reset. */
+  passwordResetConfirm: {
+    name: "password-reset-confirm",
+    limit: 10,
+    windowSeconds: 900,
+  },
   threadCreate: { name: "thread-create", limit: 5, windowSeconds: 600 },
   replyCreate: { name: "reply-create", limit: 20, windowSeconds: 600 },
   submissionCreate: { name: "submission-create", limit: 4, windowSeconds: 3600 },

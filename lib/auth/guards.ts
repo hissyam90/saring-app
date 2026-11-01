@@ -11,8 +11,14 @@ export interface AuthContext {
 export async function getCurrentUser(): Promise<User | null> {
   const session = await getSession();
   if (!session.userId) return null;
-  const user = await getStore().findUserById(session.userId);
-  return user ?? null;
+  const store = getStore();
+  const user = await store.findUserById(session.userId);
+  if (!user) return null;
+  // Cookie lama dari sebelum reset kata sandi tidak boleh tetap berlaku.
+  // Sesi tanpa `version` (diterbitkan sebelum fitur ini) dianggap versi 0.
+  const currentVersion = await store.getSessionVersion(user.id);
+  if (currentVersion !== (session.version ?? 0)) return null;
+  return user;
 }
 
 export class HttpError extends Error {

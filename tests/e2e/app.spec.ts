@@ -9,7 +9,7 @@ const ROUTES: { path: string; heading: string; tagline?: string }[] = [
   },
   { path: "/periksa", heading: "Periksa pesan" },
   { path: "/latihan", heading: "Latihan keputusan" },
-  { path: "/langkah", heading: "Langkah selanjutnya" },
+  { path: "/langkah", heading: "Pusat Bantuan & Pelaporan" },
   { path: "/pustaka", heading: "Pustaka kepercayaan digital" },
 ];
 
@@ -137,7 +137,7 @@ test.describe("Latihan", () => {
   });
 });
 
-test.describe("Rencana tindakan", () => {
+test.describe("Pusat Bantuan & Pelaporan", () => {
   test("menampilkan lima bagian rencana", async ({ page }) => {
     await page.goto("/langkah");
     for (const heading of [
@@ -151,6 +151,10 @@ test.describe("Rencana tindakan", () => {
         page.getByRole("heading", { name: heading }),
       ).toBeVisible();
     }
+    // Kanal resmi untuk nomor seluler tersedia pada kondisi awal.
+    await expect(
+      page.getByRole("link", { name: /AduanNomor/ }),
+    ).toHaveAttribute("href", "https://aduannomor.id/");
   });
 
   test("membuka kondisi tertentu dari tautan", async ({ page }) => {
@@ -161,16 +165,21 @@ test.describe("Rencana tindakan", () => {
     await expect(
       page.getByRole("link", { name: /Indonesia Anti-Scam Centre/ }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Buka IASC/ }),
+    ).toHaveAttribute("href", "https://iasc.ojk.go.id/");
   });
 
-  test("hasil pemeriksaan menautkan ke rencana tindakan", async ({ page }) => {
+  test("hasil pemeriksaan menautkan ke kondisi yang relevan", async ({ page }) => {
     await page.goto("/periksa");
     await page
       .getByLabel("Pesan yang ingin diperiksa")
       .fill("Segera kirim kode OTP Anda atau akun Anda akan diblokir.");
     await page.getByRole("button", { name: "Periksa pesan" }).click();
-    await page.getByRole("link", { name: /Susun rencana tindakan/ }).click();
-    await expect(page).toHaveURL(/\/langkah\?kondisi=/);
+    await page
+      .getByRole("link", { name: "Saya sudah memasukkan data" })
+      .click();
+    await expect(page).toHaveURL(/\/langkah\?kondisi=entered-credentials/);
   });
 });
 

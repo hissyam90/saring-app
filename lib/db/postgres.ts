@@ -222,6 +222,98 @@ export function createPostgresStore(pool: Pool): Store {
       return { items: rows.map(toUser), total: await this.countUsers() };
     },
 
+    async createPasswordResetToken(input) {
+      // Hanya tautan terbaru yang berlaku: token lama ditandai terpakai.
+      await q(
+        `update password_reset_tokens
+            set used_at = now()
+          where user_id = $1 and used_at is null`,
+        [input.userId],
+      );
+      await q(
+        `insert into password_reset_tokens (user_id, token_hash, expires_at)
+         values ($1, $2, $3)`,
+        [input.userId, input.tokenHash, input.expiresAt],
+      );
+    },
+
+    async consumePasswordResetToken(tokenHash) {
+      // Satu statement: klaim token hanya bila belum dipakai dan belum habis.
+      const rows = await q(
+        `update password_reset_tokens
+            set used_at = now()
+          where token_hash = $1
+            and used_at is null
+            and expires_at > now()
+        returning user_id`,
+        [tokenHash],
+      );
+      return rows[0] ? String(rows[0].user_id) : null;
+    },
+
+    async setUserPassword(userId, passwordHash) {
+      await q(
+        `update users
+            set password_hash = $2,
+                session_version = session_version + 1
+          where id = $1`,
+        [userId, passwordHash],
+      );
+    },
+
+    async resetPasswordWithToken(input) {
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+
+        // Klaim token dan ganti kata sandi berada dalam transaksi yang sama:
+        // bila update users gagal, rollback mengembalikan status token.
+        const claimed = await client.query(
+          `update password_reset_tokens
+              set used_at = now()
+            where token_hash = $1
+              and used_at is null
+              and expires_at > now()
+          returning user_id`,
+          [input.tokenHash],
+        );
+        const userId = claimed.rows[0]?.user_id;
+        if (!userId) {
+          await client.query("rollback");
+          return null;
+        }
+
+        const updated = await client.query(
+          `update users
+              set password_hash = $2,
+                  session_version = session_version + 1
+            where id = $1
+          returning id`,
+          [String(userId), input.passwordHash],
+        );
+        if (!updated.rows[0]) {
+          await client.query("rollback");
+          return null;
+        }
+
+        await client.query("commit");
+        return { userId: String(userId) };
+      } catch (error) {
+        await client.query("rollback").catch(() => {});
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+
+    async getSessionVersion(userId) {
+      const rows = await q(
+        `select session_version from users where id = $1`,
+        [userId],
+      );
+      return rows[0] ? Number(rows[0].session_version) : 0;
+    },
+
     async createThread(input) {
       const rows = await q(
         `insert into threads (author_id, title, category, body, article_slug)

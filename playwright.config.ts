@@ -21,6 +21,15 @@ loadEnvConfig(process.cwd(), true);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3100;
 
+/**
+ * E2E email (Resend + Testmail) bersifat opt-in. Hanya run inilah yang boleh
+ * memakai kredensial Resend asli; run E2E lain (termasuk
+ * `password-reset-security.spec.ts`) mengosongkan kredensial tersebut sehingga
+ * server tidak mungkin mengirim email keluar.
+ */
+const EMAIL_E2E = process.env.SARING_EMAIL_E2E === "1";
+const APP_ORIGIN = `http://127.0.0.1:${PORT}`;
+
 if (!process.env.DATABASE_URL) {
   throw new Error(
     [
@@ -40,6 +49,12 @@ if (!process.env.DATABASE_URL) {
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  /**
+   * Spec email memakai layanan eksternal (Testmail + Resend) dan hanya
+   * dijalankan lewat `npm run test:e2e:email`. E2E biasa tidak boleh
+   * bergantung pada layanan itu.
+   */
+  testIgnore: EMAIL_E2E ? [] : ["**/password-reset-email.spec.ts"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -80,6 +95,20 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
       CLOUDFLARE_TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      /**
+       * Server berjalan dengan NODE_ENV=production, sehingga `appOrigin()`
+       * menolak memakai header Host. Origin eksplisit ini menggantikan
+       * konfigurasi produksi selama pengujian.
+       */
+      SARING_APP_ORIGIN: APP_ORIGIN,
+      /**
+       * Isolasi email: hanya `npm run test:e2e:email` yang mengirim email
+       * sungguhan. Run lain memakai nilai kosong sehingga
+       * `sendPasswordResetEmail` berhenti sebagai "not-configured" dan tidak
+       * pernah memanggil Resend. Ini bukan mock: spec email tetap memakai
+       * Resend + Testmail asli.
+       */
+      ...(EMAIL_E2E ? {} : { RESEND_API_KEY: "", RESEND_FROM: "" }),
     },
   },
 });

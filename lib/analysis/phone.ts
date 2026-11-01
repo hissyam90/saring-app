@@ -43,6 +43,8 @@ export function normalizePhone(input: string): NormalizedPhone {
 
   if (digits.startsWith("62")) {
     digits = digits.slice(2);
+    // Kebiasaan menulis "+62 0812…" tetap diterima sebagai 0812…
+    if (digits.startsWith("0")) digits = digits.slice(1);
   } else if (digits.startsWith("0")) {
     digits = digits.slice(1);
   }

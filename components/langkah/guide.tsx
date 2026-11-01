@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   Banknote,
-  Check,
   ExternalLink,
   IdCard,
   Inbox,
@@ -36,6 +35,7 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
       ? initialSituation
       : SAFETY_GUIDES[0].id,
   );
+  const [checkedEvidence, setCheckedEvidence] = useState<Record<string, boolean>>({});
   const guide =
     SAFETY_GUIDES.find((item) => item.id === selectedId) ?? SAFETY_GUIDES[0];
   const Icon = ICONS[guide.id] ?? Inbox;
@@ -72,7 +72,8 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
           })}
         </div>
         <p className="mt-3 border-t border-line pt-3 text-xs leading-5 text-ink-muted">
-          Pilihan Anda hanya tersimpan di peramban ini selama sesi berlangsung.
+          Pilihan kondisi dan checklist hanya hidup di halaman ini. Keduanya
+          hilang saat halaman dimuat ulang dan tidak dikirim ke server.
         </p>
       </div>
 
@@ -95,6 +96,26 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
 
         {/* 1. Prioritas sekarang */}
         <section className="border-b border-line px-4 py-3.5 sm:px-5">
+          {guide.id === "transferred-money" ? (
+            <div className="mb-3 border-2 border-coral bg-coral-soft px-3 py-2.5" role="alert">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-coral">
+                Tindakan darurat
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-ink">
+                Hubungi bank atau e-wallet lewat kanal resmi sekarang, lalu
+                laporkan ke IASC. Jangan menunggu sampai dana berpindah.
+              </p>
+              <a
+                href="https://iasc.ojk.go.id/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-3 py-2 text-sm font-bold text-ink hover:bg-lime"
+              >
+                Buka IASC — OJK
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          ) : null}
           <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-coral">
             <span className="h-2 w-2 bg-coral" aria-hidden="true" />
             Lakukan sekarang
@@ -144,16 +165,40 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
             Bukti yang perlu disimpan
           </h3>
           <ul className="mt-2 grid gap-1.5">
-            {guide.evidenceChecklist.map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <Check
-                  className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted"
-                  aria-hidden="true"
-                />
-                <span className="text-sm leading-6 text-ink-soft">{item}</span>
-              </li>
-            ))}
+            {guide.evidenceChecklist.map((item) => {
+              const key = `${guide.id}:${item}`;
+              const checked = checkedEvidence[key] === true;
+              return (
+                <li key={item}>
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2 px-1 py-1 text-sm leading-6 text-ink-soft hover:bg-lime-soft">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) =>
+                        setCheckedEvidence((current) => ({
+                          ...current,
+                          [key]: event.target.checked,
+                        }))
+                      }
+                      className="mt-1.5 h-4 w-4 accent-lime"
+                    />
+                    <span className={checked ? "line-through opacity-60" : undefined}>
+                      {item}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
           </ul>
+          {guide.evidenceNote ? (
+            <p className="mt-2 border-l-2 border-ink bg-lime-soft px-2.5 py-2 text-xs leading-5 text-ink">
+              {guide.evidenceNote}
+            </p>
+          ) : null}
+          <p className="mt-2 text-xs leading-5 text-ink-muted">
+            Checklist ini hanya untuk membantu Anda mengingat bukti. Jangan unggah
+            NIK, KTP, rekening, bukti transfer, atau percakapan ke Saring.
+          </p>
         </section>
 
         {/* 4. Yang perlu diperiksa */}
@@ -213,11 +258,17 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
             </p>
           )}
 
-          <p className="mt-3 border-t border-line pt-3 text-xs leading-5 text-ink-muted">
-            Rencana ini bersifat umum dan tidak menggantikan penanganan resmi
-            dari bank, penyedia layanan, atau aparat penegak hukum. Pelaporan
-            tidak menjamin dana kembali.
-          </p>
+          <div className="mt-3 border-t border-line pt-3 text-xs leading-5 text-ink-muted">
+            <p>
+              Tautan di atas dibuka langsung oleh Anda di situs lembaga terkait.
+              Saring tidak mengirimkan data, memblokir nomor/rekening/website, atau
+              menyimpan bukti Anda.
+            </p>
+            <p className="mt-1.5">
+              Rencana ini tidak menggantikan penanganan bank, penyedia layanan,
+              OJK, Komdigi, atau kepolisian. Pelaporan tidak menjamin dana kembali.
+            </p>
+          </div>
         </section>
       </div>
     </div>

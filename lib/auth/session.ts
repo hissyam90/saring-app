@@ -7,6 +7,13 @@ export interface SessionData {
   role?: Role;
   /** Waktu login, dipakai untuk audit ringan di sisi server. */
   issuedAt?: number;
+  /**
+   * Versi sesi pengguna saat login. Nilai ini dibandingkan dengan
+   * `users.session_version` pada setiap pemeriksaan; setelah kata sandi
+   * direset, versi lama tidak lagi cocok dan cookie dianggap tidak sah.
+   * Sesi lama tanpa field ini diperlakukan sebagai versi 0.
+   */
+  version?: number;
 }
 
 const DEV_FALLBACK_SECRET =
@@ -43,11 +50,16 @@ export async function getSession() {
   return getIronSession<SessionData>(store, sessionOptions());
 }
 
-export async function createSession(userId: string, role: Role): Promise<void> {
+export async function createSession(
+  userId: string,
+  role: Role,
+  version = 0,
+): Promise<void> {
   const session = await getSession();
   session.userId = userId;
   session.role = role;
   session.issuedAt = Date.now();
+  session.version = version;
   await session.save();
 }
 

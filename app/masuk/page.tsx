@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AuthForm } from "@/components/auth/auth-form";
 import { getCurrentUser } from "@/lib/auth/guards";
 
@@ -26,6 +27,12 @@ export default async function MasukPage() {
       </header>
       <div className="border-2 border-ink bg-surface p-5">
         <AuthForm mode="login" />
+        <p className="mt-4 border-t border-line pt-3 text-xs leading-5 text-ink-muted">
+          Lupa kata sandi?{" "}
+          <Link href="/lupa-sandi" className="font-semibold text-ink underline">
+            Minta tautan reset
+          </Link>
+        </p>
       </div>
     </div>
   );

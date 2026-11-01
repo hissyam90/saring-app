@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { buttonClass, Notice } from "@/components/ui/primitives";
 import { TurnstileWidget } from "@/components/security/turnstile-widget";
+import { notifyAuthChanged } from "@/lib/auth/events";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
 
@@ -50,6 +51,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         return;
       }
 
+      notifyAuthChanged();
       router.push("/akun");
       router.refresh();
     } catch {

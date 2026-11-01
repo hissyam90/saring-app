@@ -75,14 +75,22 @@ bank. Soal diambil acak tanpa duplikasi dalam satu sesi. Setiap pilihan bernilai
 memuat poin, persentase, skor per kategori, dan daftar soal yang perlu dipelajari
 ulang.
 
-### Langkah selanjutnya (`/langkah`)
+### Pusat Bantuan & Pelaporan (`/langkah`)
 
 Enam kondisi pascainsiden: baru menerima pesan, terlanjur membuka tautan, sudah
 memasukkan kredensial, sudah mentransfer uang, akun mungkin diambil alih, dan
 sudah membagikan dokumen pribadi. Setiap kondisi menghasilkan lima bagian:
-lakukan sekarang, setelah itu, bukti yang perlu disimpan, yang perlu diperiksa,
-dan sumber bantuan resmi. Halaman ini dapat dibuka langsung dari hasil
-pemeriksaan lewat `/langkah?kondisi=...`.
+lakukan sekarang, setelah itu, bukti yang perlu disimpan (checklist interaktif
+yang tidak disimpan), yang perlu diperiksa, dan kanal bantuan resmi.
+
+Kanal resmi yang dirujuk: AduanNomor (Komdigi) untuk nomor seluler, AduanKonten
+untuk website/URL/konten, CekRekening untuk rekening dan e-wallet, serta IASC
+(OJK) untuk korban yang sudah mentransfer uang. Halaman ini dapat dibuka
+langsung dari hasil pemeriksaan lewat `/langkah?kondisi=...`.
+
+Saring tidak mengirim data ke lembaga mana pun, tidak menyimpan bukti, dan tidak
+memblokir nomor, rekening, atau website. Pelaporan dilakukan langsung di situs
+lembaga terkait.
 
 ### Pustaka (`/pustaka`)
 

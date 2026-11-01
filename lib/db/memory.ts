@@ -33,6 +33,7 @@ import { readRichDoc, type RichDoc } from "@/lib/content/rich-text";
 
 interface MemUser extends UserWithHash {
   removed: boolean;
+  sessionVersion: number;
 }
 interface MemThread {
   id: string;
@@ -161,6 +162,10 @@ export function createMemoryStore(): Store {
   const notifications = new Map<string, MemNotification>();
   const log: ModerationEntry[] = [];
   const buckets = new Map<string, { start: number; count: number }>();
+  const resetTokens = new Map<
+    string,
+    { userId: string; expiresAt: number; usedAt: number | null }
+  >();
 
   const name = (id: string) => users.get(id)?.displayName ?? "Pengguna";
   const toUser = (u: MemUser): User => ({
@@ -213,6 +218,7 @@ export function createMemoryStore(): Store {
         role: "user",
         createdAt: now(),
         removed: false,
+        sessionVersion: 0,
       };
       users.set(u.id, u);
       return toUser(u);
@@ -242,6 +248,54 @@ export function createMemoryStore(): Store {
         .sort((a, b) => desc(a.createdAt, b.createdAt))
         .map(toUser);
       return page(all, opts.page, opts.pageSize);
+    },
+
+    async createPasswordResetToken(input) {
+      // Hanya tautan terbaru yang berlaku untuk satu pengguna.
+      for (const [hash, record] of resetTokens) {
+        if (record.userId === input.userId && record.usedAt === null) {
+          resetTokens.set(hash, { ...record, usedAt: Date.now() });
+        }
+      }
+      resetTokens.set(input.tokenHash, {
+        userId: input.userId,
+        expiresAt: new Date(input.expiresAt).getTime(),
+        usedAt: null,
+      });
+    },
+
+    async consumePasswordResetToken(tokenHash) {
+      const record = resetTokens.get(tokenHash);
+      if (!record) return null;
+      if (record.usedAt !== null) return null;
+      if (record.expiresAt <= Date.now()) return null;
+      resetTokens.set(tokenHash, { ...record, usedAt: Date.now() });
+      return record.userId;
+    },
+
+    async setUserPassword(userId, passwordHash) {
+      const u = users.get(userId);
+      if (!u) return;
+      u.passwordHash = passwordHash;
+      u.sessionVersion += 1;
+    },
+
+    async resetPasswordWithToken(input) {
+      const record = resetTokens.get(input.tokenHash);
+      if (!record) return null;
+      if (record.usedAt !== null) return null;
+      if (record.expiresAt <= Date.now()) return null;
+      const u = users.get(record.userId);
+      if (!u) return null;
+      // Validasi selesai lebih dulu; perubahan baru diterapkan setelahnya.
+      resetTokens.set(input.tokenHash, { ...record, usedAt: Date.now() });
+      u.passwordHash = input.passwordHash;
+      u.sessionVersion += 1;
+      return { userId: record.userId };
+    },
+
+    async getSessionVersion(userId) {
+      return users.get(userId)?.sessionVersion ?? 0;
     },
 
     async createThread(input) {

@@ -1,5 +1,10 @@
 import Link from "next/link";
-import type { AnalysisResult, Finding, Severity } from "@/lib/analysis";
+import type {
+  AnalysisResult,
+  Finding,
+  FindingCategory,
+  Severity,
+} from "@/lib/analysis";
 import { CATEGORY_LABELS, DISCLAIMER } from "@/lib/analysis";
 import {
   BookOpen,
@@ -51,6 +56,73 @@ const TONE = {
     meter: "bg-ink",
   },
 } as const;
+
+type GuideLink = { href: string; label: string };
+
+interface GuideChoices {
+  links: GuideLink[];
+  /** Lebih dari satu sinyal tindakan terdeteksi sekaligus. */
+  multipleSignals: boolean;
+}
+
+/**
+ * Nama kategori harus sama persis dengan `FindingCategory` pada mesin analisis;
+ * `satisfies` membuat TypeScript gagal bila salah tulis atau kategori dihapus.
+ */
+const LINK_CATEGORY = "suspicious-link" satisfies FindingCategory;
+const CREDENTIAL_CATEGORY = "credential-theft" satisfies FindingCategory;
+const MONEY_CATEGORIES = [
+  "money-request",
+  "upfront-payment",
+] as const satisfies readonly FindingCategory[];
+
+function getGuideLinks(result: AnalysisResult): GuideChoices {
+  const categories = new Set(result.findings.map((finding) => finding.category));
+  const hasLink = result.detectedUrls.length > 0 || categories.has(LINK_CATEGORY);
+  const hasCredentials = categories.has(CREDENTIAL_CATEGORY);
+  const hasMoney = MONEY_CATEGORIES.some((category) => categories.has(category));
+
+  // Urutan prioritas tindakan yang sudah terjadi:
+  // transfer uang → memasukkan kredensial → membuka tautan.
+  const acted: GuideLink[] = [];
+  if (hasMoney) {
+    acted.push({
+      href: "/langkah?kondisi=transferred-money",
+      label: "Saya sudah transfer",
+    });
+  }
+  if (hasCredentials) {
+    acted.push({
+      href: "/langkah?kondisi=entered-credentials",
+      label: "Saya sudah memasukkan data",
+    });
+  }
+  if (hasLink) {
+    acted.push({
+      href: "/langkah?kondisi=clicked-link",
+      label: "Saya sudah membuka tautan",
+    });
+  }
+
+  // Satu pilihan untuk pengguna yang belum melakukan tindakan apa pun.
+  const links: GuideLink[] = [
+    {
+      href: "/langkah?kondisi=received-message",
+      label: "Saya baru menerima pesan",
+    },
+    ...acted,
+  ];
+
+  const seen = new Set<string>();
+  return {
+    links: links.filter((link) => {
+      if (seen.has(link.href)) return false;
+      seen.add(link.href);
+      return true;
+    }),
+    multipleSignals: acted.length > 1,
+  };
+}
 
 function SignalCard({ finding, index }: { finding: Finding; index: number }) {
   const accent = ACCENT[finding.severity];
@@ -114,6 +186,7 @@ function SignalCard({ finding, index }: { finding: Finding; index: number }) {
 
 export function ResultView({ result }: { result: AnalysisResult }) {
   const tone = TONE[result.verdict.tone];
+  const { links: guideLinks, multipleSignals } = getGuideLinks(result);
   const Icon = tone.icon;
 
   return (
@@ -255,21 +328,42 @@ export function ResultView({ result }: { result: AnalysisResult }) {
       </div>
 
       {/* 6. Tindakan lanjutan */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Link
-          href="/langkah?kondisi=received-message"
-          className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-lime px-4 py-2 text-sm font-bold text-on-lime"
+      <div className="mt-4">
+        {multipleSignals ? (
+          <p
+            id="panduan-prioritas"
+            className="mb-2 text-xs leading-5 text-ink-muted"
+          >
+            Beberapa sinyal terdeteksi sekaligus. Pilih satu kondisi paling serius
+            yang benar-benar sudah terjadi: sudah transfer uang, sudah memasukkan
+            kredensial, atau baru membuka tautan. Jika belum ada yang terjadi,
+            pilih “Saya baru menerima pesan”.
+          </p>
+        ) : null}
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Pilihan panduan tindakan"
+          aria-describedby={multipleSignals ? "panduan-prioritas" : undefined}
         >
-          <ListChecks className="h-4 w-4" aria-hidden="true" />
-          Susun rencana tindakan
-        </Link>
-        <Link
-          href="/pustaka"
-          className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-lime-soft"
-        >
-          <BookOpen className="h-4 w-4" aria-hidden="true" />
-          Baca panduan terkait
-        </Link>
+          {guideLinks.map((link, index) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`inline-flex min-h-11 items-center gap-2 border-2 border-ink px-4 py-2 text-sm font-bold ${index === 0 ? "bg-lime text-on-lime" : "bg-surface text-ink hover:bg-lime-soft"}`}
+            >
+              <ListChecks className="h-4 w-4" aria-hidden="true" />
+              {link.label}
+            </Link>
+          ))}
+          <Link
+            href="/pustaka"
+            className="inline-flex min-h-11 items-center gap-2 border-2 border-ink bg-surface px-4 py-2 text-sm font-bold text-ink hover:bg-lime-soft"
+          >
+            <BookOpen className="h-4 w-4" aria-hidden="true" />
+            Baca panduan terkait
+          </Link>
+        </div>
       </div>
     </section>
   );

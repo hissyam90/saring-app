@@ -17,16 +17,33 @@ export interface SafetyGuide {
   summary: string;
   steps: GuideStep[];
   evidenceChecklist: string[];
+  /** Catatan tambahan di bawah checklist bukti, mis. perlakuan data sensitif. */
+  evidenceNote?: string;
   /** Akun, perangkat, atau transaksi yang perlu diperiksa. */
   checks: string[];
   resources: OfficialResource[];
 }
 
 export const OFFICIAL_RESOURCES = {
+  aduanNomor: {
+    label: "AduanNomor — Komdigi",
+    url: "https://aduannomor.id/",
+    note: "Layanan resmi Komdigi untuk memeriksa nomor, mengadukan nomor seluler, dan melacak tiket aduan.",
+  },
+  aduanKonten: {
+    label: "AduanKonten",
+    url: "https://www.aduankonten.id/",
+    note: "Untuk website, URL, atau konten media sosial yang diduga melanggar ketentuan. Siapkan URL yang tepat, tangkapan layar, dan alasan pelaporan. Bukan kanal pelaporan kerugian transaksi keuangan.",
+  },
+  cekRekening: {
+    label: "CekRekening",
+    url: "https://cekrekening.id/",
+    note: "Memeriksa dan melaporkan rekening bank, e-wallet, atau wallet yang terindikasi terkait tindak pidana. Status verifikasi berasal dari layanan CekRekening, bukan penilaian Saring.",
+  },
   iasc: {
     label: "Indonesia Anti-Scam Centre (IASC)",
     url: "https://iasc.ojk.go.id/",
-    note: "Portal OJK untuk melaporkan penipuan transaksi keuangan.",
+    note: "Portal OJK untuk koordinasi penanganan laporan penipuan transaksi keuangan.",
   },
   kontak157: {
     label: "Kontak 157 OJK: Portal Pengaduan",
@@ -64,7 +81,7 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       "Apakah Anda memang sedang menunggu pesan dari pihak tersebut?",
       "Apakah ada permintaan uang, kode, atau data pribadi?",
     ],
-    resources: [OFFICIAL_RESOURCES.ojk],
+    resources: [OFFICIAL_RESOURCES.aduanNomor, OFFICIAL_RESOURCES.cekRekening],
   },
   {
     id: "clicked-link",
@@ -84,7 +101,7 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
       "Apakah ada aplikasi baru yang terpasang tanpa Anda sadari?",
       "Apakah riwayat peramban menunjukkan pengalihan ke situs lain?",
     ],
-    resources: [],
+    resources: [OFFICIAL_RESOURCES.aduanKonten],
   },
   {
     id: "entered-credentials",
@@ -115,18 +132,30 @@ export const SAFETY_GUIDES: SafetyGuide[] = [
     steps: [
       { priority: "segera", text: "Hubungi bank atau penyedia e-wallet lewat kanal resmi dan laporkan transaksinya." },
       { priority: "segera", text: "Minta penundaan atau pemblokiran transaksi bila masih memungkinkan." },
-      { priority: "penting", text: "Kumpulkan bukti: tanda terima, mutasi, percakapan, serta nomor rekening tujuan." },
-      { priority: "penting", text: "Laporkan melalui Indonesia Anti-Scam Centre (IASC) untuk penipuan keuangan." },
-      { priority: "penting", text: "Ajukan pengaduan lewat Kontak 157 OJK untuk lembaga jasa keuangan." },
-      { priority: "lanjutan", text: "Buat laporan kepolisian bila diperlukan, dengan membawa seluruh bukti." },
+      { priority: "penting", text: "Kumpulkan bukti transfer, mutasi, kronologi, percakapan, serta informasi rekening tujuan." },
+      { priority: "penting", text: "Laporkan melalui Indonesia Anti-Scam Centre (IASC) untuk koordinasi penanganan transaksi keuangan." },
+      { priority: "penting", text: "Pahami bahwa IASC berfokus pada koordinasi transaksi, sedangkan laporan kepolisian adalah jalur hukum yang berbeda." },
+      { priority: "lanjutan", text: "Buat laporan kepolisian bila diperlukan, dengan membawa seluruh bukti. Saring tidak menjanjikan dana kembali." },
     ],
-    evidenceChecklist: ["Tanda terima/bukti transfer dan mutasi", "Nomor rekening tujuan", ...COMMON_EVIDENCE],
+    evidenceChecklist: [
+      "Identitas dan dokumen pelapor yang diminta portal resmi IASC",
+      "Informasi rekening atau akun pembayaran Anda dan rekening/akun terlapor",
+      "Kronologi kejadian dengan tanggal dan waktu transaksi",
+      "Bukti transfer dan mutasi rekening",
+      "Bukti komunikasi dengan pelaku",
+    ],
+    evidenceNote:
+      "Siapkan berkas ini agar mudah dibuka saat mengisi laporan. Data identitas dan dokumen sensitif hanya diberikan langsung melalui portal resmi IASC ketika diminta. Jangan mengirim atau menyimpannya melalui Saring.",
     checks: [
       "Status transaksi di aplikasi bank atau e-wallet.",
       "Rekening tujuan, apakah masih bisa dilaporkan ke penyedia.",
       "Metode pembayaran yang tersimpan, apakah perlu dihapus.",
     ],
-    resources: [OFFICIAL_RESOURCES.iasc, OFFICIAL_RESOURCES.kontak157, OFFICIAL_RESOURCES.ojk],
+    resources: [
+      OFFICIAL_RESOURCES.iasc,
+      OFFICIAL_RESOURCES.kontak157,
+      OFFICIAL_RESOURCES.ojk,
+    ],
   },
   {
     id: "account-takeover",

@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
       passwordHash,
     });
 
-    await createSession(user.id, user.role);
+    await createSession(user.id, user.role, 0);
     return json({ id: user.id, displayName: user.displayName, role: user.role }, 201);
   });
 }

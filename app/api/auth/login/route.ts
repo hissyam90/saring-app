@@ -38,7 +38,11 @@ export async function POST(request: Request): Promise<Response> {
 
     if (!record || !ok) return fail(GENERIC, 401);
 
-    await createSession(record.id, record.role);
+    await createSession(
+      record.id,
+      record.role,
+      await store.getSessionVersion(record.id),
+    );
     return json({ id: record.id, displayName: record.displayName, role: record.role });
   });
 }

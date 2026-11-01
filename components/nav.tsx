@@ -124,7 +124,7 @@ export function Nav() {
             <p className="mt-3 border-t border-white/15 px-3 pt-3 text-xs leading-5 text-graphite-ink/65">
               Pesan &amp; tautan dianalisis di peramban Anda.
             </p>
-            <AccountMenu variant="mobile" />
+            <AccountMenu variant="mobile" onNavigate={() => setOpen(false)} />
           </div>
         </div>
       ) : null}

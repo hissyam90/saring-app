@@ -69,6 +69,49 @@ export interface Store {
   countUsers(): Promise<number>;
   listUsers(opts: ListUsersOptions): Promise<Paged<User>>;
 
+  // --- Reset kata sandi ---------------------------------------------------
+  /**
+   * Menyimpan hash token reset dan membatalkan token lain milik pengguna yang
+   * masih aktif, sehingga hanya tautan terbaru yang berlaku.
+   */
+  createPasswordResetToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: string;
+  }): Promise<void>;
+  /**
+   * Memakai token secara atomik. Mengembalikan `userId` hanya bila token ada,
+   * belum pernah dipakai, dan belum kedaluwarsa. Pemanggilan kedua untuk token
+   * yang sama selalu mengembalikan `null`.
+   *
+   * Catatan: primitif ini **tidak** mengubah kata sandi. Route reset wajib
+   * memakai {@link Store.resetPasswordWithToken} agar klaim token dan
+   * pergantian kata sandi terjadi dalam satu transaksi.
+   */
+  consumePasswordResetToken(tokenHash: string): Promise<string | null>;
+  /**
+   * Menukar token reset dengan kata sandi baru secara transaksional.
+   *
+   * - `null` → token tidak valid, kedaluwarsa, atau sudah dipakai.
+   * - `{ userId }` → token diklaim **dan** kata sandi diperbarui.
+   *
+   * Bila pembaruan kata sandi gagal, seluruh transaksi di-rollback sehingga
+   * token tidak hangus dan pengguna dapat mencoba lagi dengan tautan yang sama.
+   * Klaim token tetap dilakukan dengan satu `UPDATE ... RETURNING` sehingga dua
+   * permintaan bersamaan tidak mungkin sama-sama berhasil.
+   */
+  resetPasswordWithToken(input: {
+    tokenHash: string;
+    passwordHash: string;
+  }): Promise<{ userId: string } | null>;
+  /**
+   * Mengganti hash kata sandi sekaligus menaikkan `session_version`, sehingga
+   * seluruh sesi yang diterbitkan sebelum perubahan ini tidak lagi sahih.
+   */
+  setUserPassword(userId: string, passwordHash: string): Promise<void>;
+  /** Versi sesi saat ini; dipakai untuk memvalidasi cookie iron-session. */
+  getSessionVersion(userId: string): Promise<number>;
+
   createThread(input: {
     authorId: string;
     title: string;

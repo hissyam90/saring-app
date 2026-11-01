@@ -9,8 +9,19 @@ import type {
 } from "./types";
 import { DISCLAIMER, SEVERITY_WEIGHT } from "./types";
 import { extractUrls } from "./url";
+import { inspectLink } from "./link";
+import type { LinkInspection } from "./link";
 import { analyzeSocialEngineering } from "./socialEngineering";
 import { buildVerdict } from "./verdict";
+import {
+  clauseContaining,
+  hasDemandVerb,
+  isPastNarrative,
+  isProtective,
+  isReportedSpeech,
+  splitClauses,
+} from "./context";
+import type { Clause } from "./context";
 
 export const MAX_INPUT_LENGTH = 2500;
 
@@ -112,34 +123,44 @@ function forEachMatch(
 const CREDENTIAL_TERMS = [
   /kode\s*otp/,
   /\botp\b/,
+  /\b0tp\b/,
+  /\bo\s*t\s*p\b/,
   /one-?time\s*pass/,
   /kode\s*verif/,
   /kode\s*konfirmasi/,
   /kode\s*rahasia/,
   /kode\s*pemulihan/,
+  /kode\s*pengaman/,
+  /kode\s*unik/,
+  /kode\s*(?:\d{1,2}\s*)?(?:digit|angka)\b/,
+  /kode\s+(?:yang\s+)?(?:baru\s+)?(?:masuk|dikirim|datang|diterima)\b/,
   /recovery\s*code/,
   /kata\s*sandi/,
   /password/,
   /\bpin\b/,
   /\bcvv\b/,
   /\bcvc\b/,
-  /nomor\s*kartu/,
+  /(?:data|nomor|no\.?)\s*kartu/,
+  /\bkartu\s*(?:kredit|debit|atm)\b/,
+  /\bmasa\s*berlaku\b/,
   /kode\s*aktivasi/,
   /kode\s*akses/,
 ];
 
-const DEMAND_VERBS =
-  /(kirim|berikan|beri(?:kan)?|bagikan|berbagi|sebutkan|masuk(?:kan)?|isi(?:kan)?|ketik(?:kan)?|konfirmasi|verifikasi|validasi|aktivasi|share|forward|send|give|enter|input|confirm|verify|type|reply|balas(?:kan)?)/i;
-
 const PROTECTIVE_CREDENTIAL =
-  /(jangan|jangan\s*pernah|hindari|waspada(?:i|lah)?|hati-?hati|awas|dilarang|tolak|jangan\s*(?:bagikan|berikan|kirim|share|beri|balas))/i;
+  /(?:jangan|jangan\s*pernah|hindari|waspada(?:i|lah)?|hati-?hati|awas|dilarang|tolak|tidak\s*(?:pernah|akan)\s*meminta|kami\s*tidak\s*meminta)/i;
 
-function credentialRule(text: string): Finding[] {
+function credentialRule(text: string, clauses: Clause[]): Finding[] {
   const out: Finding[] = [];
   forEachMatch(text, CREDENTIAL_TERMS, (match) => {
-    const span = windowAround(text, match.index, match[0].length);
-    if (PROTECTIVE_CREDENTIAL.test(span)) return;
-    if (!DEMAND_VERBS.test(span)) return;
+    const clause = clauseContaining(clauses, match.index) || text;
+    // Protektif diperiksa pada klausa yang sama, bukan seluruh pesan:
+    // "Jangan bagikan OTP." tidak boleh menetralkan "kirim OTP kamu" di
+    // kalimat berikutnya.
+    if (PROTECTIVE_CREDENTIAL.test(clause)) return;
+    if (isReportedSpeech(clause)) return;
+    if (isPastNarrative(clause)) return;
+    if (!hasDemandVerb(clause)) return;
     out.push(
       makeFinding(
         "credential-theft",
@@ -161,13 +182,20 @@ const ACCOUNT_THREAT = [
   /(?:ancaman|terancam)\s*(?:hukuman|denda|pidana|sanksi|penjara)/,
 ];
 
-function accountThreatRule(text: string): Finding[] {
+function accountThreatRule(
+  text: string,
+  clauses: Clause[],
+  escalate: boolean,
+): Finding[] {
   const out: Finding[] = [];
   forEachMatch(text, ACCOUNT_THREAT, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    // Edukasi ("penipu biasanya bilang akun Anda diblokir") bukan ancaman.
+    if (isProtective(clause) || isReportedSpeech(clause)) return;
     out.push(
       makeFinding(
         "urgency-intimidation",
-        "high",
+        escalate ? "high" : "medium",
         "Ancaman pemblokiran akun atau sanksi",
         "Pesan menggunakan ancaman pemblokiran akun atau akibat hukum untuk menekan Anda bertindak cepat tanpa memverifikasi.",
         "Jangan panik. Periksa status akun langsung melalui aplikasi atau situs resmi, bukan lewat tautan di pesan ini.",
@@ -187,13 +215,15 @@ const DEADLINE_PRESSURE = [
   /(?:immediately|right\s*now|hurry|urgent)/,
 ];
 
-function deadlinePressureRule(text: string): Finding[] {
+function deadlinePressureRule(text: string, clauses: Clause[]): Finding[] {
   const out: Finding[] = [];
   forEachMatch(text, DEADLINE_PRESSURE, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    if (isProtective(clause) || isReportedSpeech(clause)) return;
     out.push(
       makeFinding(
         "urgency-intimidation",
-        "medium",
+        "low",
         "Tekanan waktu untuk bertindak",
         "Pesan menekan Anda untuk bertindak cepat atau sebelum batas waktu, tanpa memberi ruang untuk memverifikasi.",
         "Luangkan waktu. Klaim, promo, atau peringatan resmi tidak menuntut respons dalam hitungan menit.",
@@ -204,34 +234,51 @@ function deadlinePressureRule(text: string): Finding[] {
   return out;
 }
 
-const UPFRONT_PAYMENT = [
-  /(?:biaya|fee|charge)\s*(?:administrasi|admin|pendaftaran|registrasi|rekrutmen|training|pelatihan|aktivasi|verifikasi|pengiriman|penanganan|klaim|seragam|materai|cetak\s*kartu|proses|seleksi)/,
+const UPFRONT_STRONG = [
+  /(?:biaya|fee|charge)\s*(?:administrasi|pendaftaran|registrasi|rekrutmen|training|pelatihan|aktivasi|verifikasi|pengiriman|penanganan|klaim|seragam|materai|cetak\s*kartu|proses|seleksi)/,
   /(?:uang|dana|biaya)\s*(?:muka|pendaftaran|jaminan|deposit)/,
-  /(?:bayar|transfer|kirim|setor)[\s\S]{0,30}?(?:biaya|fee)[\s\S]{0,20}?(?:administrasi|admin|pendaftaran|registrasi|rekrutmen|aktivasi|klaim|seragam|seleksi|proses)/,
   /(?:biaya|uang)\s*klaim\s*hadiah/,
   /(?:bayar|setor|transfer)\s*(?:dulu|terlebih\s*dahulu|sebelum\s*(?:diterima|diproses|diwawancara|dikirim|diklaim))/,
-  /(?:admin\s*fee|biaya\s*admin)/,
 ];
 
-const PROTECTIVE_PAYMENT =
-  /(?:tidak\s*ada|tanpa|gratis|bebas\s*biaya|tidak\s*dipungut|tanpa\s*biaya|no\s*fee)/i;
+/** "Biaya admin" saja terlalu umum (mis. informasi biaya transfer bank). */
+const UPFRONT_WEAK = [/(?:\badmin\s*fee\b|\bbiaya\s*admin\b)/];
 
-function upfrontPaymentRule(text: string): Finding[] {
+const PAYMENT_DEMAND =
+  /(?:bayar|setor|transfer|kirim)\s*(?:biaya|fee|dana|uang|rp\s*\d)|(?:bayar|setor|transfer)\s*(?:ke|dulu|sekarang|sebelum)\b/i;
+
+const PROTECTIVE_PAYMENT =
+  /(?:tidak\s*ada|tanpa|gratis|bebas\s*biaya|tidak\s*dipungut|tidak\s*memungut|tanpa\s*biaya|no\s*fee)/i;
+
+function upfrontPaymentRule(text: string, clauses: Clause[]): Finding[] {
   const out: Finding[] = [];
-  forEachMatch(text, UPFRONT_PAYMENT, (match) => {
-    const span = windowAround(text, match.index, match[0].length);
-    if (PROTECTIVE_PAYMENT.test(span)) return;
+  const add = (match: RegExpExecArray, severity: Severity) => {
     out.push(
       makeFinding(
         "upfront-payment",
-        "high",
+        severity,
         "Permintaan pembayaran di muka",
         "Pesan meminta biaya (administrasi, pendaftaran, aktivasi, atau klaim) sebelum proses berjalan. Ini pola umum lowongan palsu dan undian bodong.",
         "Loker resmi dan hadiah sah tidak meminta pembayaran di muka. Jangan transfer, dan laporkan jika sudah terlanjur.",
         evidenceSnippet(text, match.index, match[0].length),
       ),
     );
+  };
+
+  forEachMatch(text, UPFRONT_STRONG, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    if (PROTECTIVE_PAYMENT.test(clause) || isReportedSpeech(clause)) return;
+    add(match, "high");
   });
+
+  forEachMatch(text, UPFRONT_WEAK, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    if (PROTECTIVE_PAYMENT.test(clause) || isReportedSpeech(clause)) return;
+    // "Biaya admin" baru menjadi sinyal bila ada perintah membayar.
+    if (!PAYMENT_DEMAND.test(clause)) return;
+    add(match, "medium");
+  });
+
   return out;
 }
 
@@ -241,18 +288,34 @@ const GUARANTEED_RETURNS = [
   /(?:untung|profit|keuntungan|return|imbal\s*hasil)[\s\S]{0,15}?(?:pasti|tetap|dijamin|tinggi|besar)/,
   /(?:tanpa\s*risiko|bebas\s*risiko|nol\s*risiko|risk-?free|guaranteed)/,
   /berlipat\s*ganda|(?:dua|tiga|2x|3x|10x)\s*kali\s*lipat/,
-  /bunga\s*(?:tinggi|pasti|tetap)\s*(?:%|persen)?/,
   /100%\s*(?:aman|dijamin|untung|balik\s*modal)/,
   /cuan\s*(?:besar|pasti|instan)/,
 ];
 
-function guaranteeRule(text: string): Finding[] {
+/** Konteks investasi membuat klaim "untung pasti" jauh lebih relevan. */
+const INVESTMENT_CONTEXT =
+  /(?:investasi|invest|saham|crypto|kripto|trading|deposit|modal|profit|imbal\s*hasil|reksadana|forex|robot\s*trading|passive\s*income)/i;
+
+const RETURN_WORDS =
+  /(?:untung|profit|keuntungan|return|imbal\s*hasil|cuan|balik\s*modal)/i;
+
+function guaranteeRule(text: string, clauses: Clause[]): Finding[] {
   const out: Finding[] = [];
+  const investment = INVESTMENT_CONTEXT.test(text);
   forEachMatch(text, GUARANTEED_RETURNS, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    if (isProtective(clause) || isReportedSpeech(clause)) return;
+    // Satu frasa "tanpa risiko" pada konteks non-investasi tidak cukup
+    // untuk dinilai sama seriusnya dengan janji imbal hasil.
+    const severity: Severity = investment
+      ? "high"
+      : RETURN_WORDS.test(clause)
+        ? "medium"
+        : "low";
     out.push(
       makeFinding(
         "unrealistic-promise",
-        "high",
+        severity,
         "Janji keuntungan yang dijamin",
         "Pesan menjanjikan keuntungan, imbal hasil, atau pengembalian yang pasti dan tinggi. Tidak ada investasi sah yang bisa menjamin untung.",
         "Waspadai tawaran investasi yang menjanjikan keuntungan pasti. Cek legalitas di situs resmi OJK sebelum menaruh dana.",
@@ -270,13 +333,21 @@ const PRIZE_LURE = [
   /(?:klaim|ambil)\s*(?:hadiah|bonus|voucher)\s*(?:anda|kamu|mu)?/,
 ];
 
-function prizeLureRule(text: string): Finding[] {
+function prizeLureRule(
+  text: string,
+  clauses: Clause[],
+  comboSinyal: boolean,
+): Finding[] {
   const out: Finding[] = [];
   forEachMatch(text, PRIZE_LURE, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    if (isProtective(clause) || isReportedSpeech(clause)) return;
+    // "Aku ambil hadiahnya besok" adalah cerita, bukan tawaran.
+    if (isPastNarrative(clause)) return;
     out.push(
       makeFinding(
         "unrealistic-promise",
-        "medium",
+        comboSinyal ? "medium" : "low",
         "Klaim hadiah atau undian",
         "Pesan mengumumkan kemenangan atau hadiah yang tidak Anda ikuti. Iming-iming hadiah sering dipakai untuk memancing korban memberi data atau membayar.",
         "Jika Anda tidak pernah mengikuti undian, abaikan. Jangan klik tautan atau membayar untuk mengklaim hadiah.",
@@ -287,42 +358,34 @@ function prizeLureRule(text: string): Finding[] {
   return out;
 }
 
-function linkRule(urls: DetectedUrl[]): Finding[] {
+const SEVERITY_STEPS: Severity[] = ["low", "medium", "high"];
+
+function escalate(severity: Severity): Severity {
+  const index = SEVERITY_STEPS.indexOf(severity);
+  return SEVERITY_STEPS[Math.min(index + 1, SEVERITY_STEPS.length - 1)];
+}
+
+/**
+ * Pemeriksaan tautan pada pesan memakai inspeksi struktural yang sama dengan
+ * mode Periksa Tautan (`inspectLink`), sehingga domain mirip layanan resmi,
+ * subdomain menyesatkan, dan userinfo ikut terdeteksi. Tautan tidak pernah
+ * dibuka atau diikuti redirect.
+ */
+function linkRule(
+  inspections: Array<{ url: DetectedUrl; inspection: LinkInspection }>,
+  escalateSeverity: boolean,
+): Finding[] {
   const out: Finding[] = [];
-  for (const url of urls) {
-    if (url.signals.includes("ip-address")) {
+  for (const { url, inspection } of inspections) {
+    for (const finding of inspection.findings) {
       out.push(
         makeFinding(
           "suspicious-link",
-          "medium",
-          "Tautan memakai alamat IP langsung",
-          `Tautan mengarah ke alamat IP numerik (${url.host}) alih-alih nama domain yang wajar. Ini sering dipakai untuk menyembunyikan tujuan sebenarnya.`,
-          "Jangan klik. Jika perlu, ketik alamat resmi layanan secara manual di peramban.",
-          url.url,
-        ),
-      );
-    }
-    if (url.signals.includes("shortened")) {
-      out.push(
-        makeFinding(
-          "suspicious-link",
-          "medium",
-          "Tautan pendek (shortened URL)",
-          `Tautan memakai layanan penyingkat (${url.host}) sehingga tujuan aslinya tersembunyi.`,
-          "Jangan klik. Minta tautan asli kepada pengirim, atau ketik alamat resmi secara manual.",
-          url.url,
-        ),
-      );
-    }
-    if (url.signals.includes("http")) {
-      out.push(
-        makeFinding(
-          "suspicious-link",
-          "low",
-          "Tautan tidak memakai HTTPS",
-          `Tautan memakai protokol http (bukan https): ${url.url}. Koneksinya tidak terenkripsi.`,
-          "Gunakan situs https. Jangan memasukkan data sensitif pada halaman http.",
-          url.url,
+          escalateSeverity ? escalate(finding.severity) : finding.severity,
+          finding.title,
+          finding.explanation,
+          finding.nextStep,
+          finding.evidence || url.url,
         ),
       );
     }
@@ -341,9 +404,16 @@ const AUTHORITY_CLAIMS = [
 const SUSPICIOUS_MARKER =
   /verifikasi|konfirmasi|login|reset|update|keamanan|secure|hadiah|klaim|akun|bonus|dana/i;
 
-function impersonationRule(text: string, urls: DetectedUrl[]): Finding[] {
+function impersonationRule(
+  text: string,
+  urls: DetectedUrl[],
+  clauses: Clause[],
+): Finding[] {
   const out: Finding[] = [];
   forEachMatch(text, AUTHORITY_CLAIMS, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    // "Penipu sering mengaku sebagai petugas bank" adalah edukasi.
+    if (isProtective(clause) || isReportedSpeech(clause)) return;
     out.push(
       makeFinding(
         "impersonation",
@@ -480,19 +550,46 @@ export function analyzeText(text: string): AnalysisResult {
   }
 
   idCounter = 0;
+  const clauses = splitClauses(trimmed);
   const urls = extractUrls(trimmed);
+  const inspections = urls.map((url) => ({
+    url,
+    inspection: inspectLink(url.url),
+  }));
   const social = analyzeSocialEngineering(trimmed);
+
+  const credentialFindings = credentialRule(trimmed, clauses);
+  const hasCredentials = credentialFindings.length > 0;
+  const suspiciousLinks = inspections.some(
+    (item) => item.inspection.findings.length > 0,
+  );
+
+  // Ancaman akun saja tidak dinilai setinggi ancaman yang menyertai permintaan
+  // kredensial, uang, atau tautan mencurigakan.
+  const threatFindings = accountThreatRule(
+    trimmed,
+    clauses,
+    hasCredentials || social.moneyPattern || suspiciousLinks,
+  );
+  const upfrontFindings = upfrontPaymentRule(trimmed, clauses);
 
   const findings: Finding[] = [
     ...social.findings,
-    ...credentialRule(trimmed),
-    ...accountThreatRule(trimmed),
-    ...deadlinePressureRule(trimmed),
-    ...upfrontPaymentRule(trimmed),
-    ...guaranteeRule(trimmed),
-    ...prizeLureRule(trimmed),
-    ...linkRule(urls),
-    ...impersonationRule(trimmed, urls),
+    ...credentialFindings,
+    ...threatFindings,
+    ...deadlinePressureRule(trimmed, clauses),
+    ...upfrontFindings,
+    ...guaranteeRule(trimmed, clauses),
+    ...prizeLureRule(
+      trimmed,
+      clauses,
+      suspiciousLinks || hasCredentials || upfrontFindings.length > 0,
+    ),
+    ...linkRule(
+      inspections,
+      hasCredentials || threatFindings.length > 0 || social.moneyPattern,
+    ),
+    ...impersonationRule(trimmed, urls, clauses),
     ...riskyInstructionRule(trimmed),
   ];
 

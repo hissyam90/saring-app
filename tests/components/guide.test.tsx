@@ -66,6 +66,70 @@ describe("Rencana tindakan", () => {
     expect(screen.getByText(SAFETY_GUIDES[0].summary)).toBeInTheDocument();
   });
 
+  it("menyediakan checklist bukti yang hanya interaktif di halaman", async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    const checkbox = screen.getAllByRole("checkbox")[0];
+    expect(checkbox).not.toBeChecked();
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+    expect(screen.getByText(/Jangan unggah NIK, KTP/)).toBeInTheDocument();
+  });
+
+  it("menampilkan kanal resmi untuk nomor dan konten", async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    const aduanNomor = screen.getByRole("link", { name: /AduanNomor/ });
+    expect(aduanNomor).toHaveAttribute("href", "https://aduannomor.id/");
+    // Penjelasan layanan harus sama dengan yang dipakai mode Periksa Nomor.
+    expect(aduanNomor).toHaveTextContent(/mengadukan nomor seluler/);
+    expect(aduanNomor).toHaveTextContent(/melacak tiket aduan/);
+    await user.click(screen.getByRole("button", { name: /mengklik tautan/ }));
+    expect(screen.getByRole("link", { name: /AduanKonten/ })).toHaveAttribute(
+      "href",
+      "https://www.aduankonten.id/",
+    );
+  });
+
+  it("menyiapkan checklist IASC dan menegaskan data sensitif tidak lewat Saring", async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    await user.click(
+      screen.getByRole("button", { name: /sudah mentransfer uang/ }),
+    );
+
+    for (const item of [
+      /Identitas dan dokumen pelapor/,
+      /rekening atau akun pembayaran Anda dan rekening\/akun terlapor/,
+      /Kronologi kejadian dengan tanggal dan waktu transaksi/,
+      /Bukti transfer dan mutasi rekening/,
+      /Bukti komunikasi dengan pelaku/,
+    ]) {
+      expect(screen.getByText(item)).toBeInTheDocument();
+    }
+    expect(
+      screen.getByText(/hanya diberikan langsung melalui portal resmi IASC/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("menonjolkan tindakan darurat IASC saat uang sudah ditransfer", async () => {
+    const user = userEvent.setup();
+    render(<Guide />);
+    await user.click(
+      screen.getByRole("button", { name: /sudah mentransfer uang/ }),
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/Tindakan darurat/);
+    expect(screen.getByRole("link", { name: /Buka IASC/ })).toHaveAttribute(
+      "href",
+      "https://iasc.ojk.go.id/",
+    );
+    expect(
+      screen.getByText(/jalur hukum yang berbeda/),
+    ).toBeInTheDocument();
+  });
+
   it("tidak menjanjikan dana kembali", async () => {
     const user = userEvent.setup();
     render(<Guide />);

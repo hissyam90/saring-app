@@ -99,25 +99,38 @@ Setiap aturan mengembalikan satu atau beberapa `Finding` berisi: `category`,
 | urgency-intimidation | ancaman blokir akun, tenggat sempit | tinggi |
 | upfront-payment | biaya rekrutmen/administrasi/klaim | tinggi |
 | unrealistic-promise | untung pasti, tanpa risiko, klaim hadiah | tinggi |
-| suspicious-link | penyingkat URL, alamat IP, `http://` | sedang |
+| suspicious-link | penyingkat URL, alamat IP, `http://`, domain mirip resmi | tinggi bila menyertai permintaan kredensial/uang/ancaman |
 | impersonation | klaim otoritas, domain mirip resmi | sedang |
 | risky-instruction | pindah kanal, lewati escrow/verifikasi | tinggi |
+| acquaintance-impersonation | klaim nomor baru + permintaan uang | tinggi |
+| money-request | permintaan pinjaman/transfer | sedang |
+| verification-blocking | alasan tidak bisa ditelepon/diverifikasi | tinggi |
 
 ### Konteks & pengurangan positif palsu
 
-Beberapa aturan dilengkapi penjaga konteks (`jangan`, `jangan pernah`,
-`hindari`, …) agar pernyataan edukatif yang menyebut kata kunci tidak ditandai
-sebagai permintaan. Aturan kredensial juga mensyaratkan **kata kerja
-permintaan** di dekat kata kunci.
+Sejak audit mesin, aturan dinilai **per klausa** (`lib/analysis/context.ts`),
+bukan per jendela ±60 karakter:
+
+- Penanda protektif (`jangan`, `hindari`, `waspada`, `tidak akan pernah meminta`)
+  hanya menetralkan klausa tempat ia muncul. "Jangan bagikan OTP. Tapi kirim kode
+  OTP kamu" tetap terdeteksi.
+- Kalimat edukasi/berita ("pelaku biasanya bilang…", "contoh modus", "artikel")
+  dan narasi lampau ("kemarin saya kirim kode OTP") tidak diperlakukan sebagai
+  permintaan.
+- Permintaan harus memuat kata kerja permintaan pada klausa yang sama; bentuk
+  deskriptif seperti "aplikasi ini meminta kode OTP" tidak ditandai.
+- Severity mengikuti kombinasi sinyal, bukan satu kata: ancaman akun tunggal
+  bernilai sedang, tautan mencurigakan naik ke tinggi bila menyertai permintaan
+  kredensial/uang/ancaman, dan klaim hadiah tanpa permintaan turun ke rendah.
 
 ### Skor & klasifikasi
 
 Bobot per keparahan: tinggi = 40, sedang = 25, rendah = 15. Skor = jumlah bobot
 temuan (dibatasi 100), lalu dipetakan:
 
-- ≥ 60 → `many-signals` ("Banyak sinyal bahaya")
-- ≥ 25 → `needs-review` ("Perlu diperiksa lebih lanjut")
-- < 25 → `limited-signals` ("Sinyal yang ditemukan masih terbatas")
+- ≥ 70 → `many-signals` ("Banyak sinyal bahaya")
+- ≥ 35 → `needs-review` ("Perlu diperiksa lebih lanjut")
+- < 35 → `limited-signals` ("Sinyal yang ditemukan masih terbatas")
 
 Skor bukan probabilitas penipuan. hanya total bobot indikator.
 
@@ -152,24 +165,49 @@ dan mode nomor tidak pernah memanggil jaringan.
   `summary` dengan state lokal. Tidak ada persistensi.
 - Seed diturunkan dari mode sesi sehingga E2E dapat diandalkan.
 
-## Rencana tindakan
+## Pusat Bantuan & Pelaporan
 
 - `data/guides.ts` memuat enam kondisi. Setiap kondisi punya `steps`
   (prioritas), `evidenceChecklist`, `checks`, dan `resources`.
+- `OFFICIAL_RESOURCES` memuat kanal resmi: AduanNomor (Komdigi), AduanKonten,
+  CekRekening, IASC (OJK), Kontak 157 OJK, dan OJK. Semuanya tautan manual;
+  tidak ada integrasi API dan pengguna membuka sendiri di situs lembaga.
 - `app/langkah/page.tsx` membaca `searchParams` (Promise di Next.js 16) dan
   meneruskan `initialSituation` ke `<Guide />`.
-- `components/langkah/guide.tsx` menampilkan lima bagian berurutan.
-- `components/periksa/result-view.tsx` menautkan ke
-  `/langkah?kondisi=received-message`.
+- `components/langkah/guide.tsx` menampilkan lima bagian berurutan. Checklist
+  bukti adalah checkbox lokal (`useState`) yang tidak disimpan ke storage,
+  server, atau layanan eksternal.
+- `components/periksa/result-view.tsx` memilih tautan kondisi berdasarkan sinyal
+  yang benar-benar ditemukan: tautan → `clicked-link`, kredensial →
+  `entered-credentials`, permintaan uang → pilihan `received-message` atau
+  `transferred-money`, selain itu `received-message`. Deteksi sinyal tidak
+  dianggap sebagai bukti pengguna sudah menjadi korban.
+
+## Sinkronisasi status autentikasi
+
+- `lib/auth/events.ts` menyediakan `AUTH_CHANGED_EVENT` dan
+  `notifyAuthChanged()`, sebuah event browser internal.
+- `components/auth/account-menu.tsx` memuat status dari `GET /api/auth/me` saat
+  dipasang dan memuat ulang setiap kali event tersebut diterima, sehingga
+  sidebar desktop dan drawer mobile ikut berubah tanpa reload.
+- `components/auth/auth-form.tsx` memancarkan event setelah login/registrasi
+  berhasil; logout memancarkan event setelah server mengonfirmasi.
+- Role tetap berasal dari server; tidak ada role yang disimpan di localStorage
+  dan tidak ada polling.
 
 ## Pemeriksaan URL yang aman
 
 Tiga tingkat yang dipisahkan dengan jelas:
 
-1. `extractUrls` / `inspectUrl` (`lib/analysis/url.ts`). ekstraksi sederhana
-   untuk menemukan tautan di dalam pesan.
-2. `inspectLink` (`lib/analysis/link.ts`). inspeksi struktural: skema,
-   userinfo, alamat IP, penyingkat, TLD tidak lazim, subdomain meniru merek.
+1. `extractUrls` / `inspectUrl` (`lib/analysis/url.ts`). ekstraksi tautan di
+   dalam pesan, termasuk domain tanpa skema (`bca-verifikasi.xyz/login`) dan
+   alamat IP. Parsing memakai `URL` sehingga port, userinfo, huruf besar, dan
+   titik di akhir dinormalisasi. Domain dari alamat email tidak diambil, dan URL
+   yang sama tidak dihitung dua kali.
+2. `inspectLink` (`lib/analysis/link.ts`). inspeksi struktural: skema, userinfo,
+   alamat IP, penyingkat, TLD tidak lazim, subdomain meniru merek. Mode pesan
+   memakai inspeksi yang sama, sehingga temuan tautan di pesan dan di
+   Periksa Tautan konsisten.
 3. `lookupGoogleSafeBrowsing` (`lib/reputation/googleSafeBrowsing.ts`). reputasi eksternal,
    hanya lewat route server dan hanya setelah consent. Respons dibaca sebagai
    protobuf oleh `lib/reputation/protobuf.ts`.
