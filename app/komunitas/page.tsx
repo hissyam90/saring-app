@@ -138,7 +138,7 @@ export default async function KomunitasPage({
             }
           />
         ) : (
-          <ul className="grid gap-2">
+          <ul className="grid grid-cols-1 gap-2">
             {result.items.map((thread) => (
               <li key={thread.id}>
                 <Link
@@ -147,17 +147,17 @@ export default async function KomunitasPage({
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag>{thread.category}</Tag>
-                    <span className="text-[11px] text-ink-muted">
+                    <span className="saring-break text-[11px] text-ink-muted">
                       {formatDate(thread.createdAt)} · {thread.authorName}
                     </span>
                     <span className="ml-auto font-mono text-[11px] text-ink-muted">
                       {thread.replyCount} balasan
                     </span>
                   </div>
-                  <h2 className="mt-1.5 text-base font-bold leading-snug text-ink">
+                  <h2 className="mt-1.5 saring-break text-base font-bold leading-snug text-ink">
                     {thread.title}
                   </h2>
-                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-ink-soft">
+                  <p className="mt-1 line-clamp-2 saring-break text-sm leading-6 text-ink-soft">
                     {thread.body}
                   </p>
                 </Link>

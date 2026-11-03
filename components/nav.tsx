@@ -30,23 +30,73 @@ export function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
         menuButtonRef.current?.focus();
       }
     };
+
+    /**
+     * Jebakan fokus sederhana: Tab/Shift+Tab tidak boleh keluar dari drawer
+     * selama drawer terbuka, karena konten di belakangnya tidak terlihat.
+     */
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      const inside = active instanceof Node && panel.contains(active);
+
+      if (event.shiftKey && (!inside || active === first)) {
+        event.preventDefault();
+        last.focus();
+        return;
+      }
+      if (!event.shiftKey && (!inside || active === last)) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
     document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("keydown", trapFocus);
+
+    // Fokus awal di dalam drawer agar pembaca layar tidak tetap di belakang.
+    closeButtonRef.current?.focus();
+
+    /**
+     * Kunci scroll halaman di belakang drawer. `overflow` saja tidak cukup di
+     * iOS, jadi `overscroll-behavior` pada panel ikut diatur lewat kelas.
+     */
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("keydown", trapFocus);
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
+
+  const closeMenu = () => {
+    setOpen(false);
+    menuButtonRef.current?.focus();
+  };
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -76,6 +126,8 @@ export function Nav() {
             onClick={() => setOpen((value) => !value)}
             className="inline-flex h-11 w-11 items-center justify-center bg-lime text-on-lime active:bg-lime-deep"
             aria-expanded={open}
+            aria-controls="nav-drawer-panel"
+            aria-haspopup="dialog"
             aria-label={open ? "Tutup menu" : "Buka menu"}
           >
             {open ? (
@@ -87,21 +139,47 @@ export function Nav() {
         </div>
       </header>
 
-      {/* Mobile menu overlay */}
+      {/*
+        Drawer mobile.
+
+        Lapisan `z-[80]` berada di atas header sticky (`z-50`) agar header tidak
+        memotong panel dan konten di belakang benar-benar tertutup. Panel memakai
+        `bg-graphite` yang opak; tirai memakai token `scrim` yang selalu gelap di
+        kedua tema (bukan `ink` yang berbalik terang di dark mode).
+      */}
       {open ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-[80] h-[100dvh] lg:hidden">
           <button
             type="button"
+            data-testid="nav-backdrop"
             aria-label="Tutup menu"
-            className="absolute inset-0 bg-ink/40"
-            onClick={() => setOpen(false)}
+            tabIndex={-1}
+            className="absolute inset-0 z-0 cursor-default bg-scrim/70"
+            onClick={closeMenu}
           />
           <div
-            className="absolute inset-y-0 right-0 flex w-72 flex-col gap-1 bg-graphite p-4 text-graphite-ink"
+            ref={panelRef}
+            id="nav-drawer-panel"
+            data-testid="nav-drawer"
             role="dialog"
             aria-modal="true"
             aria-label="Menu navigasi"
+            className="absolute inset-y-0 right-0 z-10 flex w-[min(20rem,calc(100vw-3rem))] flex-col gap-1 overflow-y-auto overscroll-contain border-l-4 border-lime bg-graphite px-4 pt-3 text-graphite-ink shadow-[-6px_0_0_0_rgba(0,0,0,0.35)] [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]"
           >
+            <div className="flex items-center justify-between gap-2 pb-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-graphite-ink/70">
+                Menu
+              </p>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={closeMenu}
+                aria-label="Tutup menu navigasi"
+                className="inline-flex h-11 w-11 items-center justify-center border-2 border-graphite-ink/40 bg-lime text-on-lime hover:bg-lime-deep"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
             {LINKS.map((link) => {
               const active = isActive(link.href);
               return (
@@ -110,14 +188,14 @@ export function Nav() {
                   href={link.href}
                   onClick={() => setOpen(false)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex items-center gap-3 px-3 py-3 text-sm font-semibold ${
+                  className={`flex min-h-11 items-center gap-3 px-3 py-2.5 text-sm font-semibold ${
                     active
                       ? "bg-lime text-on-lime"
                       : "text-graphite-ink/75 hover:bg-graphite-ink/10 hover:text-graphite-ink"
                   }`}
                 >
-                  <link.icon className="h-5 w-5" aria-hidden="true" />
-                  {link.label}
+                  <link.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0">{link.label}</span>
                 </Link>
               );
             })}

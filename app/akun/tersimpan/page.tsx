@@ -38,11 +38,11 @@ export default async function SavedArticlesPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-      <header className="mb-5">
+      <header className="mb-5 min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
           Akun
         </p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-ink">
+        <h1 className="mt-1 saring-break text-2xl font-black tracking-tight text-ink sm:text-3xl">
           Artikel tersimpan
         </h1>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
@@ -75,8 +75,8 @@ export default async function SavedArticlesPage() {
                 key={row.slug}
                 className="flex flex-wrap items-center gap-2 border-l-4 border-l-ink bg-paper px-3 py-2"
               >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-ink">
+                <span className="min-w-0 flex-auto">
+                  <span className="block saring-break text-sm font-semibold text-ink">
                     {row.title ?? row.slug}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-ink-muted">

@@ -64,17 +64,17 @@ export function DraftList({ drafts }: { drafts: DraftRow[] }) {
           {error}
         </p>
       ) : null}
-      <ul className="grid gap-1.5">
+      <ul className="grid grid-cols-1 gap-1.5">
         {drafts.map((draft) => (
           <li
             key={draft.id}
-            className="flex flex-wrap items-center gap-2 border-l-4 border-l-amber bg-paper px-3 py-2"
+            className="flex min-w-0 flex-col gap-2 border-l-4 border-l-amber bg-paper px-3 py-2.5 sm:flex-row sm:items-center"
           >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-ink">
+            <span className="min-w-0 sm:grow sm:basis-2/5">
+              <span className="block saring-break text-sm font-semibold leading-snug text-ink">
                 {draft.title || "(belum ada judul)"}
               </span>
-              <span className="mt-0.5 block text-[11px] text-ink-muted">
+              <span className="mt-0.5 block saring-break text-[11px] text-ink-muted">
                 {draft.kind === "article"
                   ? draft.targetSubmissionId
                     ? "Draf revisi artikel"
@@ -83,21 +83,23 @@ export function DraftList({ drafts }: { drafts: DraftRow[] }) {
                 · diubah {draft.updatedAtLabel}
               </span>
             </span>
-            <Link
-              href={draft.resumeHref}
-              className="inline-flex min-h-8 items-center border-2 border-ink bg-lime px-2.5 text-xs font-bold text-on-lime hover:bg-lime-deep"
-            >
-              Lanjutkan
-            </Link>
-            <button
-              type="button"
-              onClick={() => void remove(draft.id)}
-              disabled={pendingId === draft.id}
-              className="inline-flex min-h-8 items-center gap-1 border-2 border-ink bg-surface px-2.5 text-xs font-bold text-ink hover:bg-coral-soft disabled:opacity-60"
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Hapus
-            </button>
+            <span className="flex flex-wrap items-center gap-2">
+              <Link
+                href={draft.resumeHref}
+                className="inline-flex min-h-11 items-center border-2 border-ink bg-lime px-3 text-xs font-bold text-on-lime hover:bg-lime-deep"
+              >
+                Lanjutkan
+              </Link>
+              <button
+                type="button"
+                onClick={() => void remove(draft.id)}
+                disabled={pendingId === draft.id}
+                className="inline-flex min-h-11 items-center gap-1 border-2 border-ink bg-surface px-3 text-xs font-bold text-ink hover:bg-coral-soft disabled:opacity-60"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Hapus
+              </button>
+            </span>
           </li>
         ))}
       </ul>

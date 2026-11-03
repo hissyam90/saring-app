@@ -34,6 +34,15 @@
   /* Warna teks sekunder di dalam permukaan graphite (sidebar, footer). */
   --color-graphite-muted: #c9c5bb;
 
+  /**
+   * Warna tirai (scrim) untuk backdrop drawer/menu.
+   *
+   * Sengaja TIDAK ikut tema: nilai `ink` berbalik menjadi terang di dark mode,
+   * sehingga `bg-ink/40` berubah menjadi kabut putih di atas konten gelap dan
+   * drawer terlihat "transparan". Tirai harus selalu gelap di kedua tema.
+   */
+  --color-scrim: #0b1220;
+
   /* Sidebar gelap khusus navigasi (dipisah dari hero) */
   --color-graphite: #111827;
   --color-graphite-soft: #1c2637;
@@ -129,6 +138,18 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /**
+   * SENGAJA tanpa `overflow-wrap` global.
+   *
+   * Aturan `body { overflow-wrap: anywhere }` terbukti tidak diperlukan:
+   * pemotongan dilakukan lokal lewat kelas `.saring-break` pada elemen yang
+   * memang memuat data pengguna (URL, email, nama, judul, ID). Dengan begitu
+   * paragraf, judul, label, navigasi, dan tombol tetap memakai pembungkusan
+   * kata yang wajar (tidak patah di tengah kata).
+   *
+   * Halaman yang memakai aturan global dapat menyusutkan elemen flex/grid di
+   * bawah lebar katanya sendiri, sehingga label pendek pun bisa terpotong.
+   */
 }
 
 :focus-visible {
@@ -147,6 +168,23 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/**
+ * Kata panjang tanpa spasi (URL, email, slug, nama pengguna) tidak boleh
+ * memperlebar layout.
+ *
+ * `overflow-wrap: break-word` (utilitas Tailwind `break-words`) TIDAK cukup:
+ * nilai itu hanya memotong ketika baris sudah penuh, sedangkan *ukuran minimum*
+ * elemen tetap sepanjang kata. Akibatnya kartu, kolom grid, dan baris flex
+ * ikut melebar walau teksnya terlihat dibungkus.
+ *
+ * `anywhere` ikut mengecilkan ukuran minimum sehingga kontainer dapat menyusut
+ * selebar viewport. `min-width: 0` menutup kasus anak flex/grid.
+ */
+.saring-break {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /* ---------------------------------------------------------------------------

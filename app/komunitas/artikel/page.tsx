@@ -182,7 +182,7 @@ export default async function SubmissionPage({
               Belum ada pengajuan. Artikel pertama Anda akan muncul di sini.
             </p>
           ) : (
-            <ul className="grid gap-2">
+            <ul className="grid grid-cols-1 gap-2">
               {mine.map((submission) => (
                 <li
                   key={submission.id}
@@ -204,14 +204,14 @@ export default async function SubmissionPage({
                       </Link>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-sm font-bold text-ink">
+                  <p className="saring-break mt-1 text-sm font-bold text-ink">
                     {submission.title}
                   </p>
-                  <p className="mt-0.5 text-xs leading-5 text-ink-soft">
+                  <p className="saring-break mt-0.5 text-xs leading-5 text-ink-soft">
                     {submission.summary}
                   </p>
                   {submission.reviewNote ? (
-                    <p className="mt-1.5 border-t border-line pt-1.5 text-xs leading-5 text-ink">
+                    <p className="saring-break mt-1.5 border-t border-line pt-1.5 text-xs leading-5 text-ink">
                       <span className="font-semibold">Catatan admin: </span>
                       {submission.reviewNote}
                     </p>
@@ -261,7 +261,7 @@ export default async function SubmissionPage({
                         {formatDate(article.publishedAt)}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-bold text-ink">
+                    <p className="saring-break mt-1 text-sm font-bold text-ink">
                       {article.title}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-2">
@@ -287,7 +287,7 @@ export default async function SubmissionPage({
       ) : null}
 
       {editable.length > 0 ? (
-        <div className="mt-5 grid gap-4">
+        <div className="mt-5 grid grid-cols-1 gap-4">
           {editable.map((submission) => (
             <Panel
               key={submission.id}

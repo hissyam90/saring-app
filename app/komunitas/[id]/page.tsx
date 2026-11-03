@@ -47,20 +47,20 @@ export default async function ThreadPage({ params }: Params) {
               {formatDate(thread.createdAt)} · {thread.authorName}
             </span>
           </div>
-          <h1 className="mt-1.5 text-2xl font-black leading-snug tracking-tight text-ink">
+          <h1 className="mt-1.5 saring-break text-2xl font-black leading-snug tracking-tight text-ink">
             {thread.title}
           </h1>
         </div>
         <div className="px-4 py-4">
-          <p className="whitespace-pre-wrap text-sm leading-7 text-ink-soft">
+          <p className="whitespace-pre-wrap saring-break text-sm leading-7 text-ink-soft">
             {thread.body}
           </p>
           {thread.articleSlug ? (
-            <p className="mt-3 border-t border-line pt-2 text-xs text-ink-muted">
+            <p className="mt-3 saring-break border-t border-line pt-2 text-xs text-ink-muted">
               Terkait artikel:{" "}
               <Link
                 href={`/pustaka/${thread.articleSlug}`}
-                className="font-semibold text-ink underline"
+                className="saring-break font-semibold text-ink underline"
               >
                 {thread.articleSlug}
               </Link>
@@ -86,10 +86,10 @@ export default async function ThreadPage({ params }: Params) {
             <ul className="grid gap-2">
               {replies.map((reply) => (
                 <li key={reply.id} className="border-l-4 border-l-ink bg-paper px-3 py-2.5">
-                  <p className="text-[11px] text-ink-muted">
+                  <p className="saring-break text-[11px] text-ink-muted">
                     {reply.authorName} · {formatDate(reply.createdAt)}
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink">
+                  <p className="mt-1 whitespace-pre-wrap saring-break text-sm leading-6 text-ink">
                     {reply.body}
                   </p>
                   <div className="mt-1.5">

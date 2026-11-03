@@ -70,7 +70,7 @@ export default async function NewThreadPage({
         </div>
       ) : null}
 
-      <div className="border-2 border-ink bg-surface p-5">
+      <div className="border-2 border-ink bg-surface p-4 sm:p-5">
         <ThreadForm
           defaultArticleSlug={articleSlug}
           initialDraft={(draft?.payload as ThreadDraftPayload | undefined) ?? null}

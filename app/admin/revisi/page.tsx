@@ -37,20 +37,28 @@ function FieldComparison({
 }) {
   const changed = before !== after;
   return (
-    <div className="grid gap-1 border-t border-line py-2 first:border-t-0 first:pt-0">
+    <div className="grid min-w-0 gap-1 border-t border-line py-2 first:border-t-0 first:pt-0">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
         {label}{" "}
         {changed ? <span className="text-ink-coral">· berubah</span> : "· sama"}
       </p>
-      <div className="grid gap-1 sm:grid-cols-2">
-        <p className="whitespace-pre-wrap border-l-4 border-l-line bg-paper px-2 py-1 text-xs leading-5 text-ink-muted">
+      <div className="grid min-w-0 gap-1 sm:grid-cols-2">
+        <p className="min-w-0 whitespace-pre-wrap saring-break border-l-4 border-l-line bg-paper px-2 py-1 text-xs leading-5 text-ink-muted">
+          {/* Sebelum/sesudah menumpuk di mobile, jadi label ini menggantikan
+              posisi dua kolom yang hanya ada di layar lebar. */}
+          <span className="mb-0.5 block text-[10px] font-bold uppercase tracking-wide sm:hidden">
+            Sebelum
+          </span>
           {before || "(kosong)"}
         </p>
         <p
-          className={`whitespace-pre-wrap border-l-4 px-2 py-1 text-xs leading-5 text-ink ${
+          className={`min-w-0 whitespace-pre-wrap saring-break border-l-4 px-2 py-1 text-xs leading-5 text-ink ${
             changed ? "border-l-lime bg-lime-soft" : "border-l-line bg-paper"
           }`}
         >
+          <span className="mb-0.5 block text-[10px] font-bold uppercase tracking-wide sm:hidden">
+            Sesudah
+          </span>
           {after || "(kosong)"}
         </p>
       </div>
@@ -66,16 +74,21 @@ async function RevisionCard({ revision }: { revision: SubmissionRevision }) {
 
   return (
     <li className="border-2 border-ink bg-surface">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-paper px-3 py-2">
-        <Tag tone="warn">revisi menunggu</Tag>
-        <span className="text-sm font-bold text-ink">{revision.title}</span>
-        <span className="ml-auto text-[11px] text-ink-muted">
-          {revision.authorName} · diajukan {formatDate(revision.updatedAt)}
+      <div className="flex min-w-0 flex-col gap-1.5 border-b border-line bg-paper px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        {/* Judul di baris sendiri; badge dan metadata di baris berikutnya. */}
+        <span className="min-w-0 saring-break text-sm font-bold leading-snug text-ink sm:grow sm:basis-2/5">
+          {revision.title}
+        </span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="saring-break text-[11px] text-ink-muted">
+            {revision.authorName} · diajukan {formatDate(revision.updatedAt)}
+          </span>
+          <Tag tone="warn">revisi menunggu</Tag>
         </span>
       </div>
 
       <div className="grid gap-3 px-3 py-3">
-        <div className="border-l-4 border-l-safe bg-safe-soft px-3 py-2 text-xs leading-5 text-ink">
+        <div className="min-w-0 saring-break border-l-4 border-l-safe bg-safe-soft px-3 py-2 text-xs leading-5 text-ink">
           <span className="font-semibold">Versi publik saat ini: </span>
           {submission.title}
           {submission.slug ? (
@@ -132,7 +145,7 @@ async function RevisionCard({ revision }: { revision: SubmissionRevision }) {
               {diff.removed.map((line, index) => (
                 <p
                   key={`r-${index}`}
-                  className="border-l-4 border-l-coral bg-coral-soft px-2 py-1 text-xs leading-5 text-ink"
+                  className="min-w-0 saring-break border-l-4 border-l-coral bg-coral-soft px-2 py-1 text-xs leading-5 text-ink"
                 >
                   − {line}
                 </p>
@@ -140,7 +153,7 @@ async function RevisionCard({ revision }: { revision: SubmissionRevision }) {
               {diff.added.map((line, index) => (
                 <p
                   key={`a-${index}`}
-                  className="border-l-4 border-l-safe bg-safe-soft px-2 py-1 text-xs leading-5 text-ink"
+                  className="min-w-0 saring-break border-l-4 border-l-safe bg-safe-soft px-2 py-1 text-xs leading-5 text-ink"
                 >
                   + {line}
                 </p>
@@ -200,7 +213,7 @@ export default async function AdminRevisiPage() {
   const decided = await store.listRevisions({ page: 1, pageSize: 8 });
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="border-l-4 border-l-lime bg-paper px-3 py-2 text-xs leading-5 text-ink">
         Menyetujui revisi mengganti isi artikel publik dalam satu transaksi. Jika
         proses gagal, versi publik lama tetap tayang. Menolak atau meminta
@@ -227,27 +240,31 @@ export default async function AdminRevisiPage() {
             {decided.items.map((revision) => (
               <li
                 key={revision.id}
-                className="flex flex-wrap items-center gap-2 border-l-4 border-l-ink bg-paper px-3 py-1.5 text-xs"
+                className="flex flex-col gap-1 border-l-4 border-l-ink bg-paper px-3 py-1.5 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
               >
-                <Tag
-                  tone={
-                    revision.status === "approved"
-                      ? "success"
-                      : revision.status === "rejected"
-                        ? "danger"
-                        : revision.status === "pending"
-                          ? "warn"
-                          : "neutral"
-                  }
-                >
-                  {revision.status}
-                </Tag>
-                <span className="min-w-0 flex-1 truncate font-semibold text-ink">
+                <span className="min-w-0 saring-break font-semibold text-ink sm:grow sm:basis-2/5">
                   {revision.title}
                 </span>
-                <span className="text-ink-muted">{revision.authorName}</span>
-                <span className="font-mono text-ink-muted">
-                  {formatDate(revision.reviewedAt ?? revision.updatedAt)}
+                <span className="flex flex-wrap items-center gap-2">
+                  <Tag
+                    tone={
+                      revision.status === "approved"
+                        ? "success"
+                        : revision.status === "rejected"
+                          ? "danger"
+                          : revision.status === "pending"
+                            ? "warn"
+                            : "neutral"
+                    }
+                  >
+                    {revision.status}
+                  </Tag>
+                  <span className="saring-break text-ink-muted">
+                    {revision.authorName}
+                  </span>
+                  <span className="font-mono text-ink-muted">
+                    {formatDate(revision.reviewedAt ?? revision.updatedAt)}
+                  </span>
                 </span>
               </li>
             ))}

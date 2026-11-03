@@ -209,13 +209,13 @@ export function Library({
                     }`}
                   >
                     <h3
-                      className={`font-black leading-tight tracking-tight text-ink ${
+                      className={`saring-break font-black leading-tight tracking-tight text-ink ${
                         featured ? "text-xl sm:text-2xl" : "text-base"
                       }`}
                     >
                       {item.title}
                     </h3>
-                    <p className="mt-2 flex-1 text-sm leading-6 text-ink-soft">
+                    <p className="saring-break mt-2 flex-1 text-sm leading-6 text-ink-soft">
                       {item.summary}
                     </p>
                     <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink">

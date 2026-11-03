@@ -44,12 +44,41 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
   const after = guide.steps.filter((step) => step.priority !== "segera");
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
       <div className="min-w-0 lg:sticky lg:top-6">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
+        {/*
+          Mobile: dropdown. Sebelumnya pilihan kondisi dipaksa menjadi satu
+          baris panjang yang harus digeser horizontal, sehingga pilihan terakhir
+          tidak pernah terlihat.
+        */}
+        <label
+          htmlFor="langkah-kondisi"
+          className="block text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft lg:hidden"
+        >
+          Pilih kondisi Anda
+        </label>
+        <select
+          id="langkah-kondisi"
+          value={selectedId}
+          onChange={(event) => setSelectedId(event.target.value)}
+          className="mt-2 min-h-11 w-full border-2 border-ink bg-surface px-3 py-2 text-sm font-semibold text-ink lg:hidden"
+        >
+          {SAFETY_GUIDES.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.situation}
+            </option>
+          ))}
+        </select>
+
+        {/* Desktop: daftar vertikal, tetap nyaman pada kolom 280px. */}
+        <h2 className="hidden text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft lg:block">
           Pilih kondisi Anda
         </h2>
-        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
+        <div
+          role="group"
+          aria-label="Daftar kondisi"
+          className="mt-2 hidden gap-1.5 lg:flex lg:flex-col"
+        >
           {SAFETY_GUIDES.map((item) => {
             const ItemIcon = ICONS[item.id] ?? Inbox;
             const active = item.id === selectedId;
@@ -59,14 +88,14 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                 type="button"
                 onClick={() => setSelectedId(item.id)}
                 aria-pressed={active}
-                className={`flex min-h-11 shrink-0 items-center gap-2 border-2 px-3 py-2.5 text-left text-sm font-semibold transition-colors lg:shrink ${
+                className={`flex min-h-11 items-center gap-2 border-2 px-3 py-2.5 text-left text-sm font-semibold transition-colors ${
                   active
                     ? "border-ink bg-ink text-on-ink"
                     : "border-line-strong bg-surface text-ink hover:border-ink"
                 }`}
               >
                 <ItemIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{item.situation}</span>
+                <span className="min-w-0 saring-break">{item.situation}</span>
               </button>
             );
           })}
@@ -84,10 +113,10 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-base font-black leading-tight text-ink">
+              <h2 className="saring-break text-base font-black leading-tight text-ink">
                 {guide.situation}
               </h2>
-              <p className="mt-1 text-sm leading-6 text-ink-muted">
+              <p className="mt-1 saring-break text-sm leading-6 text-ink-muted">
                 {guide.summary}
               </p>
             </div>
@@ -126,7 +155,7 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                 <span className="mt-0.5 w-4 shrink-0 font-mono text-xs font-bold text-ink">
                   {index + 1}
                 </span>
-                <span className="text-sm font-medium leading-6 text-ink">
+                <span className="min-w-0 saring-break text-sm font-medium leading-6 text-ink">
                   {step.text}
                 </span>
               </li>
@@ -146,7 +175,7 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                 <span className="mt-0.5 w-4 shrink-0 font-mono text-xs font-bold text-ink-muted">
                   {now.length + index + 1}
                 </span>
-                <span className="min-w-0 text-sm leading-6 text-ink-soft">
+                <span className="min-w-0 saring-break text-sm leading-6 text-ink-soft">
                   <span
                     className={`mr-1.5 inline-block px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${PRIORITY_CHIP[step.priority]}`}
                   >
@@ -182,7 +211,9 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                       }
                       className="mt-1.5 h-4 w-4 accent-lime"
                     />
-                    <span className={checked ? "line-through opacity-60" : undefined}>
+                    <span
+                      className={`min-w-0 saring-break ${checked ? "line-through opacity-60" : ""}`}
+                    >
                       {item}
                     </span>
                   </label>
@@ -213,7 +244,7 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                   className="mt-2.5 h-1.5 w-1.5 shrink-0 bg-ink"
                   aria-hidden="true"
                 />
-                <span className="text-sm leading-6 text-ink-soft">{item}</span>
+                <span className="min-w-0 saring-break text-sm leading-6 text-ink-soft">{item}</span>
               </li>
             ))}
           </ul>
@@ -238,11 +269,11 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                       className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted"
                       aria-hidden="true"
                     />
-                    <span>
+                    <span className="min-w-0 saring-break">
                       <span className="font-semibold text-ink group-hover:underline">
                         {resource.label}
                       </span>
-                      <span className="mt-0.5 block text-xs text-ink-muted">
+                      <span className="mt-0.5 block saring-break text-xs text-ink-muted">
                         {resource.note}
                       </span>
                     </span>

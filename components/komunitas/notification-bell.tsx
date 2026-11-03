@@ -176,11 +176,11 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
                     className={item.readAt ? "bg-surface" : "bg-lime-soft"}
                   >
                     <div className="px-3 py-2">
-                      <p className="text-xs font-bold leading-snug text-ink">
+                      <p className="saring-break text-xs font-bold leading-snug text-ink">
                         {item.title}
                       </p>
                       {item.body ? (
-                        <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-ink-soft">
+                        <p className="mt-0.5 line-clamp-2 saring-break text-[11px] leading-4 text-ink-soft">
                           {item.body}
                         </p>
                       ) : null}

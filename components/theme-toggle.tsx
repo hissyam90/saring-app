@@ -66,7 +66,7 @@ export function ThemeToggle() {
     <div
       role="group"
       aria-label="Pilihan tema tampilan"
-      className="flex flex-wrap gap-2"
+      className="grid grid-cols-1 gap-2 sm:grid-cols-3"
     >
       {THEMES.map(({ id, label, Icon }) => {
         const active = choice === id;
@@ -76,14 +76,14 @@ export function ThemeToggle() {
             type="button"
             onClick={() => apply(id)}
             aria-pressed={active}
-            className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 border-2 px-3 py-2 text-sm font-bold transition-colors sm:flex-none ${
+            className={`inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 border-2 px-3 py-2 text-sm font-bold transition-colors ${
               active
                 ? "border-ink bg-lime text-on-lime"
                 : "border-line-strong bg-surface text-ink hover:border-ink"
             }`}
           >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-            <span className="whitespace-nowrap">{label}</span>
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0">{label}</span>
           </button>
         );
       })}

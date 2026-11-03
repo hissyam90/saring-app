@@ -28,13 +28,13 @@ export default async function AdminDiskusiPage({
             <li key={thread.id} className="border-l-4 border-l-ink bg-paper px-3 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <Tag>{thread.category}</Tag>
-                <span className="text-[11px] text-ink-muted">
+                <span className="saring-break text-[11px] text-ink-muted">
                   {thread.authorName} · {formatDate(thread.createdAt)} ·{" "}
                   {thread.replyCount} balasan
                 </span>
               </div>
-              <p className="mt-1 text-sm font-bold text-ink">{thread.title}</p>
-              <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-ink-soft">
+              <p className="mt-1 saring-break text-sm font-bold text-ink">{thread.title}</p>
+              <p className="mt-0.5 line-clamp-2 saring-break text-xs leading-5 text-ink-soft">
                 {thread.body}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">

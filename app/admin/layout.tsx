@@ -25,15 +25,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center bg-graphite text-lime">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-graphite text-lime">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
               Area admin
             </p>
-            <p className="text-base font-bold text-ink">{user.displayName}</p>
+            <p className="saring-break text-base font-bold text-ink">{user.displayName}</p>
           </div>
         </div>
         <p className="text-xs text-ink-muted">
@@ -42,7 +42,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </p>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[220px_1fr] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[220px_1fr] lg:items-start">
         <div className="min-w-0 lg:sticky lg:top-6">
           <AdminNav
             openCounts={{

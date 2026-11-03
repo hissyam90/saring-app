@@ -37,13 +37,13 @@ export default async function AdminArtikelPage({
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap gap-1.5">
         {STATUSES.map((s) => (
           <Link
             key={s.id}
             href={`/admin/artikel?status=${s.id}`}
-            className={`min-h-9 border-2 px-2.5 py-1 text-xs font-bold ${
+            className={`inline-flex min-h-11 items-center whitespace-nowrap border-2 px-3 text-xs font-bold ${
               filter === s.id
                 ? "border-ink bg-ink text-on-ink"
                 : "border-line-strong bg-surface text-ink-soft hover:border-ink"
@@ -61,14 +61,19 @@ export default async function AdminArtikelPage({
           <ul className="grid gap-3">
             {result.items.map((item) => (
               <li key={item.id} className="border-2 border-ink bg-surface">
-                <div className="flex flex-wrap items-center gap-2 border-b border-line bg-paper px-3 py-2">
-                  <span className="text-sm font-bold text-ink">{item.title}</span>
-                  <Tag tone={item.status === "approved" ? "success" : item.status === "rejected" ? "danger" : "warn"}>
-                    {item.status}
-                  </Tag>
-                  {item.archivedAt ? <Tag tone="neutral">Diarsipkan</Tag> : null}
-                  <span className="ml-auto text-[11px] text-ink-muted">
-                    {item.authorName} · {formatDate(item.createdAt)}
+                <div className="flex flex-col gap-1.5 border-b border-line bg-paper px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                  {/* Judul memakai baris sendiri di mobile; metadata menyusul. */}
+                  <span className="min-w-0 saring-break text-sm font-bold leading-snug text-ink sm:grow sm:basis-2/5">
+                    {item.title}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="saring-break text-[11px] text-ink-muted">
+                      {item.authorName} · {formatDate(item.createdAt)}
+                    </span>
+                    <Tag tone={item.status === "approved" ? "success" : item.status === "rejected" ? "danger" : "warn"}>
+                      {item.status}
+                    </Tag>
+                    {item.archivedAt ? <Tag tone="neutral">Diarsipkan</Tag> : null}
                   </span>
                 </div>
 
@@ -76,7 +81,7 @@ export default async function AdminArtikelPage({
                   <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">
                     Ringkasan
                   </p>
-                  <p className="text-sm leading-6 text-ink-soft">{item.summary}</p>
+                  <p className="min-w-0 saring-break text-sm leading-6 text-ink-soft">{item.summary}</p>
 
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs font-semibold text-ink">
@@ -90,7 +95,7 @@ export default async function AdminArtikelPage({
                       />
                     </div>
                     {item.references ? (
-                      <p className="mt-2 border-t border-line pt-1.5 text-xs text-ink-muted">
+                      <p className="mt-2 saring-break border-t border-line pt-1.5 text-xs text-ink-muted">
                         Referensi: {item.references}
                       </p>
                     ) : null}

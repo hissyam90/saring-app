@@ -100,9 +100,11 @@ for (const key of darkKeys) {
 
 /**
  * Token yang sengaja sama di kedua tema: aksen lime dipakai sebagai penanda
- * merek dan teks di atasnya (`on-lime`) tetap gelap di kedua tema.
+ * merek dan teks di atasnya (`on-lime`) tetap gelap di kedua tema. `scrim`
+ * adalah tirai gelap di belakang drawer/menu; ia harus tetap gelap di kedua
+ * tema justru karena `ink` berbalik menjadi terang saat dark mode.
  */
-const THEME_INDEPENDENT = new Set(["lime", "lime-deep"]);
+const THEME_INDEPENDENT = new Set(["lime", "lime-deep", "scrim"]);
 
 for (const key of Object.keys(light)) {
   if (THEME_INDEPENDENT.has(key)) continue;

@@ -119,10 +119,10 @@ export default async function ArticlePage({ params }: PageProps) {
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
               {article.category}
             </p>
-            <h1 className="mt-2 text-3xl font-black leading-[1.12] tracking-tight text-ink sm:text-[2.6rem]">
+            <h1 className="mt-2 saring-break text-3xl font-black leading-[1.12] tracking-tight text-ink sm:text-[2.6rem]">
               {article.title}
             </h1>
-            <p className="mt-3 max-w-[62ch] text-base leading-7 text-ink-soft">
+            <p className="mt-3 max-w-[62ch] saring-break text-base leading-7 text-ink-soft">
               {article.summary}
             </p>
             <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
@@ -365,10 +365,10 @@ function ContributionView({
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-muted">
             Kontribusi komunitas · {contribution.category}
           </p>
-          <h1 className="mt-2 text-3xl font-black leading-[1.12] tracking-tight text-ink sm:text-[2.3rem]">
+          <h1 className="mt-2 saring-break text-3xl font-black leading-[1.12] tracking-tight text-ink sm:text-[2.3rem]">
             {contribution.title}
           </h1>
-          <p className="mt-3 text-base leading-7 text-ink-soft">
+          <p className="mt-3 saring-break text-base leading-7 text-ink-soft">
             {contribution.summary}
           </p>
           <p className="mt-2 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
@@ -388,7 +388,7 @@ function ContributionView({
             <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
               Referensi
             </h2>
-            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink-muted">
+            <p className="saring-break mt-1 whitespace-pre-wrap text-sm leading-6 text-ink-muted">
               {contribution.references}
             </p>
           </section>

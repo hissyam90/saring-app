@@ -53,13 +53,13 @@ export default async function AdminLaporanPage({
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map((f) => (
           <Link
             key={f.id}
             href={`/admin/laporan?status=${f.id}`}
-            className={`min-h-9 border-2 px-2.5 py-1 text-xs font-bold ${
+            className={`inline-flex min-h-11 items-center whitespace-nowrap border-2 px-3 text-xs font-bold ${
               filter === f.id
                 ? "border-ink bg-ink text-on-ink"
                 : "border-line-strong bg-surface text-ink-soft hover:border-ink"
@@ -82,20 +82,24 @@ export default async function AdminLaporanPage({
           <ul className="grid gap-2">
             {result.items.map((report) => (
               <li key={report.id} className="border-l-4 border-l-coral bg-paper px-3 py-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-ink">{report.reason}</span>
-                  <Tag tone={report.status === "resolved" ? "success" : "warn"}>
-                    {report.status}
-                  </Tag>
-                  <span className="ml-auto text-[11px] text-ink-muted">
-                    {formatDate(report.createdAt)}
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                  <span className="min-w-0 saring-break text-sm font-bold leading-snug text-ink sm:grow sm:basis-2/5">
+                    {report.reason}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      {formatDate(report.createdAt)}
+                    </span>
+                    <Tag tone={report.status === "resolved" ? "success" : "warn"}>
+                      {report.status}
+                    </Tag>
                   </span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-ink-muted">
+                <p className="mt-0.5 saring-break text-[11px] text-ink-muted">
                   Target: {report.targetType} · id {report.targetId.slice(0, 8)}
                 </p>
                 {report.context.threadTitle ? (
-                  <p className="mt-0.5 text-xs leading-5 text-ink">
+                  <p className="mt-0.5 saring-break text-xs leading-5 text-ink">
                     Diskusi:{" "}
                     <span className="font-semibold">
                       {report.context.threadTitle}
@@ -110,13 +114,13 @@ export default async function AdminLaporanPage({
                         ? ` · ${report.context.replyAuthorName}`
                         : ""}
                     </p>
-                    <p className="mt-0.5 line-clamp-4 text-xs leading-5 text-ink-soft">
+                    <p className="mt-0.5 line-clamp-4 saring-break text-xs leading-5 text-ink-soft">
                       {report.context.replyBody ?? "Balasan tidak tersedia."}
                     </p>
                   </div>
                 ) : null}
                 {report.details ? (
-                  <p className="mt-1 text-xs leading-5 text-ink-soft">
+                  <p className="mt-1 saring-break text-xs leading-5 text-ink-soft">
                     {report.details}
                   </p>
                 ) : null}

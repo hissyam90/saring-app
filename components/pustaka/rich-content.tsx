@@ -223,7 +223,7 @@ export function RichContent({
   fallbackText?: string;
   className?: string;
 }) {
-  const wrapper = `grid min-w-0 gap-3 text-[15px] leading-7 text-ink-soft [&>*]:min-w-0 ${className}`;
+  const wrapper = `saring-break grid min-w-0 gap-3 text-[15px] leading-7 text-ink-soft [&>*]:min-w-0 ${className}`;
 
   if (!doc || !Array.isArray(doc.content) || doc.content.length === 0) {
     if (!fallbackText.trim()) return null;

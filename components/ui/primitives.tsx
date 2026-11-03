@@ -31,7 +31,7 @@ export function Panel({
     <section className={`border-2 border-ink bg-surface ${className}`}>
       {title ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ink bg-paper px-4 py-2.5">
-          <div className="min-w-0">
+          <div className="min-w-0 saring-break">
             <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink">
               {title}
             </h2>

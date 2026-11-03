@@ -18,7 +18,7 @@ export default async function AdminPenggunaPage({
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="border-l-4 border-l-ink bg-paper px-3 py-2 text-xs leading-5 text-ink-muted">
         Halaman ini tidak menampilkan email, kata sandi, atau data sensitif lain.
         Role diperiksa ulang di server pada setiap aksi.
@@ -32,32 +32,34 @@ export default async function AdminPenggunaPage({
             {result.items.map((user) => (
               <li
                 key={user.id}
-                className="flex flex-wrap items-center gap-2 border-l-4 border-l-ink bg-paper px-3 py-2"
+                className="flex min-w-0 flex-col gap-2 border-l-4 border-l-ink bg-paper px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center"
               >
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+                <span className="min-w-0 saring-break text-sm font-semibold text-ink sm:grow sm:basis-2/5">
                   {user.displayName}
                 </span>
-                <Tag tone={user.role === "admin" ? "success" : "neutral"}>
-                  {user.role}
-                </Tag>
-                <span className="font-mono text-[11px] text-ink-muted">
-                  {formatDate(user.createdAt)}
+                <span className="flex flex-wrap items-center gap-2">
+                  <Tag tone={user.role === "admin" ? "success" : "neutral"}>
+                    {user.role}
+                  </Tag>
+                  <span className="font-mono text-[11px] text-ink-muted">
+                    {formatDate(user.createdAt)}
+                  </span>
+                  {user.role === "user" ? (
+                    <ModerationActions
+                      label="Jadikan admin"
+                      payload={{ action: "set-user-role", userId: user.id, role: "admin" }}
+                      confirmText="Pengguna ini akan mendapat akses penuh ke area admin."
+                      tone="secondary"
+                    />
+                  ) : (
+                    <ModerationActions
+                      label="Turunkan ke user"
+                      payload={{ action: "set-user-role", userId: user.id, role: "user" }}
+                      confirmText="Akses admin pengguna ini akan dicabut."
+                      tone="danger"
+                    />
+                  )}
                 </span>
-                {user.role === "user" ? (
-                  <ModerationActions
-                    label="Jadikan admin"
-                    payload={{ action: "set-user-role", userId: user.id, role: "admin" }}
-                    confirmText="Pengguna ini akan mendapat akses penuh ke area admin."
-                    tone="secondary"
-                  />
-                ) : (
-                  <ModerationActions
-                    label="Turunkan ke user"
-                    payload={{ action: "set-user-role", userId: user.id, role: "user" }}
-                    confirmText="Akses admin pengguna ini akan dicabut."
-                    tone="danger"
-                  />
-                )}
               </li>
             ))}
           </ul>

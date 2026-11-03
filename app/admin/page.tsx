@@ -23,15 +23,15 @@ export default async function AdminHome() {
   ];
 
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {cards.map((card) => (
           <Link
             key={card.label}
             href={card.href}
-            className="border-2 border-ink bg-surface px-3 py-2.5 hover:bg-lime-soft"
+            className="flex min-h-11 min-w-0 flex-col justify-center border-2 border-ink bg-surface px-3 py-2.5 hover:bg-lime-soft"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+            <p className="saring-break text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
               {card.label}
             </p>
             <p className="mt-0.5 font-mono text-2xl font-bold text-ink">
@@ -59,13 +59,23 @@ export default async function AdminHome() {
             {pending.items.map((item) => (
               <li
                 key={item.id}
-                className="flex flex-wrap items-center gap-2 border-l-4 border-l-amber bg-paper px-3 py-2"
+                className="flex flex-col gap-1.5 border-l-4 border-l-amber bg-paper px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
               >
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+                {/*
+                  Judul mendapat baris sendiri di layar sempit. Sebelumnya
+                  `flex-1` (flex-basis 0) + `min-width: 0` membuat judul hanya
+                  kebagian sisa ruang setelah nama penulis dan badge, sehingga
+                  satu judul panjang terpecah menjadi 1–2 huruf per baris.
+                */}
+                <span className="min-w-0 saring-break text-sm font-semibold leading-snug text-ink sm:grow sm:basis-2/5">
                   {item.title}
                 </span>
-                <span className="text-[11px] text-ink-muted">{item.authorName}</span>
-                <Tag tone="warn">menunggu</Tag>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="saring-break text-[11px] text-ink-muted">
+                    {item.authorName}
+                  </span>
+                  <Tag tone="warn">menunggu</Tag>
+                </span>
               </li>
             ))}
           </ul>
@@ -92,8 +102,8 @@ export default async function AdminHome() {
                 key={report.id}
                 className="border-l-4 border-l-coral bg-paper px-3 py-2"
               >
-                <p className="text-sm font-semibold text-ink">{report.reason}</p>
-                <p className="text-[11px] text-ink-muted">
+                <p className="saring-break text-sm font-semibold text-ink">{report.reason}</p>
+                <p className="saring-break text-[11px] text-ink-muted">
                   {report.targetType} · {formatDate(report.createdAt)}
                 </p>
               </li>
