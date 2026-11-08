@@ -176,7 +176,7 @@ export function Library({
                   bersarang di dalam anchor. Area judul/ringkasan tetap tautan,
                   header memuat kategori, waktu baca, dan tombol simpan.
                 */}
-                <article className="flex h-full min-w-0 flex-col border-2 border-ink bg-surface transition-colors hover:bg-lime-soft">
+                <article className="hover-lift flex h-full min-w-0 flex-col border-2 border-ink bg-surface hover:bg-lime-soft">
                   <div className="flex min-w-0 items-center justify-between gap-2 border-b border-line px-4 py-2">
                     <span className="flex min-w-0 flex-1 items-center gap-1.5">
                       {item.authorName ? (

@@ -13,6 +13,9 @@ import {
   subscribeNotifications,
 } from "@/lib/notification-feed";
 
+// Harus >= durasi transisi panel (0.2s) di CSS.
+const PANEL_EXIT_MS = 240;
+
 /**
  * Ikon notifikasi. Panel dirender lewat portal dengan posisi `fixed` agar tidak
  * terpotong sidebar (`overflow-y-auto`) atau area konten. Data berasal dari satu
@@ -25,6 +28,9 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
     getServerNotificationFeed,
   );
   const [open, setOpen] = useState(false);
+  // `open` memacu transisi CSS; `renderPanel` menahan panel tetap ter-mount
+  // selama exit animation sebelum di-unmount.
+  const [renderPanel, setRenderPanel] = useState(false);
   const [pos, setPos] = useState<{
     left: number;
     top?: number;
@@ -33,6 +39,7 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const measure = useCallback(() => {
     const button = buttonRef.current;
@@ -62,13 +69,35 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
     };
   }, [variant]);
 
-  const toggle = () => {
-    if (open) {
-      setOpen(false);
-      return;
+  const openPanel = useCallback(() => {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
     }
     setPos(measure());
-    setOpen(true);
+    setRenderPanel(true);
+    // Dua frame agar panel dirender dalam keadaan tertutup (data-open="false")
+    // lebih dulu, sehingga transisi entrance benar-benar berjalan.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setOpen(true));
+    });
+  }, [measure]);
+
+  const closePanel = useCallback(() => {
+    setOpen(false);
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setRenderPanel(false);
+      closeTimer.current = null;
+    }, PANEL_EXIT_MS);
+  }, []);
+
+  const toggle = () => {
+    if (open) {
+      closePanel();
+      return;
+    }
+    openPanel();
   };
 
   useEffect(() => {
@@ -78,11 +107,11 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
       const target = event.target as Node;
       if (panelRef.current?.contains(target)) return;
       if (buttonRef.current?.contains(target)) return;
-      setOpen(false);
+      closePanel();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      setOpen(false);
+      closePanel();
       buttonRef.current?.focus();
     };
 
@@ -96,7 +125,7 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, measure]);
+  }, [open, measure, closePanel]);
 
   const { items, unread, loaded } = feed;
   const label =
@@ -104,16 +133,18 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
 
   const buttonClass =
     variant === "desktop"
-      ? "relative flex w-full items-center gap-2 px-2 py-2 text-sm font-semibold text-graphite-ink/75 transition-colors hover:bg-graphite-ink/10 hover:text-graphite-ink"
-      : "relative inline-flex h-11 w-11 items-center justify-center text-graphite-ink";
+      ? "bell-button relative flex w-full items-center gap-2 px-2 py-2 text-sm font-semibold text-graphite-ink/75 transition-colors hover:bg-graphite-ink/10 hover:text-graphite-ink"
+      : "bell-button relative inline-flex h-11 w-11 items-center justify-center text-graphite-ink";
 
   const panel =
-    open && pos
+    renderPanel && pos
       ? createPortal(
           <div
             ref={panelRef}
             data-testid="notification-panel"
+            data-open={open ? "true" : "false"}
             aria-label="Notifikasi"
+            aria-hidden={!open || undefined}
             style={{
               position: "fixed",
               left: pos.left,
@@ -121,7 +152,7 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
               ...(pos.bottom !== undefined ? { bottom: pos.bottom } : {}),
               maxHeight: pos.maxHeight,
             }}
-            className="z-[60] w-[min(22rem,calc(100vw-1rem))] overflow-y-auto border-2 border-ink bg-surface text-ink shadow-neo-sm"
+            className="notification-panel z-[60] w-[min(22rem,calc(100vw-1rem))] overflow-y-auto border-2 border-ink bg-surface text-ink shadow-neo-sm"
           >
             <div className="flex items-center justify-between gap-2 border-b-2 border-ink bg-paper px-3 py-1.5">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
@@ -239,8 +270,8 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
           <span
             className={
               variant === "desktop"
-                ? "ml-auto inline-flex min-w-5 items-center justify-center border border-current px-1 font-mono text-[10px]"
-                : "absolute -right-0.5 -top-0.5 inline-flex min-w-4 items-center justify-center border border-current bg-graphite px-0.5 font-mono text-[9px] leading-4"
+                ? "unread-badge ml-auto inline-flex min-w-5 items-center justify-center border border-current px-1 font-mono text-[10px]"
+                : "unread-badge absolute -right-0.5 -top-0.5 inline-flex min-w-4 items-center justify-center border border-current bg-graphite px-0.5 font-mono text-[9px] leading-4"
             }
           >
             {unread > 9 ? "9+" : unread}

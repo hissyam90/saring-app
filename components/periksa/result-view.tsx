@@ -190,7 +190,7 @@ export function ResultView({ result }: { result: AnalysisResult }) {
   const Icon = tone.icon;
 
   return (
-    <section aria-label="Hasil pemeriksaan" className="border-t-2 border-ink pt-5">
+    <section aria-label="Hasil pemeriksaan" className="saring-pop border-t-2 border-ink pt-5">
       {/* 1. Keputusan sementara */}
       <div className={`border-2 ${tone.wrapper}`}>
         <div className="flex items-start gap-3 px-4 py-4">

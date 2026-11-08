@@ -251,7 +251,7 @@ function QuestionView({
 
         {chosen ? (
           <div
-            className={`mt-4 border-2 ${
+            className={`saring-pop mt-4 border-2 ${
               perfect
                 ? "border-safe bg-safe-soft"
                 : partial

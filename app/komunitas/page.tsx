@@ -143,7 +143,7 @@ export default async function KomunitasPage({
               <li key={thread.id}>
                 <Link
                   href={`/komunitas/${thread.id}`}
-                  className="group block border-2 border-ink bg-surface px-4 py-3 transition-colors hover:bg-lime-soft"
+                  className="group hover-lift block border-2 border-ink bg-surface px-4 py-3 hover:bg-lime-soft"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag>{thread.category}</Tag>
