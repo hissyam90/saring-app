@@ -52,7 +52,7 @@ flowchart LR
 | Berkas | Cakupan |
 |---|---|
 | `scripts/contrast-audit.mjs` | Kontras pasangan token (teks normal 4,5:1, batas kontrol dan cincin fokus 3:1) untuk palet terang dan gelap, ditambah pemeriksaan bahwa dua blok palet gelap identik dan lengkap. |
-| `tests/e2e/contrast.spec.ts` | Kontras `color`/`background-color` hasil komputasi pada 19 rute × 4 mode, warna aksen, panel notifikasi, dan perilaku pemilih tema. |
+| `tests/e2e/contrast.spec.ts` | Kontras `color`/`background-color` hasil komputasi pada 19 rute × 4 mode, warna aksen, panel notifikasi, perilaku pemilih tema, serta hasil interaksi /periksa (tiga mode) dan /pustaka (cari/filter/kosong). |
 | `tests/unit/archive*.test.ts` | Aturan arsip artikel (pemilik/admin) dan hilangnya artikel dari Pustaka. |
 
 Yang diperiksa oleh `tests/e2e/contrast.spec.ts`:
@@ -79,6 +79,11 @@ Yang diperiksa oleh `tests/e2e/contrast.spec.ts`:
   tertutup elemen lain, dapat ditutup dengan Escape dan klik di luar, dan hanya
   satu permintaan notifikasi meskipun varian desktop dan mobile sama-sama
   dirender.
+- **Hasil interaksi** — alur /periksa sampai hasil tampil (sinyal pesan,
+  penilaian nomor, inspeksi tautan) dan /pustaka saat dicari, difilter, dan
+  kosong, diuji di kedua tema. Ini menjangkau elemen yang hanya muncul setelah
+  pengguna berinteraksi (kartu sinyal, meter skor, blok langkah, tab
+  nomor/tautan), bukan hanya potret kondisi awal saat halaman pertama dimuat.
 - **Stabilitas** — tidak ada peringatan hydration dan tidak ada overflow
   horizontal.
 
@@ -205,6 +210,7 @@ npm run lint        # ESLint
 npm run typecheck   # tsc --noEmit
 npm run test        # Vitest: unit + komponen (jsdom)
 npm run test:e2e    # Playwright: membangun lalu mengetes server produksi
+npm run test:e2e:local  # Playwright ke PostgreSQL uji lokal via Docker Compose
 npm run build       # produksi build
 npm run audit:contrast   # kontras token light/dark (WCAG 2.2 AA)
 ```
@@ -242,6 +248,44 @@ validasi tidak dimatikan.
 Catatan untuk database bersama: bila role database tidak boleh membuat database
 baru, E2E dapat diarahkan ke schema terpisah lewat parameter `options`
 (`-c search_path=<schema>`), sehingga tabel `public` tidak tersentuh.
+
+### Jalur Docker Compose (disarankan)
+
+`npm run test:e2e:local` menyiapkan semuanya agar tidak perlu mengatur ulang
+database uji:
+
+```bash
+npm run test:e2e:local
+```
+
+Yang dilakukan `scripts/run-local-e2e.mjs`:
+
+1. Memilih `SARING_E2E_DATABASE_URL` bila diset; kalau tidak, memakai default
+   Docker Compose
+   (`postgresql://saring:saring_ci_only@127.0.0.1:55432/saring_test`).
+2. Membatalkan run dengan pesan jelas bila URL menunjuk host selain
+   `localhost`/`127.0.0.1`/`::1` atau nama database tidak berakhiran `_test` —
+   pengaman yang sama dengan `playwright.config.ts`. Database produksi tidak
+   pernah bisa terpilih hanya karena `DATABASE_URL` di `.env.local` ditemukan.
+3. Menaikkan `postgres:16.15` (lihat `docker-compose.e2e.yml`) yang hanya
+   mendengarkan `127.0.0.1:55432` — port loopback, kredensial khusus CI
+   (`saring` / `saring_ci_only`), dan data di `tmpfs` (hilang saat container
+   berhenti). Tidak ada volume produksi yang tersentuh maupun tersisa.
+4. Menunggu database siap lewat driver `pg` yang sama dengan test (bukan hanya
+   port TCP), dengan health check tambahan `pg_isready`.
+5. Menerapkan `npm run db:migrate` ke database uji yang sama.
+6. Menjalankan Playwright; argumen tambahan diteruskan, mis.
+   `npm run test:e2e:local tests/e2e/contrast.spec.ts`.
+7. Menurunkan container di `finally` — selalu dibersihkan meskipun test gagal.
+
+Tanpa Docker, set `SARING_E2E_DATABASE_URL` menunjuk PostgreSQL uji lokal Anda
+sendiri lalu jalankan perintah yang sama; skrip melewati langkah Compose dan
+tetap menerapkan pengaman `_test` + loopback.
+
+**Proyek dan jejak.** `playwright.config.ts` menjalankan dua proyek — `chromium`
+(Desktop Chrome) dan `mobile` (Pixel 5) — dan menyetel `trace:
+"on-first-retry"`, sehingga pada retry pertama Playwright merekam jejak (trace)
+yang diunggah bersamaan `test-results`/`playwright-report` di CI saat gagal.
 
 ## E2E email (Testmail)
 

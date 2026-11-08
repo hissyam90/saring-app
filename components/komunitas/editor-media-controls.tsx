@@ -120,7 +120,16 @@ function insertBlock(editor: Editor, content: JSONContent): void {
     editor.chain().focus().insertContentAt(selection.to, content).run();
     return;
   }
-  editor.chain().focus().insertContent(content).run();
+  // Sisipkan media lalu tambahkan paragraf kosong setelahnya dan letakkan
+  // kursor di sana. Tanpa paragraf ini, blok media tertinggal "terpilih"
+  // sebagai node terakhir dokumen (terutama saat `trailingNode` dimatikan),
+  // sehingga ketikan berikutnya mengganti media dan dialog berikutnya muncul
+  // dengan label "Perbarui" alih-alih "Sisipkan".
+  editor
+    .chain()
+    .focus()
+    .insertContent([content, { type: "paragraph" }])
+    .run();
 }
 
 export function MediaControl({ editor }: { editor: Editor }) {

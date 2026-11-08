@@ -153,7 +153,7 @@ function SignalCard({ finding, index }: { finding: Finding; index: number }) {
           <figcaption className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
             Kutipan dari pesan
           </figcaption>
-          <blockquote className="saring-break border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-on-ink">
+          <blockquote className="saring-break border-l-2 border-lime bg-evidence px-3 py-2 font-mono text-xs leading-5 text-on-evidence">
             {"\u201c"}
             {finding.evidence}
             {"\u201d"}

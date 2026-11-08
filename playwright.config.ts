@@ -19,6 +19,37 @@ import { loadEnvConfig } from "@next/env";
  */
 loadEnvConfig(process.cwd(), true);
 
+/**
+ * Pengaman database untuk E2E: hanya database uji lokal yang boleh dipakai.
+ * `SARING_E2E_DATABASE_URL` adalah sumber kebenaran untuk pengujian lokal
+ * (`npm run test:e2e:local`); bila diset, ia menggantikan `DATABASE_URL` agar
+ * server produksi yang diuji, berkas test, dan migration memakai database yang
+ * sama. Database produksi tidak pernah bisa terpilih hanya karena `DATABASE_URL`
+ * dari `.env.local` ditemukan.
+ */
+if (process.env.SARING_E2E_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.SARING_E2E_DATABASE_URL;
+}
+
+function validateE2eDatabaseUrl(raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.length === 0) return "DATABASE_URL kosong.";
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return "DATABASE_URL bukan URL yang valid.";
+  }
+  const host = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (host !== "localhost" && host !== "127.0.0.1" && host !== "::1") {
+    return `Host database harus localhost/127.0.0.1 (ditemukan "${host}").`;
+  }
+  const dbName = decodeURIComponent(parsed.pathname.replace(/^\//, ""));
+  if (!dbName.endsWith("_test")) {
+    return `Nama database harus berakhiran "_test" (ditemukan "${dbName}").`;
+  }
+  return null;
+}
+
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3100;
 
 /**
@@ -39,10 +70,23 @@ if (!process.env.DATABASE_URL) {
       "yang diuji adalah persistensi artikel, revisi, draf, bookmark, dan",
       "notifikasi. Siapkan database uji terpisah, lalu jalankan:",
       "",
-      "  DATABASE_URL=postgresql://user:pass@127.0.0.1:5432/saring_test \\",
-      "  DATABASE_SSL=disable npm run db:migrate && npm run test:e2e",
+      "  npm run test:e2e:local",
       "",
       "Jangan mengarahkan DATABASE_URL ke database produksi.",
+    ].join("\n"),
+  );
+}
+
+const dbProblem = validateE2eDatabaseUrl(process.env.DATABASE_URL);
+if (dbProblem) {
+  throw new Error(
+    [
+      "E2E menolak database yang tidak aman:",
+      `  ${dbProblem}`,
+      "",
+      "DATABASE_URL wajib menunjuk database uji lokal (host localhost/127.0.0.1",
+      'dengan nama berakhiran "_test"). E2E tidak boleh berjalan ke database',
+      "produksi. Gunakan `npm run test:e2e:local` untuk menyiapkan PostgreSQL uji.",
     ].join("\n"),
   );
 }

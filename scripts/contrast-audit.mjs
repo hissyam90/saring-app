@@ -188,6 +188,7 @@ const PAIRS = [
   ["teks badge warn", "on-amber", "amber", 4.5, "teks"],
   ["teks badge success", "on-safe", "safe", 4.5, "teks"],
   ["teks di atas ink", "on-ink", "ink", 4.5, "teks"],
+  ["teks di blok kutipan bukti", "on-evidence", "evidence", 4.5, "teks"],
   ["teks hero", "ink", "hero", 4.5, "teks"],
 
   // Aksen dipakai sebagai warna teks di atas permukaan (Tag, label status)
@@ -217,6 +218,7 @@ const PAIRS = [
 
   // Permukaan lembut (notice, badge latar)
   ["teks di lime-soft", "ink", "lime-soft", 4.5, "teks"],
+  ["teks hint / lime-soft", "ink-hint", "lime-soft", 4.5, "teks"],
   ["teks di amber-soft", "ink", "amber-soft", 4.5, "teks"],
   ["teks di coral-soft", "ink", "coral-soft", 4.5, "teks"],
   ["teks di safe-soft", "ink", "safe-soft", 4.5, "teks"],
@@ -246,6 +248,38 @@ for (const mode of ["light", "dark"]) {
       ratio: ratio.toFixed(2),
       ambang: threshold,
       jenis: kind,
+      status: pass ? "PASS" : "FAIL",
+    });
+  }
+}
+
+// Elevasi permukaan kartu di atas halaman (khusus dark mode).
+//
+// Di mode terang, kartu dipisahkan oleh `border-ink` (garis gelap pada latar
+// terang), sehingga perbedaan isian `surface` (#ffffff) vs `paper` (#f5f2ea)
+// yang tipis tidak menjadi masalah. Di mode gelap `border-ink` berbalik menjadi
+// terang (putih, 21:1), sehingga kartu yang ber-border sudah jelas terpisah.
+// Kartu `bg-surface` tanpa border (mis. tab tidak aktif /periksa) dibedakan
+// oleh isiannya: `surface` (#111111) hanya sedikit lebih terang dari `paper`
+// (#000000) sesuai desain Black & Yellow yang memang meminta kartu "hitam
+// sedikit lebih terang", lalu dibingkai `border-line-strong` (>=3:1). Ambang
+// 1.1 memastikan isiannya tidak menyatu dengan halaman tanpa memaksa kartu
+// menjadi abu-abu terang yang melawan arah desain.
+{
+  const surface = resolve("dark", "surface");
+  const paper = resolve("dark", "paper");
+  if (surface && paper) {
+    const ratio = contrast(surface, paper);
+    const pass = ratio >= 1.1;
+    if (!pass) failures += 1;
+    rows.push({
+      mode: "dark",
+      label: "elevasi kartu / halaman",
+      fg: surface,
+      bg: paper,
+      ratio: ratio.toFixed(2),
+      ambang: 1.1,
+      jenis: "dekoratif",
       status: pass ? "PASS" : "FAIL",
     });
   }

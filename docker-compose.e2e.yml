@@ -1,0 +1,26 @@
+# PostgreSQL khusus pengujian E2E lokal (Windows/macOS/Linux).
+#
+# Dipakai oleh `npm run test:e2e:local` (scripts/run-local-e2e.mjs).
+# Jangan pernah dipakai untuk production: tidak ada volume yang di-persist,
+# kredensialnya khusus CI, dan port hanya di-bind ke loopback.
+services:
+  postgres:
+    image: postgres:16.15
+    container_name: saring-e2e-postgres
+    environment:
+      POSTGRES_USER: saring
+      POSTGRES_PASSWORD: saring_ci_only
+      POSTGRES_DB: saring_test
+    ports:
+      # Hanya bisa diakses dari mesin lokal (localhost), bukan dari jaringan.
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saring -d saring_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    # Data disimpan di tmpfs (RAM) dan hilang saat container berhenti, sehingga
+    # tidak pernah ada volume production yang tersentuh maupun tersisa.
+    tmpfs:
+      - /var/lib/postgresql/data

@@ -14,6 +14,10 @@
   --color-ink: #151b2b;
   --color-ink-soft: #28334a;
   --color-ink-muted: #5c6373;
+  /* Teks petunjuk/helper di atas permukaan lembut berrona (`*-soft`). Sama
+     dengan `ink-muted` di mode terang; di mode gelap sedikit lebih terang agar
+     tetap lolos 4.5:1 di atas latar `*-soft` yang lebih terang dari `surface`. */
+  --color-ink-hint: #5c6373;
   --color-paper: #f5f2ea;
   --color-surface: #ffffff;
   /* Garis dekoratif (pemisah antar blok). Tidak dipakai sebagai batas kontrol. */
@@ -81,6 +85,12 @@
   --color-on-coral: #ffffff;
   --color-on-amber: #ffffff;
   --color-on-safe: #ffffff;
+
+  /* Kutipan bukti di /periksa: permukaan gelap permanen agar garis kuning
+     `border-lime` selalu terlihat di kedua tema. Di dark mode `ink` berbalik
+     menjadi putih sehingga `bg-ink` akan menyembunyikan garis kuning itu. */
+  --color-evidence: #151b2b;
+  --color-on-evidence: #f5f2ea;
 
   --font-sans:
     "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial,
@@ -949,26 +959,27 @@ body {
 
 /* 1. Pilihan manual: gelap. */
 :root[data-theme="dark"] {
-  --color-ink: #f1f3f8;
-  --color-ink-soft: #dbe2ee;
-  --color-ink-muted: #aab4c6;
-  --color-paper: #0d131d;
-  --color-surface: #161e2c;
-  --color-line: #3f4e6b;
-  --color-line-strong: #5b6e95;
-  --color-placeholder: #aab4c6;
-  --color-link: #ffb3a5;
-  --color-link-hover: #ffd2c9;
-  --color-focus: #ffa08c;
-  --color-shadow: #5b6e95;
-  --color-graphite: #070b12;
-  --color-graphite-soft: #121a27;
-  --color-graphite-ink: #f1f3f8;
-  --color-graphite-muted: #c2cad8;
-  --color-hero: #121929;
-  --color-hero-edge: #1c2740;
-  --color-lime: #f2f16b;
-  --color-lime-deep: #e3df50;
+  --color-ink: #ffffff;
+  --color-ink-soft: #c7c7c7;
+  --color-ink-muted: #9a9a9a;
+  --color-ink-hint: #a8a8a8;
+  --color-paper: #000000;
+  --color-surface: #111111;
+  --color-line: #292929;
+  --color-line-strong: #6b6b6b;
+  --color-placeholder: #9a9a9a;
+  --color-link: #d8f36a;
+  --color-link-hover: #e9f79b;
+  --color-focus: #d8f36a;
+  --color-shadow: #1a1a1a;
+  --color-graphite: #0b0b0b;
+  --color-graphite-soft: #181818;
+  --color-graphite-ink: #ffffff;
+  --color-graphite-muted: #9a9a9a;
+  --color-hero: #0d0d0d;
+  --color-hero-edge: #1a1a1a;
+  --color-lime: #d8f36a;
+  --color-lime-deep: #b9dd35;
   --color-lime-soft: #3a3510;
   --color-amber: #ffc95c;
   --color-amber-text: #ffd58a;
@@ -980,36 +991,39 @@ body {
   --color-ink-coral: #ffb9ac;
   --color-safe: #5fe3ab;
   --color-safe-soft: #123328;
-  --color-on-ink: #0d131d;
+  --color-on-ink: #000000;
   --color-on-lime: #151b2b;
   --color-on-coral: #1a0a06;
   --color-on-amber: #241a08;
   --color-on-safe: #06231a;
+  --color-evidence: #181818;
+  --color-on-evidence: #ffffff;
 }
 
 /* 2. Pilihan "Ikuti sistem": hanya aktif bila pengguna memilihnya. */
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"] {
-    --color-ink: #f1f3f8;
-    --color-ink-soft: #dbe2ee;
-    --color-ink-muted: #aab4c6;
-    --color-paper: #0d131d;
-    --color-surface: #161e2c;
-    --color-line: #3f4e6b;
-    --color-line-strong: #5b6e95;
-    --color-placeholder: #aab4c6;
-    --color-link: #ffb3a5;
-    --color-link-hover: #ffd2c9;
-    --color-focus: #ffa08c;
-    --color-shadow: #5b6e95;
-    --color-graphite: #070b12;
-    --color-graphite-soft: #121a27;
-    --color-graphite-ink: #f1f3f8;
-    --color-graphite-muted: #c2cad8;
-    --color-hero: #121929;
-    --color-hero-edge: #1c2740;
-    --color-lime: #f2f16b;
-    --color-lime-deep: #e3df50;
+    --color-ink: #ffffff;
+    --color-ink-soft: #c7c7c7;
+    --color-ink-muted: #9a9a9a;
+    --color-ink-hint: #a8a8a8;
+    --color-paper: #000000;
+    --color-surface: #111111;
+    --color-line: #292929;
+    --color-line-strong: #6b6b6b;
+    --color-placeholder: #9a9a9a;
+    --color-link: #d8f36a;
+    --color-link-hover: #e9f79b;
+    --color-focus: #d8f36a;
+    --color-shadow: #1a1a1a;
+    --color-graphite: #0b0b0b;
+    --color-graphite-soft: #181818;
+    --color-graphite-ink: #ffffff;
+    --color-graphite-muted: #9a9a9a;
+    --color-hero: #0d0d0d;
+    --color-hero-edge: #1a1a1a;
+    --color-lime: #d8f36a;
+    --color-lime-deep: #b9dd35;
     --color-lime-soft: #3a3510;
     --color-amber: #ffc95c;
     --color-amber-text: #ffd58a;
@@ -1021,10 +1035,12 @@ body {
     --color-ink-coral: #ffb9ac;
     --color-safe: #5fe3ab;
     --color-safe-soft: #123328;
-    --color-on-ink: #0d131d;
+    --color-on-ink: #000000;
     --color-on-lime: #151b2b;
     --color-on-coral: #1a0a06;
     --color-on-amber: #241a08;
     --color-on-safe: #06231a;
+    --color-evidence: #181818;
+    --color-on-evidence: #ffffff;
   }
 }

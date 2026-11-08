@@ -46,10 +46,10 @@ export function Checker() {
               aria-selected={active}
               aria-controls={`checker-panel-${tab.id}`}
               onClick={() => setMode(tab.id)}
-              className={`flex min-h-16 items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
+              className={`flex min-h-16 items-center gap-2.5 border-2 px-3 py-2.5 text-left transition-colors ${
                 active
-                  ? "bg-ink text-on-ink"
-                  : "bg-surface text-ink hover:bg-lime-soft"
+                  ? "border-ink bg-ink text-on-ink"
+                  : "border-line-strong bg-surface text-ink hover:border-ink hover:bg-lime-soft"
               }`}
             >
               <span
@@ -65,7 +65,7 @@ export function Checker() {
                 <span className="flex items-center gap-1.5">
                   <span
                     className={`font-mono text-[10px] font-bold ${
-                      active ? "text-lime" : "text-ink-muted"
+                      active ? "text-on-ink" : "text-ink-muted"
                     }`}
                   >
                     0{index + 1}

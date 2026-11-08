@@ -143,7 +143,7 @@ export function PhoneCheck() {
                     <span className="block font-semibold leading-snug text-ink">
                       {behavior.label}
                     </span>
-                    <span className="mt-0.5 block text-xs leading-4 text-ink-muted">
+                    <span className={`mt-0.5 block text-xs leading-4 ${checked ? "text-ink-hint" : "text-ink-muted"}`}>
                       {behavior.hint}
                     </span>
                   </span>

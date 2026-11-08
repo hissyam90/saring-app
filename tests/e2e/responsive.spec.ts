@@ -263,6 +263,16 @@ test.afterAll(async () => {
   await pool.end();
 });
 
+/**
+ * Serial: seluruh test berkas ini memakai satu pool PostgreSQL yang dibuat di
+ * `beforeAll` dan ditutup di `afterAll`. Dengan `fullyParallel` bawaan, test
+ * dalam satu berkas bisa tersebar ke beberapa worker sehingga `pool.end()`
+ * berpotensi berjalan saat worker lain masih memakai pool yang sama
+ * ("Cannot use a pool after calling end"). Mode serial memastikan hook hanya
+ * berjalan sekali dan pool tidak ditutup sebelum seluruh test selesai.
+ */
+test.describe.configure({ mode: "serial" });
+
 /** Viewport yang diwajibkan pada laporan audit. */
 const ALL_VIEWPORTS: [number, number][] = [
   [320, 740],
@@ -719,6 +729,29 @@ test("drawer navbar pekat, mengunci scroll, dan dapat ditutup", async ({
   const drawer = page.getByTestId("nav-drawer");
   await expect(drawer).toBeVisible();
 
+  // Buka ulang drawer sampai benar-benar terbuka: klik tombol lalu tunggu
+  // `data-open="true"` pada overlay. `renderMenu` memasang drawer di DOM segera
+  // setelah klik, tetapi `open` baru menjadi true dua frame kemudian; sebelum
+  // itu listener Escape belum terpasang dan konten masih `inert`, sehingga
+  // Escape/klik backdrop yang dikirim terlalu cepat akan diabaikan. Menunggu
+  // `data-open` adalah kondisi terukur, bukan jeda waktu.
+  const reopenDrawer = async () => {
+    await page.getByRole("button", { name: "Buka menu" }).click();
+    await expect(drawer).toBeVisible();
+    await expect(page.locator(".nav-overlay")).toHaveAttribute("data-open", "true");
+  };
+
+  // Tunggu animasi entrance selesai secara terukur sebelum mengukur kotak:
+  // tepi kanan drawer harus sudah masuk penuh ke viewport (transform tidak
+  // lagi bertranslasi keluar). Tanpa menunggu, bounding box bisa terukur di
+  // tengah transisi 0,3 detik dan tampak keluar layar.
+  await expect
+    .poll(async () => {
+      const box = await drawer.boundingBox();
+      return box ? box.x + box.width : Number.POSITIVE_INFINITY;
+    })
+    .toBeLessThanOrEqual(321);
+
   // Panel harus benar-benar opak: konten di belakang tidak boleh tembus.
   const panel = await drawer.evaluate((element) => {
     const style = getComputedStyle(element);
@@ -778,20 +811,18 @@ test("drawer navbar pekat, mengunci scroll, dan dapat ditutup", async ({
   ).not.toBe("hidden");
 
   // 2. Tutup lewat Escape; fokus kembali ke tombol menu.
-  await page.getByRole("button", { name: "Buka menu" }).click();
-  await expect(drawer).toBeVisible();
+  await reopenDrawer();
   await page.keyboard.press("Escape");
   await expect(drawer).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Buka menu" })).toBeFocused();
 
   // 3. Tutup lewat backdrop.
-  await page.getByRole("button", { name: "Buka menu" }).click();
-  await expect(drawer).toBeVisible();
+  await reopenDrawer();
   await page.getByTestId("nav-backdrop").click({ position: { x: 10, y: 400 } });
   await expect(drawer).toHaveCount(0);
 
   // 4. Memilih tautan menutup drawer dan berpindah halaman.
-  await page.getByRole("button", { name: "Buka menu" }).click();
+  await reopenDrawer();
   await page.getByRole("dialog").getByRole("link", { name: "Pustaka" }).click();
   await expect(page).toHaveURL(/\/pustaka$/);
   await expect(page.getByTestId("nav-drawer")).toHaveCount(0);

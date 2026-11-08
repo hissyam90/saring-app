@@ -399,7 +399,7 @@ function LinkResult({
                 <figcaption className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
                   Bagian URL
                 </figcaption>
-                <blockquote className="break-all border-l-2 border-lime bg-ink px-3 py-2 font-mono text-xs leading-5 text-on-ink">
+                <blockquote className="break-all border-l-2 border-lime bg-evidence px-3 py-2 font-mono text-xs leading-5 text-on-evidence">
                   {finding.evidence}
                 </blockquote>
               </figure>

@@ -1,4 +1,10 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import { Pool } from "pg";
@@ -116,14 +122,14 @@ const THEME_MODES: ThemeMode[] = [
     scheme: "dark",
     stored: "system",
     pages: PAGES,
-    expectBodyBg: "rgb(13, 19, 29)",
+    expectBodyBg: "rgb(0, 0, 0)",
   },
   {
     id: "manual-gelap",
     scheme: "light",
     stored: "dark",
     pages: MANUAL_PAGES,
-    expectBodyBg: "rgb(13, 19, 29)",
+    expectBodyBg: "rgb(0, 0, 0)",
   },
   {
     id: "manual-terang",
@@ -160,6 +166,63 @@ async function storeTheme(page: Page, value: "light" | "dark" | "system") {
     ({ key, value }) => window.localStorage.setItem(key, value),
     { key: THEME_STORAGE_KEY, value },
   );
+}
+
+/**
+ * Pasang pencatat waktu `data-theme` terpasang dan waktu first-paint.
+ *
+ * Alih-alih MutationObserver, waktu pemasangan tema dicatat lewat pembungkus
+ * `setAttribute` yang sinkron. Callback MutationObserver berjalan di microtask
+ * checkpoint yang pada perangkat Chromium mobile bisa dieksekusi persis setelah
+ * paint pertama, sehingga `performance.now()`-nya menjadi ~0,1 ms di atas
+ * `first-paint` (flake). Pembungkus mencatat waktu tepat ketika skrip tema
+ * memanggil `setAttribute("data-theme", …)` — yang pasti terjadi sebelum body
+ * digambar — sehingga pengukuran deterministik tanpa melonggarkan assertion.
+ *
+ * Pembungkus dipasang pada `Element.prototype.setAttribute` (bukan pada
+ * `document.documentElement.setAttribute`) karena saat `addInitScript` berjalan,
+ * `document.documentElement` masih `null`; lihat komentar pada isi fungsi.
+ */
+async function installThemeMarks(page: Page) {
+  await page.addInitScript(() => {
+    window.__themeMarks = { themeAt: null, firstPaint: null, value: null };
+
+    // Waktu `addInitScript` dieksekusi, `document.documentElement` masih null:
+    // dokumen sudah dibuat tetapi elemen <html> belum diurai. Membungkus
+    // `document.documentElement.setAttribute` di sini (seperti versi sebelumnya)
+    // langsung `return` karena `html` null, sehingga tidak pernah menangkap
+    // pemasangan `data-theme` (gejala "atribut data-theme tidak pernah
+    // dipasang"). Sebagai gantinya, bungkus `Element.prototype.setAttribute`
+    // yang sudah tersedia sejak awal; ketika skrip tema memanggil
+    // `document.documentElement.setAttribute("data-theme", …)` saat <html>
+    // diurai (pastinya sebelum first-paint), panggilan itu melewati pembungkus
+    // ini secara sinkron dan terekam pada waktunya — deterministik, bukan
+    // bergantung pada ibu microtask/timing.
+    const originalSetAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (
+      this: Element,
+      name: string,
+      value: string,
+    ): void {
+      if (
+        name === "data-theme" &&
+        this === document.documentElement &&
+        window.__themeMarks.themeAt === null
+      ) {
+        window.__themeMarks.themeAt = performance.now();
+        window.__themeMarks.value = value;
+      }
+      originalSetAttribute.call(this, name, value);
+    };
+
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.name === "first-paint" && window.__themeMarks.firstPaint === null) {
+          window.__themeMarks.firstPaint = entry.startTime;
+        }
+      }
+    }).observe({ type: "paint", buffered: true });
+  });
 }
 
 
@@ -499,6 +562,82 @@ test.describe("Kontras permukaan interaktif", () => {
 
 
 /**
+ * Interaksi yang mengubah isi /periksa dan /pustaka.
+ *
+ * "Kontras halaman" di atas hanya memotret kondisi awal (mode pesan kosong dan
+ * daftar pustaka tanpa filter). Blok ini memotret apa yang berubah setelah
+ * pengguna benar-benar berinteraksi, sehingga palet gelap ikut teruji pada
+ * hasil analisis (kartu sinyal, meter skor, blok langkah), tab nomor/tautan,
+ * serta pencarian/filter/keadaan kosong pustaka — bukan hanya ketika halaman
+ * pertama kali dimuat.
+ */
+test.describe("Kontras interaksi /periksa dan /pustaka", () => {
+  for (const scheme of ["light", "dark"] as const) {
+    test(`alur penuh terlihat jelas dalam mode ${scheme}`, async ({ page }) => {
+      // `reducedMotion: "reduce"` menjadikan `transition-colors` selesai seketika
+      // (0,01 ms sesuai aturan prefers-reduced-motion), sehingga audit kontras
+      // mengukur warna akhir, bukan warna di tengah animasi 150 ms. Ini tidak
+      // mengubah warna Light/Dark itu sendiri, hanya menghilangkan snapshot
+      // transisi yang menimbulkan kegagalan palsu pada filter Pustaka.
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+      await storeTheme(page, scheme);
+
+      // --- /periksa: pesan -> hasil analisis ---
+      await page.goto("/periksa");
+      await page.locator("#message-input").fill(
+        "Selamat! Anda menang undian Rp10 juta. Kirim kode OTP dan transfer biaya admin Rp150.000 ke rekening 1234567890. Klik tautan https://bit.ly/klaim-hadiah sekarang sebelum hangus.",
+      );
+      await page.getByRole("button", { name: "Periksa pesan" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Sinyal yang terdeteksi" }),
+      ).toBeVisible();
+      expectReadable(await auditPage(page), `periksa pesan hasil (${scheme})`);
+
+      // --- /periksa: nomor -> hasil penilaian ---
+      await page.getByRole("tab", { name: "Periksa Nomor" }).click();
+      await page.locator("#phone-input").fill("081234567890");
+      await page.getByRole("checkbox").first().check();
+      await page.getByRole("button", { name: "Nilai nomor ini" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Langkah berikutnya" }),
+      ).toBeVisible();
+      expectReadable(await auditPage(page), `periksa nomor hasil (${scheme})`);
+
+      // --- /periksa: tautan -> hasil inspeksi lokal ---
+      await page.getByRole("tab", { name: "Periksa Tautan" }).click();
+      await page.locator("#link-input").fill("https://bit.ly/cek-paket");
+      await page.getByRole("button", { name: "Periksa tautan" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Struktur tautan yang dikenali" }),
+      ).toBeVisible();
+      expectReadable(await auditPage(page), `periksa tautan hasil (${scheme})`);
+
+      // --- /pustaka: daftar, cari, filter, kosong ---
+      await page.goto("/pustaka");
+      expectReadable(await auditPage(page), `pustaka daftar (${scheme})`);
+
+      const search = page.getByRole("searchbox", { name: "Cari topik pustaka" });
+      await search.fill("OTP");
+      expectReadable(await auditPage(page), `pustaka cari (${scheme})`);
+
+      await search.fill("");
+      await page.getByRole("button", { name: "Kredensial", exact: true }).click();
+      // Pastikan state filter aktif benar-benar sampai ke DOM (aria-pressed)
+      // sebelum audit, sehingga kelas warna akhir sudah diterapkan.
+      await expect(
+        page.getByRole("button", { name: "Kredensial", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      expectReadable(await auditPage(page), `pustaka filter (${scheme})`);
+
+      await search.fill("zzzz-tidak-ada-artikel");
+      await expect(page.getByText("Tidak ada artikel yang cocok")).toBeVisible();
+      expectReadable(await auditPage(page), `pustaka kosong (${scheme})`);
+    });
+  }
+});
+
+
+/**
  * Kontrol tema.
  *
  * Membuktikan perilaku tema di peramban:
@@ -552,10 +691,10 @@ test.describe("Kontrol tema", () => {
     await page.reload();
 
     expect(await themeHtml(page)).toBe("dark");
-    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+    expect(await bodyBg(page)).toBe("rgb(0, 0, 0)");
     // Bertahan walau sistem berganti ke terang.
     await page.emulateMedia({ colorScheme: "light" });
-    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+    expect(await bodyBg(page)).toBe("rgb(0, 0, 0)");
   });
 
   test("preferensi terang tersimpan tetap terang meski sistem gelap", async ({ page }) => {
@@ -586,7 +725,7 @@ test.describe("Kontrol tema", () => {
 
     // Mengikuti OS tanpa reload.
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect.poll(() => bodyBg(page)).toBe("rgb(13, 19, 29)");
+    await expect.poll(() => bodyBg(page)).toBe("rgb(0, 0, 0)");
 
     await page.emulateMedia({ colorScheme: "light" });
     await expect.poll(() => bodyBg(page)).toBe("rgb(245, 242, 234)");
@@ -596,32 +735,7 @@ test.describe("Kontrol tema", () => {
     // Sistem gelap: tanpa default light, frame pertama akan tampil gelap.
     await page.emulateMedia({ colorScheme: "dark" });
 
-    await page.addInitScript(() => {
-      window.__themeMarks = { themeAt: null, firstPaint: null, value: null };
-      const record = () => {
-        if (
-          document.documentElement?.hasAttribute("data-theme") &&
-          window.__themeMarks.themeAt === null
-        ) {
-          window.__themeMarks.themeAt = performance.now();
-          window.__themeMarks.value =
-            document.documentElement.getAttribute("data-theme");
-        }
-      };
-      new MutationObserver(record).observe(document, {
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["data-theme"],
-      });
-      record();
-      new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.name === "first-paint") {
-            window.__themeMarks.firstPaint = entry.startTime;
-          }
-        }
-      }).observe({ type: "paint", buffered: true });
-    });
+    await installThemeMarks(page);
 
     await page.goto("/pustaka");
     await page.waitForTimeout(250);
@@ -649,7 +763,7 @@ test.describe("Kontrol tema", () => {
     await group.getByRole("button", { name: "Gelap" }).click();
 
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+    expect(await bodyBg(page)).toBe("rgb(0, 0, 0)");
     expect(await readStored(page)).toBe("dark");
     await expect(
       group.getByRole("button", { name: "Gelap" }),
@@ -657,7 +771,7 @@ test.describe("Kontrol tema", () => {
 
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+    expect(await bodyBg(page)).toBe("rgb(0, 0, 0)");
     expect(await readStored(page)).toBe("dark");
   });
 
@@ -688,7 +802,7 @@ test.describe("Kontrol tema", () => {
 
     let group = await openThemePanel(page);
     await group.getByRole("button", { name: "Gelap" }).click();
-    expect(await bodyBg(page)).toBe("rgb(13, 19, 29)");
+    expect(await bodyBg(page)).toBe("rgb(0, 0, 0)");
 
     group = page.getByRole("group", { name: "Pilihan tema tampilan" });
     await group.getByRole("button", { name: "Ikuti sistem" }).click();
@@ -698,7 +812,7 @@ test.describe("Kontrol tema", () => {
 
     // Sekali lagi mengikuti sistem, tanpa reload.
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect.poll(() => bodyBg(page)).toBe("rgb(13, 19, 29)");
+    await expect.poll(() => bodyBg(page)).toBe("rgb(0, 0, 0)");
   });
 
   test("preferensi tidak dikirim ke server dan tidak memakai cookie", async ({
@@ -753,30 +867,7 @@ test.describe("Kontrol tema", () => {
       { key: THEME_STORAGE_KEY, value: "light" },
     );
 
-    await page.addInitScript(() => {
-      window.__themeMarks = { themeAt: null, firstPaint: null };
-      const record = () => {
-        if (
-          document.documentElement?.hasAttribute("data-theme") &&
-          window.__themeMarks.themeAt === null
-        ) {
-          window.__themeMarks.themeAt = performance.now();
-        }
-      };
-      new MutationObserver(record).observe(document, {
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["data-theme"],
-      });
-      record();
-      new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.name === "first-paint") {
-            window.__themeMarks.firstPaint = entry.startTime;
-          }
-        }
-      }).observe({ type: "paint", buffered: true });
-    });
+    await installThemeMarks(page);
 
     await page.goto("/");
     await page.waitForTimeout(250);
@@ -1026,6 +1117,21 @@ test.describe("Panel notifikasi", () => {
     return scope.getByRole("button", { name: /^Notifikasi/ });
   }
 
+  /**
+   * Tunggu panel benar-benar terbuka. `toBeVisible()` saja tidak cukup: panel
+   * ter-render langsung (data-open="false") lalu beranjak lewat dua frame ke
+   * `data-open="true"` dan memudar 0,18 detik. Escape handler hanya terpasang
+   * saat `open` bernilai true, dan hit-test (`elementFromPoint`) baru sah
+   * setelah opacity mencapai 1.
+   */
+  async function waitOpenNotificationPanel(page: Page, panel: Locator) {
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute("data-open", "true");
+    await expect
+      .poll(() => panel.evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeGreaterThanOrEqual(0.99);
+  }
+
   test("panel tetap di dalam layar dan tidak terpotong di desktop maupun mobile", async ({
     page,
     context,
@@ -1047,7 +1153,7 @@ test.describe("Panel notifikasi", () => {
       await bell.click();
 
       const panel = page.getByTestId("notification-panel");
-      await expect(panel).toBeVisible();
+      await waitOpenNotificationPanel(page, panel);
 
       const box = await panel.boundingBox();
       expect(box, "panel harus punya kotak").not.toBeNull();
@@ -1095,20 +1201,20 @@ test.describe("Panel notifikasi", () => {
     const panel = page.getByTestId("notification-panel");
 
     await bell.click();
-    await expect(panel).toBeVisible();
+    await waitOpenNotificationPanel(page, panel);
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
     await expect(bell).toBeFocused();
 
     await bell.click();
-    await expect(panel).toBeVisible();
+    await waitOpenNotificationPanel(page, panel);
     await page.mouse.click(900, 200);
     await expect(panel).toHaveCount(0);
 
     // Tombol tetap berfungsi lewat keyboard.
     await bell.focus();
     await page.keyboard.press("Enter");
-    await expect(panel).toBeVisible();
+    await waitOpenNotificationPanel(page, panel);
     await page.keyboard.press("Escape");
     await expect(panel).toHaveCount(0);
   });
