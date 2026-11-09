@@ -273,7 +273,7 @@ export function Guide({ initialSituation }: { initialSituation?: string }) {
                       <span className="font-semibold text-ink group-hover:underline">
                         {resource.label}
                       </span>
-                      <span className="mt-0.5 block saring-break text-xs text-ink-muted">
+                      <span className="mt-0.5 block saring-break text-xs text-ink-hint">
                         {resource.note}
                       </span>
                     </span>

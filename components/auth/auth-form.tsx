@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { buttonClass, Notice } from "@/components/ui/primitives";
-import { TurnstileWidget } from "@/components/security/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileStatus,
+} from "@/components/security/turnstile-widget";
 import { notifyAuthChanged } from "@/lib/auth/events";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
@@ -18,7 +21,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [pending, setPending] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  const onToken = useCallback((value: string | null) => setToken(value), []);
+  const onStatus = useCallback(
+    (status: TurnstileStatus) => setToken(status.token),
+    [],
+  );
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -118,7 +124,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       <TurnstileWidget
         siteKey={SITE_KEY}
         action={mode === "login" ? "login" : "register"}
-        onToken={onToken}
+        onStatus={onStatus}
       />
 
       {error ? <Notice tone="error">{error}</Notice> : null}

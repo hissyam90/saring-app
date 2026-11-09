@@ -102,7 +102,7 @@ async function RevisionCard({ revision }: { revision: SubmissionRevision }) {
               </Link>
             </>
           ) : null}
-          <span className="block text-ink-muted">
+          <span className="block text-ink-hint">
             Tetap tampil di Pustaka sampai revisi ini disetujui.
           </span>
         </div>

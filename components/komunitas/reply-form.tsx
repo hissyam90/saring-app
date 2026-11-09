@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { buttonClass, Notice } from "@/components/ui/primitives";
-import { TurnstileWidget } from "@/components/security/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileStatus,
+} from "@/components/security/turnstile-widget";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
 
@@ -13,7 +16,10 @@ export function ReplyForm({ threadId }: { threadId: string }) {
   const [pending, setPending] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [body, setBody] = useState("");
-  const onToken = useCallback((v: string | null) => setToken(v), []);
+  const onStatus = useCallback(
+    (status: TurnstileStatus) => setToken(status.token),
+    [],
+  );
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,7 +61,7 @@ export function ReplyForm({ threadId }: { threadId: string }) {
         className="w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-placeholder"
         placeholder="Bantu dengan pengalaman atau langkah yang bisa dilakukan."
       />
-      <TurnstileWidget siteKey={SITE_KEY} action="reply" onToken={onToken} />
+      <TurnstileWidget siteKey={SITE_KEY} action="reply" onStatus={onStatus} />
       {error ? <Notice tone="error">{error}</Notice> : null}
       <button type="submit" disabled={pending} className={buttonClass("primary")}>
         {pending ? "Mengirim..." : "Kirim balasan"}

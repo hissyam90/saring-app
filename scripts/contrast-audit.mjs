@@ -15,7 +15,8 @@
  * menyimpang tanpa terdeteksi.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const css = readFileSync("app/globals.css", "utf8");
 
@@ -220,8 +221,12 @@ const PAIRS = [
   ["teks di lime-soft", "ink", "lime-soft", 4.5, "teks"],
   ["teks hint / lime-soft", "ink-hint", "lime-soft", 4.5, "teks"],
   ["teks di amber-soft", "ink", "amber-soft", 4.5, "teks"],
+  ["teks hint / amber-soft", "ink-hint", "amber-soft", 4.5, "teks"],
+  ["teks hint / warn-soft", "ink-hint", "warn-soft", 4.5, "teks"],
   ["teks di coral-soft", "ink", "coral-soft", 4.5, "teks"],
+  ["teks hint / coral-soft", "ink-hint", "coral-soft", 4.5, "teks"],
   ["teks di safe-soft", "ink", "safe-soft", 4.5, "teks"],
+  ["teks hint / safe-soft", "ink-hint", "safe-soft", 4.5, "teks"],
   ["teks muted di kartu (editor hint)", "ink-muted", "surface", 4.5, "teks"],
 ];
 
@@ -310,6 +315,76 @@ for (const mode of ["light", "dark"]) {
 
 console.table(rows);
 
+/**
+ * Pindai sumber JSX/TSX untuk penggunaan `text-ink-muted` di atas permukaan
+ * berrona lembut (`bg-*soft` atau `hover:bg-*soft`). Di mode gelap, `ink-muted`
+ * (#9a9a9a) di atas `lime-soft` (#3a3510) hanya 4.40:1 (gagal 4.5:1); token
+ * `ink-hint` (#a8a8a8) lah yang harus dipakai. Pasangan token semata tidak bisa
+ * menangkap ini, karena token `ink-muted` dan `*-soft` tetap ada di palet — yang
+ * dilarang adalah *kombinasi pemakaiannya di dalam komponen*.
+ */
+function* walkSourceFiles(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) yield* walkSourceFiles(full);
+    else if (/\.(tsx|jsx)$/i.test(entry.name)) yield full;
+  }
+}
+
+function classNamesOf(tag) {
+  const parts = [];
+  const re = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^{}]*)\})/g;
+  let m;
+  while ((m = re.exec(tag))) {
+    parts.push((m[1] ?? m[2] ?? m[3] ?? "").replace(/`/g, " "));
+  }
+  return parts.join(" ");
+}
+
+function findForbiddenUsage() {
+  const MUTED = /\btext-ink-muted\b/;
+  const SOFT_BG = /\b(?:bg|hover:bg)-(?:lime|amber|coral|safe|warn)-soft\b/;
+  const found = [];
+  for (const dir of ["app", "components"]) {
+    if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) continue;
+    for (const file of walkSourceFiles(dir)) {
+      const source = readFileSync(file, "utf8");
+      const stack = [false];
+      const tagRe = /<\/?[A-Za-z][^<>]*\/?>/g;
+      let match;
+      while ((match = tagRe.exec(source))) {
+        const tag = match[0];
+        if (/^<\//.test(tag)) {
+          if (stack.length > 1) stack.pop();
+          continue;
+        }
+        const classes = classNamesOf(tag);
+        // `className={cond ? "bg-surface" : "bg-lime-soft"}` tidak bisa dianggap
+        // permukaan lembut permanen: cabang yang mengandung `*-soft` belum tentu
+        // bercabang dengan teks `text-ink-muted`. Abaikan ekspresi kondisional.
+        const ownSoft = !classes.includes("?") && SOFT_BG.test(classes);
+        const inheritedSoft = stack[stack.length - 1];
+        const softHere = ownSoft || inheritedSoft;
+        // Ikon (komponen JSX berhuruf kapital seperti <ArrowRight />) memakai
+        // `text-ink-muted` untuk warna stroke, bukan teks; 4.40:1 tetap >= 3:1
+        // (non-teks). Hanya elemen teks (tag HTML huruf kecil) yang diaudit.
+        const isTextTag = /^<[a-z][a-z0-9]*/.test(tag);
+        if (isTextTag && MUTED.test(classes) && softHere) {
+          found.push(`${relative(".", file)}: text-ink-muted pada permukaan *-soft`);
+        }
+        if (!/\/>$/.test(tag)) stack.push(softHere);
+      }
+    }
+  }
+  return [...new Set(found)];
+}
+
+const forbiddenUsage = findForbiddenUsage();
+for (const item of forbiddenUsage) {
+  console.error(`PENGGUNAAN TERLARANG: ${item}`);
+}
+
 for (const problem of problems) {
   console.error(`MASALAH TOKEN: ${problem}`);
 }
@@ -321,8 +396,9 @@ console.log(
       : "TIDAK identik/lengkap."),
 );
 console.log(
-  failures === 0 && problems.length === 0
-    ? "SEMUA PASANGAN LOLOS ambang yang diuji."
-    : `${failures} pasangan GAGAL ambang, ${problems.length} masalah token.`,
+  failures === 0 && problems.length === 0 && forbiddenUsage.length === 0
+    ? "SEMUA PASANGAN LOLOS ambang yang diuji, dan tidak ada pemakaian token terlarang."
+    : `${failures} pasangan GAGAL ambang, ${problems.length} masalah token, ${forbiddenUsage.length} pemakaian terlarang.`,
 );
-process.exitCode = failures === 0 && problems.length === 0 ? 0 : 1;
+process.exitCode =
+  failures === 0 && problems.length === 0 && forbiddenUsage.length === 0 ? 0 : 1;

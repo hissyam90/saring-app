@@ -31,7 +31,7 @@ export default async function AdminHome() {
             href={card.href}
             className="flex min-h-11 min-w-0 flex-col justify-center border-2 border-ink bg-surface px-3 py-2.5 hover:bg-lime-soft"
           >
-            <p className="saring-break text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+            <p className="saring-break text-[10px] font-bold uppercase tracking-[0.14em] text-ink-hint">
               {card.label}
             </p>
             <p className="mt-0.5 font-mono text-2xl font-bold text-ink">

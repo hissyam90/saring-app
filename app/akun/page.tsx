@@ -114,7 +114,7 @@ export default async function AkunPage() {
                     <span className="min-w-0 saring-break font-semibold text-ink">
                       {thread.title}
                     </span>
-                    <span className="shrink-0 font-mono text-[11px] text-ink-muted">
+                    <span className="shrink-0 font-mono text-[11px] text-ink-hint">
                       {thread.replyCount} balasan
                     </span>
                   </Link>

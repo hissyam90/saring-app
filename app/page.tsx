@@ -209,7 +209,7 @@ export default function Home() {
                     <span className="block text-sm font-bold leading-snug text-ink">
                       {item.title}
                     </span>
-                    <span className="mt-0.5 block text-xs leading-5 text-ink-muted">
+                    <span className="mt-0.5 block text-xs leading-5 text-ink-hint">
                       {item.detail}
                     </span>
                   </span>

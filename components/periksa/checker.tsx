@@ -65,7 +65,7 @@ export function Checker() {
                 <span className="flex items-center gap-1.5">
                   <span
                     className={`font-mono text-[10px] font-bold ${
-                      active ? "text-on-ink" : "text-ink-muted"
+                      active ? "text-on-ink" : "text-ink-hint"
                     }`}
                   >
                     0{index + 1}
@@ -76,7 +76,7 @@ export function Checker() {
                 </span>
                 <span
                   className={`mt-0.5 block text-xs leading-4 ${
-                    active ? "text-on-ink/70" : "text-ink-muted"
+                    active ? "text-on-ink/70" : "text-ink-hint"
                   }`}
                 >
                   {tab.hint}

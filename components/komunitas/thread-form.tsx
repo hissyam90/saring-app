@@ -9,7 +9,10 @@ import {
   type ThreadDraftPayload,
 } from "@/lib/db/types";
 import { buttonClass, Notice } from "@/components/ui/primitives";
-import { TurnstileWidget } from "@/components/security/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileStatus,
+} from "@/components/security/turnstile-widget";
 import { draftStateLabel, useDraftAutosave } from "./use-draft-autosave";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
@@ -35,7 +38,10 @@ export function ThreadForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const onToken = useCallback((v: string | null) => setToken(v), []);
+  const onStatus = useCallback(
+    (status: TurnstileStatus) => setToken(status.token),
+    [],
+  );
 
   const [title, setTitle] = useState(initialDraft?.title ?? "");
   const [category, setCategory] = useState<string>(
@@ -184,7 +190,7 @@ export function ThreadForm({
         </p>
       ) : null}
 
-      <TurnstileWidget siteKey={SITE_KEY} action="thread" onToken={onToken} />
+      <TurnstileWidget siteKey={SITE_KEY} action="thread" onStatus={onStatus} />
 
       {error ? <Notice tone="error">{error}</Notice> : null}
 

@@ -3,7 +3,10 @@
 import { useCallback, useState } from "react";
 import { Flag } from "lucide-react";
 import { buttonClass, Notice } from "@/components/ui/primitives";
-import { TurnstileWidget } from "@/components/security/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileStatus,
+} from "@/components/security/turnstile-widget";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
 
@@ -21,7 +24,10 @@ export function ReportButton({
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
   const [token, setToken] = useState<string | null>(null);
-  const onToken = useCallback((v: string | null) => setToken(v), []);
+  const onStatus = useCallback(
+    (status: TurnstileStatus) => setToken(status.token),
+    [],
+  );
 
   if (!canReport) return null;
 
@@ -108,7 +114,7 @@ export function ReportButton({
         rows={2}
         className="w-full border-2 border-ink bg-surface px-3 py-2 text-sm text-ink"
       />
-      <TurnstileWidget siteKey={SITE_KEY} action="report" onToken={onToken} />
+      <TurnstileWidget siteKey={SITE_KEY} action="report" onStatus={onStatus} />
       {error ? <Notice tone="error">{error}</Notice> : null}
       <div className="flex gap-2">
         <button type="submit" disabled={pending} className={buttonClass("danger")}>

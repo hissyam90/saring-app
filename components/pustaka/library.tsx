@@ -185,13 +185,13 @@ export function Library({
                           aria-hidden="true"
                         />
                       ) : null}
-                      <span className="truncate text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+                      <span className="truncate text-[10px] font-bold uppercase tracking-[0.14em] text-ink-hint">
                         {item.category}
                         {item.authorName ? ` · ${item.authorName}` : ""}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
-                      <span className="font-mono text-[10px] text-ink-muted">
+                      <span className="font-mono text-[10px] text-ink-hint">
                         {item.minutes} menit
                       </span>
                       <BookmarkButton

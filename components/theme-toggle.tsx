@@ -62,6 +62,14 @@ export function ThemeToggle() {
     emit();
   };
 
+  // Transisi warna sengaja dibatasi hanya pada `border-color`. Latar/teks
+  // antara keadaan aktif dan nonaktif TIDAK boleh dianimasikan: ketika halaman
+  // dimuat ulang dalam mode gelap, snapshot server (`light`) dikoreksi React
+  // menjadi `dark` setelah hydration. `transition-colors` mengubah koreksi itu
+  // menjadi animasi 150 ms yang melintasi perpaduan olive/abu berontras rendah
+  // (audit kontras E2E menangkapnya di tengah transisi: "Terang" 1.03:1,
+  // "Gelap" 1.64:1). Karena hanya border yang dianimasikan, pembalikan tema
+  // menjadi seketika dan hover tetap punya umpan balik lembut.
   return (
     <div
       role="group"
@@ -76,7 +84,7 @@ export function ThemeToggle() {
             type="button"
             onClick={() => apply(id)}
             aria-pressed={active}
-            className={`inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 border-2 px-3 py-2 text-sm font-bold transition-colors ${
+            className={`inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 border-2 px-3 py-2 text-sm font-bold transition-[border-color] ${
               active
                 ? "border-ink bg-lime text-on-lime"
                 : "border-line-strong bg-surface text-ink hover:border-ink"

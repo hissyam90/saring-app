@@ -4,7 +4,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { buttonClass, Notice } from "@/components/ui/primitives";
-import { TurnstileWidget } from "@/components/security/turnstile-widget";
+import {
+  TurnstileWidget,
+  type TurnstileStatus,
+} from "@/components/security/turnstile-widget";
 import { RichTextEditor } from "@/components/komunitas/rich-text-editor";
 import { RichContent } from "@/components/pustaka/rich-content";
 import {
@@ -20,6 +23,20 @@ import { draftStateLabel, useDraftAutosave } from "./use-draft-autosave";
 const SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || null;
 const inputClass =
   "mt-1 w-full border-2 border-ink bg-paper px-3 py-2.5 text-sm text-ink placeholder:text-placeholder";
+
+/** Petunjuk saat tombol kirim ditekan padahal token belum `ready`. */
+function turnstileGateHint(state: TurnstileStatus["state"]): string {
+  switch (state) {
+    case "not-configured":
+      return "Verifikasi keamanan belum dikonfigurasi di server ini. Pengiriman ditolak sampai administrator menyiapkan Cloudflare Turnstile.";
+    case "expired":
+      return "Verifikasi kedaluwarsa. Lakukan verifikasi ulang sebelum mengirim.";
+    case "error":
+      return "Verifikasi keamanan gagal dimuat. Klik \u201cCoba verifikasi lagi\u201d, lalu kirim ulang.";
+    default:
+      return "Verifikasi keamanan masih berlangsung. Tunggu sampai selesai sebelum mengirim.";
+  }
+}
 
 interface ArticleFields {
   title: string;
@@ -50,11 +67,21 @@ export function SubmissionForm({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
   // Menaikkan key me-remount editor agar kosong kembali setelah berhasil kirim.
   const [editorKey, setEditorKey] = useState(0);
-  const onToken = useCallback((v: string | null) => setToken(v), []);
+  // Status verifikasi Turnstile: hanya `ready` yang membawa token yang bisa
+  // dikirim. `turnstileReset` dipakai untuk meminta token baru setelah token
+  // sempat dipakai atau ditolak server (token Turnstile sekali pakai).
+  const [turnstile, setTurnstile] = useState<TurnstileStatus>(() => ({
+    state: SITE_KEY ? "loading" : "not-configured",
+    token: null,
+  }));
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const onTurnstileStatus = useCallback(
+    (status: TurnstileStatus) => setTurnstile(status),
+    [],
+  );
 
   const source = revision ?? initial;
   const legacyBody = source && !source.bodyJson ? source.body : "";
@@ -115,6 +142,16 @@ export function SubmissionForm({
     setError(null);
     setSaved(null);
 
+    // Pertahanan terakhir: jangan pernah kirim tanpa token, meskipun tombol
+    // sudah dinonaktifkan saat status belum `ready` (mis. submit lewat Enter
+    // atau panggilan programatik). Pemeriksaan di sini tidak hanya mengandalkan
+    // atribut `disabled`.
+    const captchaToken = turnstile.token;
+    if (!captchaToken || turnstile.state !== "ready") {
+      setError(turnstileGateHint(turnstile.state));
+      return;
+    }
+
     const trimmedTitle = title.trim();
     const trimmedSummary = summary.trim();
     const trimmedCategory = category.trim();
@@ -154,7 +191,7 @@ export function SubmissionForm({
       bodyJson: doc,
     };
     if (trimmedReferences) payload.references = trimmedReferences;
-    if (token) payload.captchaToken = token;
+    payload.captchaToken = captchaToken;
 
     // Tiga tujuan berbeda:
     // - revisi artikel terbit → /revisions (konten publik tidak berubah)
@@ -202,7 +239,6 @@ export function SubmissionForm({
         setDoc(EMPTY_RICH_DOC);
         setEditorKey((key) => key + 1);
         setPreview(false);
-        setToken(null);
       }
 
       router.refresh();
@@ -212,6 +248,12 @@ export function SubmissionForm({
       );
     } finally {
       setPending(false);
+      // Token Turnstile sekali pakai: kembali ke `loading` dan minta token baru
+      // untuk pengajuan berikutnya (baik setelah berhasil maupun ditolak
+      // server). `turnstileReset` dipakai sebagai key agar widget di-remount
+      // dan mengeluarkan tantangan yang benar-benar baru.
+      setTurnstile({ state: "loading", token: null });
+      setTurnstileReset((n) => n + 1);
     }
   };  return (
     <form
@@ -346,13 +388,22 @@ export function SubmissionForm({
         />
       </div>
 
-      <TurnstileWidget siteKey={SITE_KEY} action="submission" onToken={onToken} />
+      <TurnstileWidget
+        key={turnstileReset}
+        siteKey={SITE_KEY}
+        action="submission"
+        onStatus={onTurnstileStatus}
+      />
 
       {error ? <Notice tone="error">{error}</Notice> : null}
       {saved ? <Notice tone="success">{saved}</Notice> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button type="submit" disabled={pending} className={buttonClass("primary")}>
+        <button
+          type="submit"
+          disabled={pending || turnstile.state !== "ready"}
+          className={buttonClass("primary")}
+        >
           {pending
             ? "Menyimpan..."
             : revision

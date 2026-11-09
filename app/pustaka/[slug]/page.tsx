@@ -269,7 +269,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   href={`/pustaka/${item.id}`}
                   className="group flex h-full flex-col border-2 border-ink bg-surface px-4 py-3 transition-colors hover:bg-lime-soft"
                 >
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-hint">
                     {item.category}
                   </span>
                   <span className="mt-1 text-sm font-bold leading-snug text-ink">

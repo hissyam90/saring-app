@@ -234,7 +234,7 @@ export function NotificationBell({ variant }: { variant: "desktop" | "mobile" })
                           <button
                             type="button"
                             onClick={() => void markNotificationRead(item.id)}
-                            className="text-[11px] text-ink-muted underline"
+                            className="text-[11px] text-ink-hint underline"
                           >
                             Tandai dibaca
                           </button>
