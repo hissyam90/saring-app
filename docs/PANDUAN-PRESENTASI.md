@@ -4,6 +4,10 @@ Dokumen ini adalah naskah siap baca untuk demo langsung Saring. Urutannya
 mengikuti alur penggunaan aplikasi yang sebenarnya, dari halaman pembuka sampai
 penutup.
 
+> **Cari naskah video?** Untuk video demonstrasi maksimal 5 menit yang dikirim
+> kepada juri, gunakan [NASKAH-DEMO-VIDEO.md](NASKAH-DEMO-VIDEO.md). Dokumen ini
+> adalah versi lengkap (±12–15 menit) untuk sesi presentasi dan demo mendalam.
+
 **Sebelum mulai**
 
 - Buka `https://saring.app` di peramban desktop. Perbesar tampilan bila ruangan

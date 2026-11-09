@@ -68,7 +68,7 @@ Hasil dikelompokkan menjadi tiga tingkat sinyal dan tidak pernah berupa label
 
 ### Latihan keputusan (`/latihan`)
 
-Bank berisi **20 skenario** fiktif dengan tiga panjang sesi: 5, 10, atau seluruh
+Bank berisi **23 skenario** fiktif dengan tiga panjang sesi: 5, 10, atau seluruh
 bank. Soal diambil acak tanpa duplikasi dalam satu sesi. Setiap pilihan bernilai
 **100** (langkah terbaik), **50** (hati-hati tetapi masih ada celah), atau **0**
 (berisiko); aturan penilaian ditampilkan sebelum sesi dimulai. Ringkasan akhir
@@ -516,6 +516,7 @@ lebih dulu.
 - **Produksi:** <https://saring.app>
 - **Repositori:** publik — <https://github.com/hissyam90/saring-app>
 - **Panduan presentasi:** [docs/PANDUAN-PRESENTASI.md](docs/PANDUAN-PRESENTASI.md)
+- **Naskah video demo 5 menit:** [docs/NASKAH-DEMO-VIDEO.md](docs/NASKAH-DEMO-VIDEO.md)
 - **Dokumentasi teknis:** [docs/](docs/) — arsitektur, alur data, sumber data,
   keamanan, pengujian ([docs/EVALUASI-ANALISIS.md](docs/EVALUASI-ANALISIS.md)
   untuk evaluasi deteksi, [docs/USER-TESTING.md](docs/USER-TESTING.md) untuk

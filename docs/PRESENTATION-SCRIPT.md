@@ -1,9 +1,13 @@
 # Naskah Presentasi
 
-Dokumen ini sudah digantikan oleh **[PANDUAN-PRESENTASI.md](PANDUAN-PRESENTASI.md)**,
-yang memuat naskah lengkap per menu sesuai kondisi aplikasi terbaru: alur
-pemeriksaan, latihan, langkah pasca-insiden, Pustaka, Komunitas, akun, artikel,
-admin, notifikasi, arsitektur, keamanan, keterbatasan, dan penutupan.
+Dokumen ini sudah digantikan oleh dua naskah yang lebih akurat:
+
+- **[NASKAH-DEMO-VIDEO.md](NASKAH-DEMO-VIDEO.md)** — naskah video demonstrasi
+  berdurasi maksimal 5 menit untuk dikirim kepada juri.
+- **[PANDUAN-PRESENTASI.md](PANDUAN-PRESENTASI.md)** — naskah lengkap per menu
+  sesuai kondisi aplikasi terbaru: alur pemeriksaan, latihan, langkah
+  pasca-insiden, Pustaka, Komunitas, akun, artikel, admin, notifikasi,
+  arsitektur, keamanan, keterbatasan, dan penutupan.
 
 Gunakan dokumen tersebut agar narasi sesuai dengan layar dan perilaku aplikasi
 yang sebenarnya. Versi lama dokumen ini masih dapat dilihat pada riwayat Git,
