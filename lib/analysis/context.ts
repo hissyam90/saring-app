@@ -79,6 +79,32 @@ export function isReportedSpeech(clause: string): boolean {
   return REPORTED.test(clause);
 }
 
+/**
+ * Penanda kalimat yang MELAPORKAN pesan yang diterima ("saya dapat pesan …")
+ * atau menanyakan apakah sesuatu penipuan ("…, apakah ini penipuan?"), bukan
+ * melakukan ancamannya. Dipakai untuk menekan deteksi kutipan ancaman ketika
+ * penanda pelaporan/kutipan terletak pada klausa tetangga.
+ */
+const REPORTING_FRAME =
+  /(?:mendapat|menerima|dapat|terima|dapet)\s+(?:pesan|sms|chat|email|wa|whatsapp)\b|\bapakah\s+ini\s+(?:penipuan|scam)\b|\bini\s+(?:penipuan|scam)\s*\?/i;
+
+/**
+ * Sama seperti `isReportedSpeech`, tetapi juga memeriksa klausa tepat sebelum
+ * posisi kecocokan. Berguna untuk kalimat edukasi yang memperkenalkan ancaman
+ * sebagai kutipan pada klausa sebelumnya, mis. "Waspada modus penipuan: pelaku
+ * mengancam layanan Anda akan dicabut", atau kalimat yang menanyakan apakah
+ * pesan yang diterima adalah penipuan.
+ */
+export function isReportedContext(clauses: Clause[], index: number): boolean {
+  const idx = clauses.findIndex((c) => index >= c.start && index < c.end);
+  if (idx < 0) return false;
+  const prev = idx > 0 ? clauses[idx - 1].text : "";
+  const curr = clauses[idx]?.text ?? "";
+  const next = idx < clauses.length - 1 ? clauses[idx + 1].text : "";
+  if (isReportedSpeech(curr) || isReportedSpeech(prev)) return true;
+  return REPORTING_FRAME.test(`${prev} ${curr} ${next}`);
+}
+
 export function isPastNarrative(clause: string): boolean {
   if (PAST_FIRST_PERSON.test(clause)) return true;
   return (

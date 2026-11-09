@@ -181,7 +181,7 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 
 - **Pustaka**: 14 artikel dengan slug unik, isi substantif, estimasi waktu baca
   yang mengikuti panjang teks, tautan terkait valid, dan seluruh sumber https.
-- **Latihan**: 20 skenario, tepat satu opsi bernilai 100 per skenario, mode sesi
+- **Latihan**: 23 skenario, tepat satu opsi bernilai 100 per skenario, mode sesi
   memilih jumlah soal tanpa duplikasi, pengacak deterministik, dan `scoreSession`
   mencakup poin penuh, poin parsial, 0 poin, ringkasan kategori, serta sesi kosong.
 - **Pusat Bantuan & Pelaporan**: lima bagian tampil untuk setiap kondisi, kondisi
@@ -288,6 +288,27 @@ tetap menerapkan pengaman `_test` + loopback.
 (Desktop Chrome) dan `mobile` (Pixel 5) — dan menyetel `trace:
 "on-first-retry"`, sehingga pada retry pertama Playwright merekam jejak (trace)
 yang diunggah bersamaan `test-results`/`playwright-report` di CI saat gagal.
+
+### Test yang dilewati (skipped) — audit
+
+Tidak ada test yang diubah menjadi `skip` untuk menghindari kegagalan. Semua
+skip bersifat **by-design** (batasan viewport/proyek) atau **butuh kredensial
+eksternal**, dan alasannya tertulis eksplisit pada baris `test.skip`. Ringkasan:
+
+| Berkas | Jumlah skip | Alasan | Fungsi penting? | Dapat dijalankan lokal? | Perbaikan |
+|---|---|---|---|---|---|
+| `app.spec.ts` | 4 | `sidebar desktop` (1, hanya chromium) + `mobile viewport only` (3) | Sebagian (nav sidebar, overflow, navigasi) | Ya — berjalan pada proyek yang benar | Tidak perlu; skip adalah pemisahan proyek |
+| `contrast.spec.ts` | 7 | `sidebar desktop saja` / `token tema sama` / `cukup satu viewport` (semua hanya chromium) | Sekunder (screenshot/token yang identik di kedua proyek) | Ya — di chromium | Tidak perlu; menghindari duplikasi run |
+| `article-editor.spec.ts` | 3 | `mobile viewport only` (2) + `desktop viewport only` (1) | Sekunder (ukuran editor per viewport) | Ya — pada proyek yang benar | Tidak perlu |
+| `password-reset-email.spec.ts` | dikecualikan (bukan dihitung skip) | Butuh Resend + Testmail sungguhan; dikecualikan `testIgnore` pada run biasa | Tidak (alur reset email, jalur terpisah) | Hanya lewat `npm run test:e2e:email` dengan `TESTMAIL_*` + Resend | Jalur terpisah, bukan kekurangan run biasa |
+| `v16.spec.ts` | 0 pada run ini | Enam skip di atas totalnya **14**, seluruhnya viewport/proyek; verba `test.skip(true, …)` di `v16.spec.ts:545` adalah **pengaman kondisional** (hanya skip bila token CAPTCHA browser tidak membuat notifikasi) yang **tidak terpicu** — test notifikasinya lulus. | — | — | — |
+
+Empat belas skip viewport ada karena suatu penegasan hanya bermakna pada satu
+kelas viewport (mis. overflow mobile tidak berarti pada desktop dan sebaliknya),
+atau untuk menghindari menjalankan penegasan yang **sama persis** dua kali
+ketika token/tema identik di kedua proyek. Keduanya tetap dijalankan pada
+proyek yang relevan, sehingga cakupan tidak hilang. Hasil run penuh terbaru:
+**272 lulus / 14 dilewati / 0 gagal**.
 
 ## E2E email (Testmail)
 

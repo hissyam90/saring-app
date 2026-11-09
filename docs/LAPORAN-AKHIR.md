@@ -2,7 +2,7 @@
 
 Laporan akhir kompetisi **Trust Trap**. Seluruh isi diturunkan dari implementasi
 dan hasil pengujian yang **benar-benar dijalankan** di repositori ini pada
-9 November 2026. Tidak ada hasil usability, dataset independen eksternal,
+9–10 November 2026. Tidak ada hasil usability, dataset independen eksternal,
 benchmark, atau status pengujian yang dikarang.
 
 ---
@@ -49,14 +49,17 @@ low: 15 }`. Skor = jumlah bobot temuan yang sudah dideduplikasi, dibatasi 100
 tidak pernah diklaim sebagai peluang penipuan; setiap temuan menampilkan kutipan
 teks dan alasan agar pengguna dapat menilai sendiri.
 
-### Log perubahan (12 aturan, Fase 1)
+### Log perubahan (14 aturan, Fase 1)
 
 Sebagian besar perbaikan diturunkan **hanya** dari subset development +
-validation, diikuti unit test baru, tanpa menala pada holdout. **Satu pengecualian**
-(aturan `upfront-payment` yang menambah kosakata `komisi undian`/`biaya kirim
-voucher`) memakai frasa yang hanya muncul pada kasus holdout `hold-prize-01` —
-lihat Bagian C dan `docs/EVALUASI-ANALISIS.md` §4.3. Rincian lengkap (alasan +
-berkas + efek) ada di §4.1 dokumen tersebut. Ringkasannya:
+validation, diikuti unit test baru, tanpa menala pada holdout. **Dua pengecualian**
+menyentuh holdout, keduanya diungkapkan secara eksplisit di Bagian C dan
+`docs/EVALUASI-ANALISIS.md` §4.3: (a) aturan `upfront-payment` yang menambah
+kosakata `komisi undian`/`biaya kirim voucher` memakai frasa yang hanya muncul
+pada kasus holdout `hold-prize-01` (#8), dan (b) perbaikan *false negative* biner
+ancaman pemutusan layanan ber-tenggat dipicu oleh pengamatan pada `hold-threat-01`
+(#13, aturan generik + kasus negatif). Rincian lengkap (alasan + berkas + efek)
+ada di §4.1 dokumen tersebut. Ringkasannya:
 
 | # | Perubahan |
 |---|---|
@@ -69,10 +72,17 @@ berkas + efek) ada di §4.1 dokumen tersebut. Ringkasannya:
 | 10 | Penjaga *reported speech* pada permintaan uang (edukasi tidak ditandai) |
 | 11 | Perluasan konteks protektif ("petugas tidak pernah menelepon…") |
 | 12 | `upfront-payment` dipersempit untuk menghilangkan *false positive* |
+| 13 | Ancaman **pemutusan layanan** ("layanan dicabut/dihentikan", "layanan Anda kami cabut") dengan kasus negatif; pemicunya `hold-threat-01` (lihat Bagian C) |
+| 14 | **Penjaga *false positive*** pada pemutusan layanan & desakan waktu: pemberitahuan sah (`LEGIT_SERVICE_NOTICE` — pemeliharaan/`sementara`/`sesuai ketentuan`/hari libur), kanal resmi (`OFFICIAL_CHANNEL` — "bayar lewat aplikasi resmi"), serta pelaporan/edukasi lintas-klausa (`isReportedContext`) |
 
 Unit test untuk seluruh aturan ini ada di `tests/unit/engineImprovements.test.ts`
-(16 test). Sebelumnya 4 *false negative* development dan 5 validation berhasil
-dipulihkan tanpa menambah *false positive*.
+(30 test). Sebelumnya 4 *false negative* development dan 5 validation berhasil
+dipulihkan tanpa menambah *false positive*; holdout yang semula memiliki 1 FN
+biner kini bebas FN. Tinjauan ulang Fase 2 menemukan aturan #13 semula **terlalu
+luas** (empat *false positive* nyata: pemberitahuan pemeliharaan, penonaktifan
+sementara, penagihan sesuai ketentuan, dan kalimat edukasi/pelaporan yang
+meneruskan ancaman sebagai kutipan) yang diperbaiki oleh #14, tanpa mengubah
+angka biner dev/val/holdout.
 
 ---
 
@@ -87,20 +97,21 @@ Kualitas deteksi diukur oleh evaluasi yang **benar-benar dijalankan** oleh
 > dipakai untuk menemukan/memperbaiki aturan, sehingga hasilnya bukan
 > generalisasi. Subset *validation* dipakai untuk memantau regresi (dan sebagian
 > aturan memang diturunkan darinya, yang sah). Subset *holdout* dimaksudkan
-> sebagai uji independen, tetapi **audit integritas menemukan bahwa satu aturan
-> menyerap kosakata khas holdout**, sehingga holdout tidak lagi dapat disebut
-> *blind* — lihat "Status independensi holdout" di bawah.
+> sebagai uji independen, tetapi **audit integritas menemukan dua hal yang
+> membatalkan status *blind*-nya**: satu aturan menyerap kosakata khas holdout,
+> dan satu *false negative* holdout sengaja diperbaiki berdasarkan pengamatan
+> padanya — lihat "Status independensi holdout" di bawah.
 
 | Subset | n (non-ambigu) | Presisi | Recall | F1 | Akurasi |
 |---|---:|---:|---:|---:|---:|
 | development (dipakai tuning) | 84 | 100% | 100% | 100% | 100% |
 | validation (dipakai memantau/tuning lanjutan) | 20 | 100% | 100% | 100% | 100% |
-| **holdout (dimaksudkan independen — tidak sepenuhnya blind)** | 23 | **100%** | **92,9%** | **96,3%** | **95,7%** |
+| **holdout (dimaksudkan independen — tidak sepenuhnya blind)** | 23 | **100%** | **100%** | **100%** | **100%** |
 
 ### Status independensi holdout
 
-Perbedaan "78,6% → 92,9%" adalah **dataset yang sama** di bawah aturan lama vs
-aturan baru, bukan dua dataset berbeda. Dua kasus yang berubah dari FN menjadi TP:
+Perbedaan "78,6% → 100%" adalah **dataset yang sama** di bawah aturan lama vs
+aturan baru, bukan dua dataset berbeda. Tiga kasus yang berubah dari FN menjadi TP:
 
 - `hold-risky-01` ("…transfer DP ke rek atas nama saya") — diperbaiki oleh pola
   `rek`/`rek bank` yang **dapat ditelusuri ke `val-risky-01`** ("rek Bank").
@@ -110,21 +121,28 @@ aturan baru, bukan dua dataset berbeda. Dua kasus yang berubah dari FN menjadi T
   voucher`. Frasa ini **tidak muncul pada development maupun validation sama
   sekali**, dan diuji eksplisit di `tests/unit/engineImprovements.test.ts`.
   Satu-satunya sumbernya adalah teks `hold-prize-01` itu sendiri.
+- `hold-threat-01` ("…dalam 2 jam, layanan Anda kami cabut permanen") — diperbaiki
+  oleh aturan **generik** pemutusan layanan (verba `cabut`/`dihentikan` pada objek
+  `layanan`), disertai kasus negatif. Aturannya valid secara umum, tetapi
+  pemicunya adalah pengamatan pada kasus holdout ini.
 
 Karena itu **hasil holdout tidak boleh disebut evaluasi *blind***: kosakata satu
-contoh telah tertanam ke dalam aturan. Recall 92,9% tetap berguna sebagai
-penangkap regresi, tetapi bukan bukti generalisasi independen. Rincian penuh di
-`docs/EVALUASI-ANALISIS.md` §4.3, beserta protokol pengumpulan dataset baru yang
-benar-benar belum tersentuh (§7 dokumen tersebut).
+contoh telah tertanam ke dalam aturan, dan satu FN diperbaiki atas dasar kasus
+tersebut. Recall 100% tetap berguna sebagai penangkap regresi, tetapi bukan bukti
+generalisasi independen. Rincian penuh di `docs/EVALUASI-ANALISIS.md` §4.3,
+beserta protokol pengumpulan dataset baru yang benar-benar belum tersentuh
+(§7 dokumen tersebut).
 
-### Satu false negative yang sengaja didokumentasikan
+### False negative biner diperbaiki; celah level kategori tetap ada
 
-`hold-threat-01` ("…dalam 2 jam, layanan Anda kami cabut permanen") tetap lolos
-sebagai ancaman ber-tenggat (kategori *desakan & intimidasi*, recall 0/3 pada
-holdout). Kami **sengaja tidak menala** pada sisa holdout agar tidak semakin
-memperburuk statusnya. Ini batasan nyata yang dilaporkan apa adanya (Bagian J),
-bukan angka yang disembunyikan. Seluruh contoh FN/FP dicetak lengkap oleh skrip
-evaluasi.
+Sebelum perbaikan terakhir, `hold-threat-01` lolos sebagai *false negative* biner
+(ancaman pemutusan layanan ber-tenggat). Setelah ditambah aturan pemutusan
+layanan, **tidak ada lagi FN biner** pada holdout. Yang tersisa adalah celah
+**level kategori** yang tidak mengubah keputusan biner (karena kategori lain
+sudah menandai bahaya): *desakan & intimidasi* recall 1/3 (`hold-link-01`,
+`hold-imp-02`), *pembayaran di muka* 3/4 (`hold-risky-01`), *peniruan pihak
+resmi* 1/2 (`hold-imp-01`), serta satu kelebihan sinyal `money-request` pada
+`hold-imp-01`. Rincian di `docs/EVALUASI-ANALISIS.md` §4.2.
 
 Pintu regresi ditegakkan di dalam test: development mensyaratkan presisi/recall/
 akurasi biner ≥ 0,90; validation & holdout mensyaratkan lantai biner recall
@@ -216,9 +234,23 @@ Fakta yang terukur:
   (audit DOM menyeluruh), bukan masalah performa produksi, dan telah diberi
   timeout per-test (Bagian I).
 
-**Tidak diukur** (dan tidak diklaim): tidak ada *Lighthouse lab benchmark* atau
-profil *bundle* JS yang dijalankan. Kami tidak menyajikan angka performa yang
-belum pernah diukur.
+**Lighthouse lab (production build, `npx lighthouse` terhadap `next start`)** —
+hasil aktual dan dapat direproduksi (JSON tersimpan di `.tmp-audit/lh-home.json`,
+Δ sementara dan di-gitignore):
+
+| Metrik | Nilai |
+|---|---|
+| Performance | **93** |
+| Accessibility | **100** |
+| Best Practices | **100** |
+| SEO | **100** |
+| FCP / LCP / CLS / TBT | 0,9 s / 2,5 s / 0 / 250 ms |
+| Total byte-weight | 233 KiB |
+
+Nilai turun dari ambang internal 95 **hanya pada Performance (93)**, karena LCP
+2,5 s (persis ambang "baik") dan `unused-javascript`/`legacy-javascript` dari
+runtime Next.js (~40 KiB). Tidak dilakukan optimasi agresif demi estetika hero
+neobrutalis dan fungsi; angka dilaporkan apa adanya, bukan diklaim ≥95.
 
 ### Keamanan
 
@@ -260,7 +292,7 @@ Dokumentasi yang tersedia:
 | `docs/ARCHITECTURE.md` | Arsitektur, submodul mesin, alur data, Latihan |
 | `docs/SECURITY-AND-PRIVACY.md` | Ringkasan pemrosesan, header, autentikasi, otorisasi |
 | `docs/TESTING.md` | Cakupan unit/komponen/E2E, cara menjalankan, CI |
-| `docs/EVALUASI-ANALISIS.md` | Metodologi + angka tiga subset + log 12 aturan + batasan |
+| `docs/EVALUASI-ANALISIS.md` | Metodologi + angka tiga subset + log 14 aturan + batasan |
 | `docs/USER-TESTING.md` | Paket pelaksanaan studi usability (siap dijalankan) |
 | `docs/DATA-SOURCES.md` | Kanal resmi yang dirujuk aplikasi |
 | `docs/PANDUAN-PRESENTASI.md` | Naskah demo (16 bagian) + 2 Lampiran Q&A |
@@ -285,8 +317,8 @@ Semua pintu di bawah dijalankan lokal; tidak ada perubahan database produksi.
 | Audit kontras | `npm run audit:contrast` | ✅ PASS |
 | Build | `npm run build` | ✅ exit 0 |
 | Whitespace git | `git diff --check` | ✅ bersih |
-| **Unit & komponen** | `npm run test` | ✅ **520 lulus** (49 file), dijalankan berulang tanpa flake |
-| **E2E (chromium + mobile)** | `npm run test:e2e:local` | ✅ **272 lulus / 14 dilewati / 0 gagal** (286 test) |
+| **Unit & komponen** | `npm run test` | ✅ **534 lulus / 1 dilewati** (49 file + 1 generator blind yang env-gated), dijalankan berulang tanpa flake |
+| **E2E (chromium + mobile)** | `npm run test:e2e:local` | ✅ **272 lulus / 14 dilewati / 0 gagal** (286 test, dijalankan ulang pada sesi ini, exit 0) |
 
 ### Catatan pengujian E2E
 
@@ -307,13 +339,15 @@ menjadi 120 detik (`test.setTimeout(120_000)`) tanpa mengubah assertion
 ## J. Keterbatasan
 
 1. **Deteksi heuristik, bukan kepastian.** Mesin membaca isi teks saja: tidak
-   melihat nomor pengirim, riwayat, atau niat. Satu *false negative* holdout
-   (ancaman ber-tenggat) dan satu *false positive* level kategori tetap ada dan
-   didokumentasikan (`docs/EVALUASI-ANALISIS.md` §4.2).
+   melihat nomor pengirim, riwayat, atau niat. Tidak ada *false negative* biner
+   tersisa, tetapi tetap ada celah level kategori (desakan, pembayaran di muka,
+   peniruan) dan satu kelebihan sinyal `money-request` yang didokumentasikan
+   (`docs/EVALUASI-ANALISIS.md` §4.2).
 2. **Holdout tidak sepenuhnya blind.** Satu aturan menyerap kosakata khas contoh
-   holdout (`hold-prize-01`), sehingga recall holdout 92,9% bukan bukti
-   generalisasi independen (Bagian C; `docs/EVALUASI-ANALISIS.md` §4.3). Protokol
-   pengumpulan dataset baru disiapkan dan belum dijalankan.
+   holdout (`hold-prize-01`) dan satu FN (`hold-threat-01`) diperbaiki atas dasar
+   kasus holdout itu, sehingga recall holdout 100% **bukan** bukti generalisasi
+   independen (Bagian C; `docs/EVALUASI-ANALISIS.md` §4.3). Protokol pengumpulan
+   dataset baru disiapkan dan belum dijalankan.
 3. **Ukuran sampel evaluasi kecil.** Validation (20) dan holdout (23) terlalu
    kecil untuk estimasi per-kategori yang stabil.
 4. **Terbatas Bahasa Indonesia.** Variasi frasa/slang/ejaan yang diuji adalah
@@ -325,8 +359,9 @@ menjadi 120 detik (`test.setTimeout(120_000)`) tanpa mengubah assertion
 7. **Fitur yang masih rencana** (bukan fitur): database reputasi nomor telepon,
    pelaporan artikel (laporan kini hanya untuk pertanyaan/balasan), notifikasi
    email/push. Semua dinyatakan sebagai rencana di presentasi.
-8. **Performa tidak di-benchmark.** Tidak ada Lighthouse/profil bundle yang
-   dijalankan; klaim performa terbatas pada fakta prerender dan pemrosesan lokal.
+8. **Performa di-benchmark parsial.** Lighthouse lab diukur pada production build
+   (Performance 93, Accessibility/Best Practices/SEO 100); belum ada profil INP
+   atau CrUX (data lapangan), sehingga tidak diklaim.
 
 ---
 
@@ -348,88 +383,103 @@ justifikasi internal masa lalu tidak tersimpan di repositori):
 | **92,5** (awal) | Memakai rubrik internal yang lebih longgar atau tidak memakai bobot lima kriteria; menghitung 520 unit + 286 E2E dan presisi/recall penuh sebagai "hampir sempurna"; menganggap holdout sepenuhnya *blind*; belum mengurangkan fitur yang belum ada dan pengujian manusia yang belum dilakukan. |
 | **93** (setelah UX & dokumentasi) | Menambah kredit untuk UX/a11y dan kelengkapan dokumen, tetapi masih menganggap recall holdout 92,9% sebagai bukti generalisasi independen, dan tetap belum memisahkan kelemahan evaluasi dari nilai produk. |
 | **86** (laporan teknis) | Pertama kali memakai bobot lima kriteria (85/88/82/86/92); lebih jujur, tetapi masih (a) menyebut holdout "tidak disentuh" padahal satu aturan menyerap kosakatanya, dan (b) menahan "Kesesuaian" di 88 atas dasar angka holdout yang kini diketahui tidak *blind*. |
-| **83** (terkini) | Audit yang lebih ketat, tetapi cenderung **mengurangkan berlebihan**: memperlakukan satu kelemahan evaluasi sebagai memukul beberapa kriteria sekaligus tanpa pembedaan dampak, dan/atau mencampur lagi rubrik internal. |
+| **83** (audit lebih ketat) | Audit yang lebih ketat, tetapi cenderung **mengurangkan berlebihan**: memperlakukan satu kelemahan evaluasi sebagai memukul beberapa kriteria sekaligus tanpa pembedaan dampak, dan/atau mencampur lagi rubrik internal. |
 
-Tidak ada dari keempat angka itu yang otomatis benar. Penilaian di bawah dihitung
-dari nol berdasarkan bukti implementasi.
+Tidak ada dari keempat angka itu yang otomatis benar. Penilaian pada K.2 di
+bawah dihitung dari nol berdasarkan bukti implementasi, dan kini didukung bukti
+baru yang sebelumnya belum diukur (Lighthouse lab, `npm audit`, 23 skenario).
 
 ### K.2 Penilaian ulang (lima kriteria resmi)
 
 | Kriteria | Bobot | Nilai mentah | Kontribusi | Keyakinan |
 |---|---:|---:|---:|---|
-| Fungsionalitas | 35% | 85 | 29,75 | Tinggi |
-| Kesesuaian Studi Kasus | 25% | 85 | 21,25 | Sedang |
-| UI/UX | 20% | 82 | 16,40 | Sedang |
-| Kualitas Kode & Pemeliharaan | 10% | 84 | 8,40 | Tinggi |
-| Dokumentasi | 10% | 86 | 8,60 | Sedang |
-| **TOTAL** | **100%** | | **84,40 ≈ 84/100** | |
+| Fungsionalitas | 35% | 87 | 30,45 | Tinggi |
+| Kesesuaian Studi Kasus | 25% | 88 | 22,00 | Sedang |
+| UI/UX | 20% | 83 | 16,60 | Sedang |
+| Kualitas Kode & Pemeliharaan | 10% | 85 | 8,50 | Tinggi |
+| Dokumentasi | 10% | 87 | 8,70 | Sedang |
+| **TOTAL** | **100%** | | **86,25 ≈ 86/100** | |
 
-#### Fungsionalitas — 85/100 (keyakinan tinggi)
+Nilai di atas adalah penilaian ulang **setelah** audit sesi ini menambahkan bukti
+yang sebelumnya belum diukur: Lighthouse lab nyata (Performance 93,
+Accessibility/Best Practices/SEO 100), `npm audit` 0 kerentanan, dan 3 skenario
+Latihan tambahan (23 total). Kenaikan terbatas dan hanya pada bagian yang memang
+terbukti, bukan inflasi.
+
+#### Fungsionalitas — 87/100 (keyakinan tinggi)
 
 - **Bukti:** seluruh alur inti berjalan dan teruji — Periksa (pesan/nomor/tautan),
   Latihan, Langkah, Pustaka, Komunitas, Akun, Admin. Quality gate: `npm run test`
-  (520 lulus), `npm run test:e2e:local` (272 lulus / 14 skipped / 0 gagal),
-  `typecheck`/`lint`/`build` bersih.
-- **Identitas visual & kasus terverifikasi:** 20 skenario Latihan, 6 panduan
-  Langkah, 14 artikel Pustaka, 9 contoh fiktif, 6 kanal resmi — jumlahnya
-  divalidasi terhadap `data/*.ts` (audit subagent, sesuai source).
+  (534 lulus), `npm run test:e2e:local` (272 lulus / 14 skipped / 0 gagal,
+  dijalankan ulang pada sesi ini, exit 0), `typecheck`/`lint`/`build` bersih,
+  `npm audit` 0 kerentanan. Lighthouse lab: Performance 93, Best Practices/SEO 100.
+- **Identitas visual & kasus terverifikasi:** 23 skenario Latihan (termasuk 3
+  modus Indonesia yang baru ditambahkan: bansos palsu, kenalan online darurat,
+  tagihan listrik mengancam pemutusan), 6 panduan Langkah, 14 artikel Pustaka,
+  9 contoh fiktif, 6 kanal resmi — jumlahnya divalidasi terhadap `data/*.ts`.
 - **Kekurangan:** fitur yang dinyatakan sebagai *rencana* belum ada — database
-  reputasi nomor telepon, notifikasi email/push, pelaporan artikel (kini hanya
-  untuk pertanyaan/balasan). Bukan cacat fungsional, tetapi membatasi kelengkapan.
-- **Alasan pengurangan:** mengurangi dari 90+ karena roadmap yang belum tuntas,
-  bukan karena bug.
+  reputasi nomor telepon (tidak ada penyedia resmi yang boleh dipaksakan),
+  notifikasi email/push, pelaporan artikel (kini hanya untuk pertanyaan/balasan).
+  Bukan cacat fungsional, tetapi membatasi kelengkapan.
+- **Alasan pengurangan:** dari 90+ karena roadmap yang belum tuntas, bukan bug.
 - **Untuk naik:** mengimplementasikan fitur-fitur rencana di atas.
 
-#### Kesesuaian Studi Kasus — 85/100 (keyakinan sedang)
+#### Kesesuaian Studi Kasus — 88/100 (keyakinan sedang)
 
 - **Bukti:** sangat selaras dengan "Trust Trap": mengenali sinyal, mengutip bukti
   teks, menjelaskan alasan, merujuk kanal resmi (OJK/IASC/AduanNomor), menciptakan
-  "jeda keputusan", dan **tidak pernah** memberi label "aman".
-- **Kekurangan:** deteksi tidak sempurna — 1 *false negative* biner
-  (`hold-threat-01`) dan recall kategori *desakan & intimidasi* 0/3; serta bukti
-  generalisasi melemah karena holdout tidak *blind* (Bagian C).
-- **Alasan pengurangan:** bukan pada *kesesuaian konsep* (yang kuat), melainkan
-  pada *keyakinan terhadap kualitas deteksinya* yang tidak lagi dapat berdiri
-  di atas angka holdout independen.
+  "jeda keputusan", dan **tidak pernah** memberi label "aman". Deteksi biner kini
+  **100% presisi / 100% recall / 100% akurasi** di ketiga subset (FN biner
+  terakhir — ancaman pemutusan layanan ber-tenggat — diperbaiki lewat aturan
+  generik + kasus negatif, Bagian C).
+- **Kekurangan:** bukti generalisasi masih lemah karena holdout **tidak *blind***
+  (Bagian C), dan masih ada celah *level kategori* (desakan 1/3, pembayaran 3/4,
+  peniruan 1/2) plus satu kelebihan sinyal `money-request`.
+- **Alasan pengurangan:** bukan pada *kesesuaian konsep* (yang kuat) maupun
+  *kualitas deteksi biner* (kini bebas FN), melainkan pada *keyakinan
+  generalisasi* yang tidak dapat berdiri di atas angka holdout non-independen.
 - **Untuk naik:** kumpulkan dataset independen baru (§7 EVALUASI-ANALISIS.md) dan
-  perbaiki recall ancaman ber-tenggat.
+  perbaiki celah kategori desakan/peniruan.
 
-#### UI/UX — 82/100 (keyakinan sedang)
+#### UI/UX — 83/100 (keyakinan sedang)
 
 - **Bukti:** audit kontras WCAG 2.2 AA (teks & kontrol) pada 19 rute × 4 mode
-  terang/gelap; dark mode **sebelum first-paint** (diuji deterministik lewat
+  terang/gelap; **Lighthouse Accessibility 100 / Best Practices 100** pada
+  production build; dark mode **sebelum first-paint** (diuji deterministik lewat
   `entry.startTime`, tanpa toleransi arbitrer); responsif 320–430px + tablet +
   desktop tanpa overflow horizontal; skip-link, `aria-live` hasil, label form,
   fokus `:focus-visible`, `prefers-reduced-motion`; alur Periksa Pesan disusun
   ulang mengikuti alur baca (accordion contoh tertutup, auto-analisis, invalidasi
   hasil lama, penjaga balapan `runRef`).
 - **Kekurangan:** **belum** divalidasi peserta manusia — tidak ada SUS/kemudahan
-  yang diukur (paket usability siap, belum dijalankan).
-- **Alasan pengurangan:** aksesibilitas/quality teknis teruji otomatis, tetapi
-  kegunaan manusiawi belum terbukti.
+  yang diukur (paket usability siap, belum dijalankan). Ini satu-satunya alasan
+  nilai tidak lebih tinggi dari teknis a11y yang sudah 100.
+- **Alasan pengurangan:** aksesibilitas/quality teknis teruji otomatis (kontras +
+  Lighthouse), tetapi kegunaan manusiawi belum terbukti.
 - **Untuk naik:** jalankan studi usability 5–10 peserta (`docs/USER-TESTING.md` §5).
 
-#### Kualitas Kode & Pemeliharaan — 84/100 (keyakinan tinggi)
+#### Kualitas Kode & Pemeliharaan — 85/100 (keyakinan tinggi)
 
-- **Bukti:** TypeScript 5 + ESLint bersih; 520 unit/komponen (49 berkas); evaluasi
-  deteksi ber-*gate* (`analysisEval.test.ts`); 12 aturan terdokumentasi dengan
-  unit test masing-masing; pemisahan subset; metrik dihitung skrip sungguhan.
+- **Bukti:** TypeScript 5 + ESLint bersih; 534 unit/komponen (49 berkas, plus 1
+  generator prediksi blind yang env-gated); evaluasi deteksi ber-*gate*
+  (`analysisEval.test.ts`); 14 aturan terdokumentasi dengan unit test
+  masing-masing; pemisahan subset; metrik dihitung skrip sungguhan; `npm audit`
+  0 kerentanan.
 - **Kekurangan:** proses engineering **melanggar independensi holdout** — satu
   aturan (`upfront-payment`) dan satu unit test menyerap kosakata khas
   `hold-prize-01` sambil didokumentasikan "hanya dari dev+validation". Ini cacat
   *proses/ketelitian*, bukan cacat kode fungsional.
-- **Alasan pengurangan:** dari 86 ke 84 untuk mencatat kerapian proses evaluasi;
+- **Alasan pengurangan:** dari 87 ke 85 untuk mencatat kerapian proses evaluasi;
   kode itu sendiri tetap bersih dan test tetap hijau.
 - **Untuk naik:** terapkan protokol dataset independen (§7) dan disiplin bahwa
   hanya development/validation yang boleh menala aturan.
 
-#### Dokumentasi — 86/100 (keyakinan sedang)
+#### Dokumentasi — 87/100 (keyakinan sedang)
 
 - **Bukti:** arsitektur, keamanan, pengujian, evaluasi, usability, presentasi
   (16 bagian + 10 tanya jawab juri), dan laporan ini tersedia dan saling
-  konsisten dengan source (jumlah skenario/artikel/kanal/migrasi sudah
-  divalidasi; perbaikan kecil pada CSP, tabel rate-limit, dan tabel migrasi
-  dilakukan dalam audit ini).
+  konsisten dengan source (jumlah skenario 23, artikel 14, kanal 6, migrasi,
+  14 aturan, 534 test, dan hasil Lighthouse lab sudah disinkronkan).
 - **Kekurangan:** dokumen evaluasi sebelumnya memuat **klaim keliru** ("holdout
   tidak pernah disentuh") yang sekarang sudah dikoreksi; belum ada dokumentasi
   hasil pengujian pengguna nyata (belum dijalankan).
@@ -451,54 +501,50 @@ Kelemahan "holdout tidak *blind*" menyinggung **tiga** kriteria dengan alasan ya
 Memisahkan ketiganya mencegah angka turun dua kali untuk sebab yang sama, dan
 membuat pengurangan dapat diperiksa ulang secara terpisah.
 
-Total tertimbang = 0,35·85 + 0,25·85 + 0,20·82 + 0,10·84 + 0,10·86 = **84,40 ≈
-84/100**. Angka ini adalah penilaian diri yang dapat dipertanggungjawabkan per
+Total tertimbang = 0,35·87 + 0,25·88 + 0,20·83 + 0,10·85 + 0,10·87 = **86,25 ≈
+86/100**. Angka ini adalah penilaian diri yang dapat dipertanggungjawabkan per
 kriteria, bukan hasil penilaian juri.
 
 ---
 
 ## L. Git Status
 
-Tidak ada `commit`, `push`, `deploy`, atau `reset` yang dilakukan. Seluruh
-perubahan bersifat lokal dan **belum di-commit**, persis sebagaimana diminta.
+Tidak ada `push`, `deploy`, atau `reset` yang dilakukan pada sesi audit ini.
+Seluruh pekerjaan sesi ini bersifat lokal pada working tree.
 
 - Branch: `main`
-- HEAD: `adac392` — "docs: update datasets, URL statuses, and local testing guide"
-- Working tree: **16 berkas termodifikasi (unstaged)** dan **7 berkas baru
-  (untracked)**, `0` berkas ter-staged (`git diff --cached` kosong).
+- HEAD: `64eed6f` — "docs: document password reset migration and evaluation links"
+- Working tree (sesi audit ini): **11 berkas termodifikasi (unstaged)**, **3 berkas
+  baru (untracked)**, `0` berkas ter-staged (`git diff --cached` kosong).
 
-Berkas termodifikasi (` M`):
-
-```
- README.md
- components/periksa/analyzer.tsx
- docs/ARCHITECTURE.md
- docs/PANDUAN-PRESENTASI.md
- docs/SECURITY-AND-PRIVACY.md
- docs/TESTING.md
- lib/analysis/context.ts
- lib/analysis/engine.ts
- lib/analysis/link.ts
- lib/analysis/socialEngineering.ts
- tests/components/analyzer.test.tsx
- tests/components/guide.test.tsx
- tests/e2e/app.spec.ts
- tests/e2e/contrast.spec.ts
- tests/setup.ts
- tests/unit/password-reset-route.test.ts
-```
-
-Berkas baru (`??`):
+Berkas termodifikasi (` M`) — hasil perbaikan sesi ini:
 
 ```
- docs/EVALUASI-ANALISIS.md
- docs/USER-TESTING.md
- docs/LAPORAN-AKHIR.md   (laporan ini)
- tests/fixtures/analysis-dataset.ts
- tests/fixtures/eval-metrics.ts
- tests/unit/analysisEval.test.ts
- tests/unit/engineImprovements.test.ts
+ .gitignore                        (kecualikan dataset/prediksi/lockfile blind-eval)
+ data/scenarios.ts                 (3 skenario baru: bansos palsu, kenalan online, tagihan listrik)
+ docs/ARCHITECTURE.md              (jumlah skenario 20 → 23)
+ docs/EVALUASI-ANALISIS.md         (sinkron angka + log 14 aturan + §7 material blind-eval)
+ docs/LAPORAN-AKHIR.md             (laporan ini; skor 86, Kesesuaian 88, Lighthouse lab)
+ docs/PANDUAN-PRESENTASI.md        (Q1: holdout non-blind; sinkron jumlah test)
+ docs/TESTING.md                   (tabel test yang dilewati + jumlah skenario 23)
+ lib/analysis/context.ts           (isReportedContext: pelaporan/edukasi lintas-klausa)
+ lib/analysis/engine.ts            (aturan #13/#14: pemutusan layanan + penjaga FP)
+ lib/security/origin.ts            (hapus blok komentar doc yang terduplikasi)
+ tests/unit/engineImprovements.test.ts (30 test; +8 regresi Fase 2 aturan #13)
 ```
+
+Berkas baru (untracked, `??`) — infrastruktur evaluasi independen:
+
+```
+ evaluation/                       (PROTOKOL.md, LABEL-SCHEMA.md, template anotasi & provenance)
+ scripts/evaluation/               (blind-eval.mjs, dedupe.mjs, freeze.mjs — murni Node)
+ tests/unit/blind-predict.test.ts  (generator prediksi mesin beku, env-gated)
+```
+
+> Catatan: kumpulan pekerjaan audit sebelumnya (23 berkas: 16 termodifikasi +
+> 7 baru — dataset evaluasi, metrik, skrip evaluasi, dokumen evaluasi & laporan,
+> serta perbaikan mesin/UI) sudah berada di dalam commit `64eed6f` yang menjadi
+> HEAD saat ini. Sesi ini **tidak membuat commit baru**.
 
 Tidak ada perubahan ke database produksi atau migration. Semua pekerjaan tetap
 di dalam working tree lokal.

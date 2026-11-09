@@ -4,13 +4,6 @@
  * Semua endpoint mutasi memakai cookie sesi `SameSite=Lax`, sehingga request
  * lintas situs tidak membawa cookie pada POST. Pemeriksaan Origin menambah
  * lapisan kedua.
- */
-/**
- * Pemeriksaan asal request untuk mencegah CSRF pada operasi yang mengubah data.
- *
- * Semua endpoint mutasi memakai cookie sesi `SameSite=Lax`, sehingga request
- * lintas situs tidak membawa cookie pada POST. Pemeriksaan Origin menambah
- * lapisan kedua.
  *
  * **Penting:** host pembanding diambil dari header `Host` (dan `X-Forwarded-Host`
  * bila berada di belakang proxy tepercaya), **bukan** dari `request.url`.

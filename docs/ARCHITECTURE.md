@@ -72,7 +72,7 @@ lib/reputation/
 
 data/               konten fiktif & edukasi yang ditinjau
   examples.ts       9 contoh pesan fiktif
-  scenarios.ts      20 skenario latihan
+  scenarios.ts      23 skenario latihan
   guides.ts         6 panduan tindakan + sumber OJK
   resources.ts      14 artikel pustaka
   sources.ts        kanal resmi AduanNomor (Komdigi)
@@ -172,7 +172,7 @@ dan mode nomor tidak pernah memanggil jaringan.
 
 ## Latihan: bank skenario dan penilaian
 
-- `data/scenarios.ts` memuat `SCENARIOS` (20 objek), `SESSION_MODES`
+- `data/scenarios.ts` memuat `SCENARIOS` (23 objek), `SESSION_MODES`
   (5/10/semua), `createRandom` (mulberry32), `pickSessionScenarios`, dan
   `scoreSession`.
 - `components/latihan/simulator.tsx` mengelola fase `intro`, `question`, dan

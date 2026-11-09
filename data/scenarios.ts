@@ -826,6 +826,157 @@ export const SCENARIOS: TrainingScenario[] = [
     ],
     article: "investasi-palsu",
   },
+  {
+    id: "bansos-verifikasi",
+    category: "Tautan dan akun",
+    title: "Bantuan sosial yang minta verifikasi lewat tautan",
+    setup:
+      "SMS masuk mengatasnamakan dinas sosial dan meminta Anda mengklik tautan.",
+    message:
+      "Selamat! Nama Anda terpilih sebagai penerima BPNT Kartu Sembako Rp600.000. Segera verifikasi data diri dan nomor rekening melalui tautan berikut, kuota terbatas: bit.ly/bansos-resmi2026",
+    options: [
+      {
+        id: "isi-tautan",
+        label: "Klik tautan lalu isi KTP, nama ibu kandung, dan nomor rekening",
+        points: 0,
+        feedback:
+          "Tautan pendek itu tidak bisa dipastikan menuju situs resmi, dan data yang diminta persis yang dibutuhkan untuk membobol rekening.",
+        risk:
+          "Nama ibu kandung sering dipakai bank untuk verifikasi; bocornya data ini membuka akses ke akun Anda.",
+        betterAction:
+          "Jangan klik. Cek daftar penerima dan prosedur resmi hanya di situs kemensos.go.id atau kelurahan setempat.",
+        rationale:
+          "Penyaluran bansos resmi tidak meminta verifikasi lewat tautan pendek dari SMS, apalagi meminta nama ibu kandung.",
+      },
+      {
+        id: "lihat-saja",
+        label: "Buka tautan untuk melihat, tetapi tidak mengisi data apa pun",
+        points: 50,
+        feedback:
+          "Lebih hati-hati daripada langsung mengisi, tetapi mengunjungi situs palsu tetap memuat halaman tiruan yang meyakinkan.",
+        risk:
+          "Halaman tiruan bisa dipersenjatai untuk merekam apa pun yang Anda ketik atau unduh.",
+        betterAction:
+          "Hindari tautannya, dan cari informasi bansos dari kanal resmi pemerintah.",
+        rationale:
+          "Membuka tautan mencurigakan tanpa perlu saja masih membawa risiko yang tidak sebanding.",
+      },
+      {
+        id: "cek-resmi",
+        label: "Abaikan tautan dan cek info bansos di situs resmi atau kelurahan",
+        points: 100,
+        feedback:
+          "Tepat. Anda memverifikasi lewat kanal yang tidak dikendalikan pengirim pesan.",
+        risk: "",
+        betterAction:
+          "Laporkan nomor pengirim ke aduannomor.id bila pesannya terbukti palsu.",
+        rationale:
+          "Informasi resmi hanya keluar dari kanal resmi; tautan pendek tanpa sumber jelas tidak pernah menjadi syarat penerimaan bansos.",
+      },
+    ],
+    article: "phishing-domain-mirip",
+  },
+  {
+    id: "kenalan-online-darurat",
+    category: "Rekayasa sosial",
+    title: "Kenalan online yang minta biaya darurat",
+    setup:
+      "Seseorang yang baru beberapa minggu Anda kenal lewat media sosial mengirim pesan.",
+    message:
+      "Sayang, aku lagi kesusahan. Ibuku masuk rumah sakit dan butuh biaya 3 juta hari ini. Aku benar-benar cuma percaya sama kamu. Tolong transfer ya, nanti aku ganti setelah semuanya beres.",
+    options: [
+      {
+        id: "transfer-penuh",
+        label: "Transfer karena ingin membantu orang yang sedang kesulitan",
+        points: 0,
+        feedback:
+          "Empati Anda disalahgunakan. Tidak ada cara memastikan cerita itu benar, dan uang tidak pernah kembali begitu terkirim.",
+        risk:
+          "Ini skema penipuan romantis yang paling umum: membangun kepercayaan dulu, baru meminta uang dengan dalih darurat.",
+        betterAction:
+          "Tolak dengan santun, dan arahkan pengirim mencari bantuan keluarga atau layanan sosial resmi.",
+        rationale:
+          "Meminta uang kepada orang yang belum pernah ditemui langsung adalah ciri khas penipuan percintaan.",
+      },
+      {
+        id: "transfer-kecil",
+        label: "Transfer nominal kecil saja sebagai bentuk kepedulian",
+        points: 50,
+        feedback:
+          "Niatnya baik, tetapi mengirim uang sekecil apa pun mengonfirmasi bahwa Anda bisa diminta lagi di kemudian hari.",
+        risk:
+          "Sekali berhasil, penipu biasanya kembali dengan permintaan yang lebih besar dan cerita yang lebih mendesak.",
+        betterAction:
+          "Jangan transfer. Sarankan pengirim meminta bantuan pada keluarganya atau layanan sosial resmi.",
+        rationale:
+          "Bantuan kepada orang tak dikenal sebaiknya lewat lembaga resmi, bukan transfer langsung ke orang yang baru dikenal daring.",
+      },
+      {
+        id: "tolak-arahan",
+        label:
+          "Tolak dengan santun dan sarankan mencari bantuan keluarga atau layanan resmi",
+        points: 100,
+        feedback:
+          "Tepat. Anda tetap berempati tanpa menempatkan uang pada klaim yang belum terbukti.",
+        risk: "",
+        betterAction:
+          "Bila hubungan berlanjut, bersikeras untuk bertemu langsung atau panggilan video sebelum mempercayakan apa pun.",
+        rationale:
+          "Orang yang tulus tidak memaksa kenalan daring yang belum pernah ditemuinya untuk mengirim uang darurat.",
+      },
+    ],
+    article: "verifikasi-identitas",
+  },
+  {
+    id: "pln-token-palsu",
+    category: "Kerja dan uang",
+    title: "Tagihan listrik yang mengancam pemutusan",
+    setup: "Nomor tak dikenal mengirim pesan mengaku sebagai petugas PLN.",
+    message:
+      "Pelanggan yang terhormat. Tagihan listrik Anda sudah melewati jatuh tempo. Listrik akan diputus hari ini pukul 15.00 WIB. Segera bayar ke rekening pribadi petugas 0878-XXXX-XXXX agar tidak diputus.",
+    options: [
+      {
+        id: "transfer-cepat",
+        label: "Segera transfer ke nomor itu agar listrik tidak diputus",
+        points: 0,
+        feedback:
+          "Permintaan bayar ke rekening pribadi adalah tanda paling jelas bahwa ini bukan tagihan resmi.",
+        risk:
+          "Pembayaran resmi tidak pernah diarahkan ke rekening perorangan; uang Anda hilang tanpa membayar tagihan apa pun.",
+        betterAction:
+          "Jangan transfer. Cek tagihan di aplikasi resmi PLN atau aplikasi pembayaran resmi.",
+        rationale:
+          "Ancaman pemutusan mendadak dimaksudkan untuk menekan Anda agar bertindak tanpa memeriksa kebenarannya.",
+      },
+      {
+        id: "bayar-sebagian",
+        label: "Bayar sebagian dulu sebagai itikad baik agar tidak diputus",
+        points: 50,
+        feedback:
+          "Anda menahan sebagian uang, tetapi tetap menyerah pada tekanan dan mengirim dana ke kanal yang tidak resmi.",
+        risk:
+          "Tidak ada bukti pembayaran Anda tercatat sebagai pelunasan tagihan listrik Anda.",
+        betterAction:
+          "Jangan kirim apa pun. Periksa jumlah tagihan sebenarnya di kanal resmi lebih dulu.",
+        rationale:
+          "Tagihan resmi dibayar sesuai nominal yang tertera di kanal resmi, bukan sebagian ke nomor pribadi.",
+      },
+      {
+        id: "cek-aplikasi",
+        label:
+          "Cek tagihan di aplikasi resmi PLN, jangan bayar ke rekening pribadi",
+        points: 100,
+        feedback:
+          "Tepat. Anda memutus rantai tekanan dengan memverifikasi lewat kanal resmi.",
+        risk: "",
+        betterAction:
+          "Bila tagihan Anda ternyata lunas, laporkan pesan tersebut sebagai percobaan penipuan.",
+        rationale:
+          "Status dan nominal tagihan hanya valid bila dibaca dari kanal resmi penyedia layanan.",
+      },
+    ],
+    article: "transaksi-luar-aplikasi",
+  },
 ];
 
 

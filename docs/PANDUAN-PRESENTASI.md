@@ -734,20 +734,22 @@ benar-benar dijalankan oleh `tests/unit/analysisEval.test.ts` (dataset di
 - **validation** (21) — contoh untuk memantau regresi; sebagian aturan memang
   diturunkan darinya (sah, sesuai metodenya).
 - **holdout** (24) — dimaksudkan sebagai uji independen, tetapi **tidak
-  sepenuhnya *blind***: satu aturan `upfront-payment` menyerap kosakata khas
-  `hold-prize-01` ("komisi undian", "biaya kirim voucher"). Temuan ini kami
-  temukan dan koreksi dalam audit — lihat `docs/EVALUASI-ANALISIS.md` §4.3.
+  sepenuhnya *blind*** karena dua hal: (a) satu aturan `upfront-payment` menyerap
+  kosakata khas `hold-prize-01` ("komisi undian", "biaya kirim voucher"), dan
+  (b) satu *false negative* (`hold-threat-01`) diperbaiki atas dasar kasus
+  holdout itu. Keduanya kami temukan dan ungkapkan dalam audit — lihat
+  `docs/EVALUASI-ANALISIS.md` §4.3.
 
 Angka terkini terdokumentasi di `docs/EVALUASI-ANALISIS.md`: development
-100% presisi/recall (karena memang dipakai tuning), holdout **recall 92,9%**
-(13 TP dari 14), presisi 100%, F1 96,3%. Satu *false negative* holdout
-(`hold-threat-01`, ancaman "layanan kami cabut dalam 2 jam") **tetap ada** dan
-didokumentasikan sebagai batasan.
+100% presisi/recall (karena memang dipakai tuning), validation 100%, dan holdout
+**recall 100%** (14 TP dari 14), presisi 100%, F1 100%. Yang tersisa bukan FN
+biner, melainkan celah *level kategori* (desakan 1/3, pembayaran 3/4, peniruan
+1/2) yang tidak mengubah keputusan biner.
 
-Jika ditanya "kenapa tidak 100%", jawab persis itu: 100% hanya terjadi pada data
-yang dipakai tuning; recall pada holdout 92,9% — dan kami **tidak mengklaimnya
-sebagai evaluasi *blind*** karena satu aturan memakai kosakata yang hanya muncul
-pada holdout. Untuk bukti generalisasi, kami menyiapkan protokol pengumpulan
+Jika ditanya "kenapa tidak ada generalisasi yang terbukti?", jawab jujur: angka
+holdout 100% **bukan bukti independen** karena holdout tidak *blind* (satu aturan
+memakai kosakata yang hanya muncul di holdout, dan satu FN diperbaiki atas dasar
+kasus holdout). Untuk bukti generalisasi, kami menyiapkan protokol pengumpulan
 dataset baru yang benar-benar belum tersentuh (`docs/EVALUASI-ANALISIS.md` §7),
 belum dijalankan.
 
@@ -831,7 +833,7 @@ seluruh halaman (mobile & desktop).
 
 ### 9. "Bagaimana memastikan tidak ada regresi saat menambah aturan?"
 
-Tiga pintu kualitas, semuanya dijalankan lokal: (1) **520 unit/komponen test**
+Tiga pintu kualitas, semuanya dijalankan lokal: (1) **534 unit/komponen test**
 (`npm run test`) — setiap aturan baru wajib punya unit test di
 `tests/unit/engineImprovements.test.ts`; (2) **pintu evaluasi** di
 `tests/unit/analysisEval.test.ts` yang menegakkan ambang biner (development ≥ 0,90

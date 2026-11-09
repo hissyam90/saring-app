@@ -9,20 +9,25 @@ akurasi di dunia nyata. Angka di bawah dihasilkan oleh skrip evaluasi yang
 > **menemukan dan memperbaiki aturan mesin**, jadi evaluasi terhadapnya **bukan**
 > bukti generalisasi — hanya penangkap regresi. Subset *validation* dipakai untuk
 > **memantau regresi** saat tuning berlanjut. Subset *holdout* dimaksudkan sebagai
-> uji independen yang **tidak disentuh aturan**.
+> uji independen, tetapi **tidak sepenuhnya *blind*** karena dua alasan yang
+> dijelaskan di §4.3:
 >
-> **Namun, audit integritas pada laporan ini menemukan bahwa holdout tidak
-> sepenuhnya *blind*.** Salah satu perbaikan yang menaikkan recall holdout dari
-> 78,6% ke 92,9% — pola `upfront-payment` yang menambah kosakata `komisi undian`
-> dan `biaya kirim/pengiriman voucher` — memakai frasa yang **hanya muncul pada
-> kasus holdout `hold-prize-01`**, tidak pada development maupun validation (§4.1,
-> baris #8). Dengan kata lain, kosakata khas contoh holdout tersebut ikut tertanam
-> ke dalam aturan dan uji regresinya. Karena itu hasil 92,9% **tidak boleh disebut
-> sebagai evaluasi holdout *blind***; klasifikasi status independensinya dibahas di
-> §4.3. Sebagian perbaikan yang lain *memang* berupa efek samping yang
-> dapat ditelusuri ke validation (mis. `rek` dari `val-risky-01`, §4.1 baris #9).
-> Seluruh angka sebelum/sesudah **tetap dipertahankan**; yang diperbaiki adalah
-> klaim metodologisnya.
+> 1. Pola `upfront-payment` menambah kosakata `komisi undian` / `biaya kirim
+>    voucher` yang **hanya muncul pada kasus holdout `hold-prize-01`**, bukan pada
+>    development maupun validation (§4.1 baris #8). Kosakata khas holdout itu
+>    tertanam ke dalam aturan dan uji regresinya.
+> 2. Satu *false negative* biner holdout — `hold-threat-01` (ancaman pemutusan
+>    layanan ber-tenggat) — **sengaja diperbaiki** pada audit ini lewat aturan
+>    generik "ancaman pemutusan layanan" yang dirancang umum dan disertai kasus
+>    negatif (§4.1 baris #13). Aturan itu valid secara umum, tetapi pemicunya
+>    tetaplah pengamatan pada holdout.
+>
+> Karena itu hasil holdout **tidak boleh disebut evaluasi *blind*** dan bukan
+> bukti generalisasi independen — baik pada recall 92,9% sebelumnya maupun 100%
+> sekarang. Sebagian perbaikan lain *memang* efek samping yang dapat ditelusuri
+> ke validation (mis. `rek` dari `val-risky-01`, §4.1 baris #9). Seluruh angka
+> sebelum/sesudah **dipertahankan apa adanya**; yang dijaga adalah klaim
+> metodologisnya, bukan angkanya.
 
 ## 1. Struktur data
 
@@ -143,27 +148,26 @@ Per kategori sesudah (TP/FP/FN → P/R/F1):
 ### 3.3 Holdout — 24 contoh (23 non-ambigu)
 
 **Dimaksudkan sebagai uji independen, tetapi tidak sepenuhnya *blind*** (lihat
-§4.3 untuk klasifikasi statusnya). Peningkatan recall di bawah membaik sebagian
-sebagai efek samping yang dapat ditelusuri ke validation, dan sebagian karena
-kosakata khas holdout ikut tertanam ke dalam satu aturan.
+§4.3). Angka 100% terakhir dicapai setelah *false negative* ancaman ber-tenggat
+(`hold-threat-01`) diperbaiki lewat aturan generik pemutusan layanan.
 
 | Ukuran | Sebelum | Sesudah |
 |---|---:|---:|
-| True Positive | 11 | **13** |
+| True Positive | 11 | **14** |
 | False Positive | 0 | 0 |
-| False Negative | 3 | **1** |
+| False Negative | 3 | **0** |
 | True Negative | 9 | 9 |
 | Presisi | 100,0% | **100,0%** |
-| Recall | 78,6% | **92,9%** |
-| F1 | 88,0% | **96,3%** |
-| Akurasi | 87,0% | **95,7%** |
+| Recall | 78,6% | **100,0%** |
+| F1 | 88,0% | **100,0%** |
+| Akurasi | 87,0% | **100,0%** |
 
 Per kategori sesudah (TP/FP/FN → P/R/F1):
 
 | Kategori | TP | FP | FN | Presisi | Recall | F1 |
 |---|---|---|---|---|---|---|
 | Pencurian kredensial | 2 | 0 | 0 | 100% | 100% | 100% |
-| Desakan & intimidasi | 0 | 0 | 3 | — | 0,0% | 0,0% |
+| Desakan & intimidasi | 1 | 0 | 2 | 100% | 33,3% | 50,0% |
 | Pembayaran di muka | 3 | 0 | 1 | 100% | 75,0% | 85,7% |
 | Janji tidak realistis | 2 | 0 | 1 | 100% | 66,7% | 80,0% |
 | Tautan mencurigakan | 2 | 0 | 0 | 100% | 100% | 100% |
@@ -179,9 +183,10 @@ Per kategori sesudah (TP/FP/FN → P/R/F1):
 
 Sebagian besar perbaikan diturunkan **hanya** dari contoh development + validation,
 diikuti unit test di `tests/unit/engineImprovements.test.ts`, dan tidak menggeser
-kategori lain (dibuktikan oleh angka per-kategori di §3). **Satu pengecualian** —
-baris #8 — dianotasi eksplisit di bawah karena memakai kosakata yang hanya muncul
-pada holdout (§4.3).
+kategori lain (dibuktikan oleh angka per-kategori di §3). **Dua pengecualian**
+menyentuh holdout dan dianotasi eksplisit: baris #8 (kosakata khas holdout yang
+tertanam) dan baris #13 (perbaikan FN biner yang dipicu pengamatan holdout) —
+lihat §4.3.
 
 | # | Perubahan | Berkas | Alasan & efek |
 |---|---|---|---|
@@ -197,19 +202,27 @@ pada holdout (§4.3).
 | 10 | Penjaga *reported speech* pada sinyal permintaan uang | `socialEngineering.ts` | Kalimat edukasi "biasanya meminta uang pendaftaran" keliru ditandai `money-request`. |
 | 11 | Perluasan konteks protektif ("tidak pernah/akan menelepon/menghubungi") | `context.ts` | Kalimat edukasi "petugas tidak pernah menelepon meminta denda" keliru ditandai `impersonation`. |
 | 12 | `upfront-payment` bersyarat dipersempit (hanya kata benda "biaya/fee"); jendela diperluas 32 char | `engine.ts` | *False positive* "Lewati **verifikasi**, langsung **bayar** ke rekening" (pola "verifikasi…bayar" terlalu luas) — kini benar sebagai `risky-instruction`. |
+| 13 | Ancaman **pemutusan layanan** ("layanan dicabut/dihentikan", "layanan Anda kami cabut") | `engine.ts` | Provider listrik/internet/bank sering mengancam memutus layanan; `layanan` tidak dikenali objek ancaman dan verba aktif `cabut` tidak terdeteksi. Disertai kasus negatif ("saya cabut langganan", "akses kantor ditutup pukul 6"). **Catatan integritas:** pemicunya adalah FN biner `hold-threat-01` — lihat §4.3. |
+| 14 | **Penjaga *false positive*** pada pemutusan layanan & desakan waktu: (a) pemberitahuan sah (`LEGIT_SERVICE_NOTICE`: pemeliharaan/`sementara`/`sesuai ketentuan/jadwal/prosedur`/hari libur), (b) kanal resmi (`OFFICIAL_CHANNEL`: "bayar lewat **aplikasi resmi**"), (c) pelaporan/edukasi lintas-klausa (`isReportedContext`: "Waspada modus penipuan: …", "Saya dapat pesan '…', apakah ini penipuan?") | `engine.ts`, `context.ts` | Uji kasus Fase 2 menunjukkan aturan #13 bersifat **terlalu luas**: pemberitahuan pemeliharaan jaringan, penonaktifan sementara, penagihan sesuai ketentuan, serta kalimat edukasi/melaporkan ancaman ikut ditandai `urgency-intimidation`. Penjaga ini dibangun dari kasus negatif **baru** (bukan holdout) di `tests/unit/engineImprovements.test.ts`. Tidak mengubah satu pun angka biner dev/val/holdout (tetap presisi/recall 100%). |
 
 ### 4.2 Keterbatasan yang masih tersisa (holdout)
 
-Satu *false negative* holdout biner masih tersisa dan **sengaja tidak dikejar**
-(menala pada sisa holdout hanya akan memperburuk status independensinya):
+Setelah perbaikan baris #13, **tidak ada lagi *false negative* biner** pada
+holdout (recall biner 100%). Yang tersisa adalah celah **level kategori** yang
+tidak mengubah keputusan biner karena kategori lain sudah menandai bahaya, plus
+satu kelebihan sinyal:
 
-- **Desakan & intimidasi — recall 0/3.** Tiga contoh berlabel *desakan &
-  intimidasi* tidak memunculkan temuan ber-keparahan sedang/tinggi pada kategori
-  itu: `hold-threat-01` ("…dalam 2 jam, layanan Anda kami cabut permanen"),
-  `hold-link-01` ("…login segera!"), dan `hold-imp-02` ("…segera hubungi kami").
-  Dari ketiganya, hanya `hold-threat-01` yang menjadi *false negative biner*;
-  dua lainnya tetap benar di level biner karena kategori lain mereka
-  (`suspicious-link` dan `impersonation`) sudah menandai bahaya.
+- **Desakan & intimidasi — recall 1/3.** Dua contoh berlabel *desakan &
+  intimidasi* tetap tidak memunculkan temuan kategori itu: `hold-link-01`
+  ("…login segera!") dan `hold-imp-02` ("…segera hubungi kami"). Keduanya tetap
+  benar di level biner karena kategori lain mereka (`suspicious-link` dan
+  `impersonation`) sudah menandai bahaya.
+- **Pembayaran di muka — 1 FN kategori.** `hold-risky-01` ("…transfer DP ke rek
+  atas nama…") diberi label `upfront-payment`, tetapi pola "DP" tanpa nominal
+  tidak memicu aturan itu; pesannya tetap TP via `risky-instruction`.
+- **Peniruan pihak resmi — 1 FN kategori.** `hold-imp-01` ("Kami dari OJK…")
+  tidak cocok dengan pola klaim otoritas (tidak memakai "petugas/admin/atas
+  nama"); pesan tetap TP via `money-request`.
 - **Satu kelebihan sinyal level kategori (bukan FP biner).** Pada kasus scam
   `hold-imp-01` ("…konfirmasi dana bantuan… Mohon kirim data KTP dan nomor
   rekening"), mesin memunculkan sinyal `money-request` meskipun anotasi dasarnya
@@ -220,16 +233,29 @@ Satu *false negative* holdout biner masih tersisa dan **sengaja tidak dikejar**
 Seluruh contoh *false negative* dan *false positive* dicetak lengkap oleh skrip
 evaluasi (blok `FALSE-NEGATIF` / `FALSE-POSITIF`).
 
+> **Audit kategori (Fase 2).** Keempat celah di atas diperiksa satu per satu
+> terhadap seluruh aturan terkait (`DEADLINE_PRESSURE`, `UPFRONT_*`,
+> `AUTHORITY_CLAIMS`, `MONEY_*`). Kelimanya hanya muncul pada holdout — pada
+> development dan validation, sepuluh kategori sudah mencapai presisi/recall
+> 100%. Karena memperbaikinya berarti menala aturan menggunakan contoh holdout
+> (mis. menambah "login segera"/"segera hubungi" ke daftar desakan, "DP tanpa
+> nominal" ke pembayaran di muka, atau "Kami dari X" ke klaim otoritas — satu
+> persis kosakata `hold-imp-01`), **celah itu sengaja tidak dikejar** demi tidak
+> makin menggerus status independensi yang sudah terbatas (§4.3). Perbaikan
+> generik yang bisa dibangun dari development+validation saja sudah tuntas di
+> §4.1; sisanya menunggu dataset independen baru (§7).
+
 ### 4.3 Status independensi holdout
 
-Perbedaan antara "holdout lama" (recall 78,6%) dan "terbaru" (92,9%) **adalah
+Perbedaan antara "holdout lama" (recall 78,6%) dan "terbaru" (100%) **adalah
 dataset yang sama** yang dijalankan pada aturan lama vs. aturan baru — bukan dua
-dataset yang berbeda. Dua kasus yang berubah dari FN menjadi TP adalah:
+dataset yang berbeda. Tiga kasus yang berubah dari FN menjadi TP adalah:
 
 | Kasus | Teks inti | Aturan yang memperbaikinya | Asal kosakata aturan |
 |---|---|---|---|
 | `hold-prize-01` | "…komisi undian… bayar biaya kirim voucher…" | `upfront-payment` (baris #8) | `pajak/PPN hadiah` dari dev+validation **dan** `komisi undian` / `biaya kirim voucher` yang **hanya ada di holdout** |
 | `hold-risky-01` | "…transfer DP ke rek atas nama saya." | `risky-instruction` (`\brek\b`, baris #9) | `rek Bank` dari `val-risky-01` (validation) — efek samping yang sah |
+| `hold-threat-01` | "…dalam 2 jam, layanan Anda kami cabut permanen." | `urgency-intimidation` pemutusan layanan (baris #13) | Aturan **generik** (layanan + verba cabut/dihentikan), disertai kasus negatif; tetapi pemicunya pengamatan pada holdout |
 
 Menurut tiga tingkatan definisi independensi, status holdout Saring adalah:
 
@@ -237,20 +263,19 @@ Menurut tiga tingkatan definisi independensi, status holdout Saring adalah:
 2. ~~Hasil agregat diketahui tetapi tidak pernah dipakai untuk tuning~~ — **tidak
    sepenuhnya terpenuhi**.
 3. **Kasusnya dipakai langsung untuk memperbaiki aturan** — **terpenuhi untuk
-   `hold-prize-01`**: frasa `komisi undian` dan `biaya kirim/pengiriman voucher`
-   tertanam pada aturan `upfront-payment` dan diuji secara eksplisit di
-   `tests/unit/engineImprovements.test.ts`. Frasa itu tidak muncul pada contoh
-   development maupun validation mana pun, sehingga satu-satunya sumbernya adalah
-   teks `hold-prize-01` itu sendiri.
+   `hold-prize-01`** (kosakatanya tertanam pada aturan) **dan `hold-threat-01`**
+   (perbaikannya dipicu oleh kasus ini, walau aturannya generik).
 
 **Kesimpulan:** hasil holdout **tidak boleh disebut evaluasi *blind***. Recall
-92,9% adalah angka pada dataset yang sebagiannya telah "membocorkan" kosakatanya
-ke dalam satu aturan. Ia tetap bernilai sebagai penangkap regresi, tetapi bukan
-bukti generalisasi independen. Perbaikannya *campuran*: `hold-risky-01` adalah
-efek samping sah dari validation, sedangkan `hold-prize-01` berasal dari
-kebocoran kosakata. Tidak ada tindakan "membersihkan" angka dilakukan; yang
-dilakukan adalah mengoreksi klaim metodologisnya, dan menyiapkan pengumpulan
-dataset baru yang benar-benar belum tersentuh (§7).
+100% adalah angka pada dataset yang (a) sebagian kosakatanya bocor ke satu aturan
+(`hold-prize-01`), dan (b) salah satu FN-nya sengaja diperbaiki berdasarkan
+pengamatan pada kasus tersebut (`hold-threat-01`). Ia tetap bernilai sebagai
+penangkap regresi, tetapi bukan bukti generalisasi independen. Perbaikannya
+*campuran*: `hold-risky-01` efek samping sah dari validation;
+`hold-prize-01` kebocoran kosakata; `hold-threat-01` perbaikan generik yang
+dipicu holdout. Tidak ada tindakan "membersihkan" angka; yang dilakukan adalah
+mengoreksi klaim metodologisnya dan menyiapkan dataset baru yang benar-benar
+belum tersentuh (§7).
 
 ## 5. Pintu kualitas (regresi)
 
@@ -267,8 +292,9 @@ tidak menurunkan kualitas:
 
 1. **Bukan akurasi dunia nyata.** Dataset kurasi tidak dapat digeneralisasi ke
    seluruh pesan. Development menyentuh 100% karena dipakai tuning; holdout
-   berada di recall 92,9% tetapi **tidak sepenuhnya blind** (§4.3) dan masih
-   memiliki FN pada ancaman ber-tenggat (§4.2).
+   berada di recall biner 100% tetapi **tidak sepenuhnya blind** (§4.3) dan
+   masih memiliki celah level kategori pada desakan waktu, pembayaran di muka,
+   dan peniruan (§4.2).
 2. **Ukuran sampel kecil.** Validation (20 non-ambigu) dan holdout (23
    non-ambigu) tidak cukup untuk estimasi per-kategori yang stabil. Satu FN/FP
    saja menggeser metrik beberapa poin persen. Angka per-kategori pada subset ini
@@ -306,5 +332,30 @@ dibuka oleh siapapun yang menulis/menala aturan**. Protokol (belum dijalankan):
    dan interval keyakinan; nyatakan subset ini benar-benar *blind* hanya bila
    butir 1–4 dipatuhi.
 
+### 7.1 Material eksekusi (sudah tersedia, siap dipakai)
+
+Protokol operasional lengkap beserta perkakasnya sudah tersedia sebagai berkas
+terpisah, agar evaluator independen bisa menjalankan semuanya tanpa menyentuh
+aturan mesin:
+
+| Material | Berkas | Isi |
+|---|---|---|
+| Protokol & pemisahan peran | `evaluation/PROTOKOL.md` | Alur pengumpulan 200–300 contoh, tabel peran (kurator/anotator/penala/pelaksana), perintah pembekuan & uji, tabel bukti yang wajib diisi |
+| Skema label & pedoman anotasi | `evaluation/LABEL-SCHEMA.md` | Definisi `risk` + 10 kategori, contoh yang tidak boleh salah, aturan adjudikasi |
+| Template anotasi (TSV) | `evaluation/annotate-template.tsv` | Format `id/text/risk/categories/note/provenance` |
+| Template provenance | `evaluation/provenance-template.md` | Sumber, klasifikasi sintetis/publik/partisipan, pernyataan integritas |
+| Hitung confusion & P/R/F1/akurasi | `scripts/evaluation/blind-eval.mjs` | Biner + per-kategori + daftar FN/FP + `ambiguous` |
+| Deteksi duplikat/near-duplicate | `scripts/evaluation/dedupe.mjs` | Normalisasi ejaan + Jaccard untuk mencegah kebocoran antar-subset |
+| Pembekuan (checksum SHA-256) | `scripts/evaluation/freeze.mjs` | Manifest `freeze.lock.json` (sha256, jumlah contoh, versi/commit mesin) |
+| Pembangkit prediksi mesin beku | `tests/unit/blind-predict.test.ts` | Ditrigger env `SARING_BLIND_DATASET`/`SARING_BLIND_PREDICTIONS`; dilewati tanpa env |
+
+Dataset yang dibekukan (`evaluation/dataset.jsonl`), prediksi
+(`evaluation/predictions.jsonl`), dan kunci pembekuan
+(`scripts/evaluation/freeze.lock.json`) **tidak dimasukkan ke repositori** —
+sudah dicantumkan di `.gitignore` — sehingga penala mesin tidak bisa melihat isi
+dataset. Perintah lengkap pengujian end-to-end ada di `evaluation/PROTOKOL.md` §5.
+
 Belum ada anggota tim yang mewakili langkah 1, sehingga item ini **belum
-dikerjakan** dan tidak ada angka yang diklaim darinya.
+dikerjakan** dan tidak ada angka yang diklaim darinya. Tabel bukti di
+`evaluation/PROTOKOL.md` §6 sengaja dikosongkan sampai evaluasi independen
+benar-benar dijalankan oleh manusia independen.

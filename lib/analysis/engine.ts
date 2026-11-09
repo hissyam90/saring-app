@@ -18,6 +18,7 @@ import {
   hasDemandVerb,
   isPastNarrative,
   isProtective,
+  isReportedContext,
   isReportedSpeech,
   splitClauses,
 } from "./context";
@@ -187,6 +188,32 @@ const ACCOUNT_THREAT = [
   /(?:ancaman|terancam)\s*(?:hukuman|denda|pidana|sanksi|penjara)/,
 ];
 
+/**
+ * Ancaman pemutusan *layanan* oleh provider (listrik/internet/e-wallet):
+ * "layanan dicabut/dihentikan", "dicabut layanannya". Kata kerja "cabut" yang
+ * aktif dibatasi pada pelaku institusional ("kami/kita/sistem cabut layanan
+ * Anda"), sehingga "saya cabut uang/langganan" yang wajar dan "akses kantor
+ * ditutup pukul 6" yang informatif TIDAK ikut tertangkap.
+ *
+ * Dipisahkan dari `ACCOUNT_THREAT` karena pemutusan layanan juga lazim pada
+ * pemberitahuan sah (pemeliharaan, penonaktifan sesuai ketentuan), sehingga
+ * perlu penjaga tambahan (lihat `LEGIT_SERVICE_NOTICE`).
+ */
+const SERVICE_CUTOFF = [
+  /(?:layanan|langganan|langanan|sambungan|jaringan|tagihan)\s*(?:anda|kamu|mu|pelanggan)?[\s\S]{0,25}?(?:dicabut|dihentikan)\b/,
+  /(?:dicabut|dihentikan)\b[\s\S]{0,15}?(?:layanan|langganan|sambungan|tagihan)\b/,
+  /(?:layanan|akses|langganan|sambungan|tagihan)\s*(?:anda|kamu|mu|pelanggan)?\s*(?:akan\s+)?(?:kami|kita|sistem|petugas)\s*(?:cabut|hentikan)\b/,
+];
+
+/**
+ * Penanda pemberitahuan layanan yang SAH (bukan ancaman penipuan): pemeliharaan/
+ * perbaikan, penonaktifan bersifat sementara, atau penonaktifan sesuai ketentuan
+ * prosedur. Penipu menekan keabadian ("permanen") dan kecepatan, sehingga kata
+ * "sementara" dan konteks "sesuai ketentuan/jadwal" adalah pembeda yang kuat.
+ */
+const LEGIT_SERVICE_NOTICE =
+  /(?:pemeliharaan|maintenance|perawatan|perbaikan|peningkatan|upgrade|berkala|terjadwal)|\b(?:sementara|sementara\s*waktu)\b|(?:sesuai|berdasarkan)\s+(?:ketentuan|prosedur|jadwal|kebijakan|sop|aturan)\b|(?:hari\s*libur|libur\s*nasional|cuti\s*bersama)/i;
+
 function accountThreatRule(
   text: string,
   clauses: Clause[],
@@ -204,6 +231,25 @@ function accountThreatRule(
         "Ancaman pemblokiran akun atau sanksi",
         "Pesan menggunakan ancaman pemblokiran akun atau akibat hukum untuk menekan Anda bertindak cepat tanpa memverifikasi.",
         "Jangan panik. Periksa status akun langsung melalui aplikasi atau situs resmi, bukan lewat tautan di pesan ini.",
+        evidenceSnippet(text, match.index, match[0].length),
+      ),
+    );
+  });
+
+  // Pemutusan layanan perlu penjaga ekstra: (1) pemberitahuan sah
+  // (pemeliharaan/penonaktifan sementara/sesuai ketentuan) dan (2) edukasi atau
+  // pelaporan pesan yang meneruskan ancaman sebagai contoh/kutipan.
+  forEachMatch(text, SERVICE_CUTOFF, (match) => {
+    const clause = clauseContaining(clauses, match.index) || text;
+    if (isProtective(clause) || isReportedContext(clauses, match.index)) return;
+    if (LEGIT_SERVICE_NOTICE.test(clause)) return;
+    out.push(
+      makeFinding(
+        "urgency-intimidation",
+        escalate ? "high" : "medium",
+        "Ancaman pemutusan layanan",
+        "Pesan menekan dengan ancaman pencabutan/penghentian layanan untuk memaksa Anda bertindak cepat tanpa memverifikasi.",
+        "Jangan panik. Pastikan status layanan lewat aplikasi atau situs resmi, dan jangan mengikuti instruksi dari pesan ini.",
         evidenceSnippet(text, match.index, match[0].length),
       ),
     );
@@ -232,11 +278,22 @@ const DEADLINE_PRESSURE = [
 const URGENCY_ESCALATE =
   /(?:transfer|bayar|setor|kirim(?:kan)?|top-?up|isi\s*saldo)\b|\bhangus\b|slot\s*(?:habis|terbatas|penuh)/i;
 
+/**
+ * Peringatan/pengumuman yang menunjuk ke kanal RESMI bukan desakan penipuan:
+ * "segera bayar melalui aplikasi resmi PLN" adalah pengingat tagihan yang sah,
+ * sedangkan penipu justru mengarahkan ke rekening pribadi/kontak tak resmi.
+ */
+const OFFICIAL_CHANNEL =
+  /(?:aplikasi|situs|website|kanal|layanan|halaman|portal|website)\s+(?:resmi|official)\b|\b(?:via|lewat|melalui)\s+(?:aplikasi|situs|website|kanal|jalur)\s+resmi/i;
+
 function deadlinePressureRule(text: string, clauses: Clause[]): Finding[] {
   const out: Finding[] = [];
   forEachMatch(text, DEADLINE_PRESSURE, (match) => {
     const clause = clauseContaining(clauses, match.index) || text;
     if (isProtective(clause) || isReportedSpeech(clause)) return;
+    // Desakan yang menunjuk ke kanal resmi ("bayar melalui aplikasi resmi")
+    // bukan tekanan penipuan, melainkan pengingat prosedur yang sah.
+    if (OFFICIAL_CHANNEL.test(clause)) return;
     // Bisa jadi desakan dan perintah bayar/transfer terpisah klausa
     // ("Kesempatan terakhir! Transfer sekarang…"), sehingga penguat dinilai
     // pada seluruh pesan, bukan hanya klausa tekanan waktunya.

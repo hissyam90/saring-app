@@ -49,3 +49,9 @@ next-env.d.ts
 
 # lokal: artefak audit visual (screenshot & skrip sementara)
 /.tmp-audit/
+
+# evaluasi independen: dataset beku & prediksi TIDAK boleh masuk repo (agar tidak
+# terlihat oleh penala mesin). Disimpan di luar repo oleh evaluator independen.
+/evaluation/dataset.jsonl
+/evaluation/predictions.jsonl
+/scripts/evaluation/freeze.lock.json

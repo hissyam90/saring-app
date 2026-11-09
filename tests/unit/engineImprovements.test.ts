@@ -83,6 +83,99 @@ describe("desakan waktu — variasi dan eskalasi", () => {
   });
 });
 
+describe("ancaman pemutusan layanan — 'dicabut/dihentikan'", () => {
+  it("mengenali ancaman pencabutan layanan dengan tenggat", () => {
+    expect(
+      cats("Jika tidak bayar dalam 2 jam, layanan internet Anda akan dicabut"),
+    ).toContain("urgency-intimidation");
+  });
+
+  it("mengenali 'sambungan listrik akan dihentikan'", () => {
+    expect(cats("Sambungan listrik Anda akan dihentikan besok pagi")).toContain(
+      "urgency-intimidation",
+    );
+  });
+
+  it("mengenali ancaman aktif 'layanan Anda kami cabut'", () => {
+    expect(cats("Segera bayar tagihan, atau layanan Anda kami cabut")).toContain(
+      "urgency-intimidation",
+    );
+  });
+
+  it("tidak menandai 'saya cabut langganan' yang wajar", () => {
+    expect(cats("saya cabut langganan Netflix bulan ini")).not.toContain(
+      "urgency-intimidation",
+    );
+  });
+
+  it("tidak menandai 'langganan yang sudah saya cabut'", () => {
+    expect(cats("langganan saya sudah saya cabut kemarin")).not.toContain(
+      "urgency-intimidation",
+    );
+  });
+
+  it("tidak menandai 'akses kantor ditutup pukul 6' yang informatif", () => {
+    expect(cats("akses internet kantor ditutup pukul enam sore")).not.toContain(
+      "urgency-intimidation",
+    );
+  });
+});
+
+describe("pemutusan layanan — pemberitahuan sah vs ancaman", () => {
+  it("menghindari menandai pemberitahuan pemeliharaan jaringan", () => {
+    const text =
+      "Pemberitahuan: jaringan akan dihentikan sementara pukul 22.00 untuk pemeliharaan berkala.";
+    const result = analyzeText(text);
+    expect(
+      result.findings.filter((f) => f.category === "urgency-intimidation"),
+    ).toHaveLength(0);
+  });
+
+  it("menghindari menandai penghentian 'sementara' pada informasi hari libur", () => {
+    expect(cats("Layanan perpanjangan SIM dihentikan sementara pada hari libur nasional")).not.toContain(
+      "urgency-intimidation",
+    );
+  });
+
+  it("menghindari menandai penagihan sesuai ketentuan yang mengarah ke kanal resmi", () => {
+    const text =
+      "Sesuai ketentuan, layanan listrik Anda dihentikan karena tagihan belum dibayar. Segera bayar melalui aplikasi resmi PLN.";
+    expect(cats(text)).not.toContain("urgency-intimidation");
+  });
+
+  it("menghindari menandai kalimat edukasi yang menyebut ancaman pemutusan", () => {
+    expect(
+      cats("Waspada modus penipuan: pelaku mengancam layanan Anda akan dicabut"),
+    ).not.toContain("urgency-intimidation");
+  });
+
+  it("menghindari menandai pesan yang melaporkan/menanyakan ancaman yang diterima", () => {
+    expect(
+      cats("Saya mendapat pesan 'layanan Anda akan dicabut', apakah ini penipuan?"),
+    ).not.toContain("urgency-intimidation");
+  });
+
+  it("tetap menandai ancaman pemutusan disertai permintaan transfer mendesak", () => {
+    expect(
+      cats("Layanan Anda akan dicabut dalam 1 jam jika tidak segera transfer pembayaran"),
+    ).toContain("urgency-intimidation");
+  });
+
+  it("tetap menandai ancaman penghentian jaringan disertai permintaan OTP", () => {
+    const cats4 = cats("Jaringan Anda akan dihentikan. Kirim kode OTP Anda untuk konfirmasi.");
+    expect(cats4).toContain("urgency-intimidation");
+    expect(cats4).toContain("credential-theft");
+  });
+
+  it("tetap menandai ancaman pemblokiran rekening disertai tautan login", () => {
+    const cats5 = cats(
+      "Rekening Anda diblokir. Segera login di http://bca-verifikasi.xyz untuk verifikasi.",
+    );
+    expect(cats5).toContain("urgency-intimidation");
+    expect(cats5).toContain("suspicious-link");
+  });
+});
+
 describe("pembayaran di muka — pungutan hadiah", () => {
   it("mengenali 'PPN hadiah' sebagai biaya di muka", () => {
     expect(cats("Kamu menang undian. Bayar PPN hadiah 250rb lebih dulu")).toContain(

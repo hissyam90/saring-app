@@ -1,0 +1,5 @@
+id	text	risk	categories	note	provenance
+s-001	(isi pesan)	scam	impersonation,urgency-intimidation	(alasan singkat)	synthetic:tema-lowongan-palsu
+s-002	(isi pesan)	non-scam		(alasan singkat)	synthetic:tema-percakapan-wajar
+e-001	(isi pesan edukasi)	educational		(alasan singkat)	synthetic:tema-edukasi-otp
+a-001	(isi pesan ambigu)	ambiguous		(alasan singkat)	synthetic:tema-tidak-cukup-informasi
