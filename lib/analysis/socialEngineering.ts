@@ -1,4 +1,10 @@
 import type { Finding } from "./types";
+import {
+  clauseContaining,
+  isProtective,
+  isReportedSpeech,
+  splitClauses,
+} from "./context";
 
 /**
  * Deteksi pola rekayasa sosial yang menyamar sebagai teman/keluarga.
@@ -40,7 +46,7 @@ const NEW_NUMBER_PHRASE =
   /(?:ini\s+)?(?:nomor|nomer|no\.?)\s*(?:aku\s*)?(?:baru|ganti|berganti)\b|nomor\s*ini\s*baru|ganti\s*(?:nomor|nomer)/i;
 
 const LOST_PHONE_REASON =
-  /\bhp\b[\s\w]{0,18}?(?:hilang|ilang|rusak|mati|dicuri|ketinggalan|jebol)|(?:hilang|ilang|rusak|dicuri)[\s\w]{0,14}?\bhp\b|hp\s*lama\s*(?:hilang|ilang|udah\s*gak\s*bisa|ga\s*bisa)/i;
+  /\bhp\b[\s\w]{0,18}?(?:hilang|ilang|rusak|mati|dicuri|ketinggalan|jebol|kebanjiran|banjir)|(?:hilang|ilang|rusak|dicuri|ketinggalan)[\s\w]{0,14}?\bhp\b|hp\s*lama\s*(?:hilang|ilang|udah\s*gak\s*bisa|ga\s*bisa)|nomor\s*lama\s*(?:hilang|ilang|rusak|gak\s*bisa|ga\s*bisa|udah\s*gak\s*bisa)/i;
 
 // 2. Permintaan uang
 const MONEY_VERB =
@@ -48,6 +54,10 @@ const MONEY_VERB =
 
 const MONEY_AMOUNT =
   /\b\d[\d.,]*\s*(?:rb|ribu|k|jt|juta|gopek|cepek)?\b|\b(?:duit|uang|dana|biaya|modal)\b/i;
+
+/** Permintaan transfer ke nomor rekening (tanpa menyebut nominal). */
+const TRANSFER_TO_ACCOUNT =
+  /(?:transfer(?:in)?|kirim(?:in)?|tf)\s*(?:ke|dulu|sekarang|ya|dong)?\s*(?:ke\s*)?(?:rekening|no\.?\s*rek|norek|nomor\s*rekening)/i;
 
 // 3. Janji pengembalian cepat
 const REPAY_PROMISE =
@@ -68,12 +78,24 @@ export interface SocialSignals {
   repayPromise: Hit | null;
   urgency: Hit | null;
   verificationBlock: Hit | null;
+  transferToAccount: Hit | null;
 }
 
 export function detectSocialSignals(text: string): SocialSignals {
   const moneyVerb = firstMatch(text, MONEY_VERB);
   const hasAmount = MONEY_AMOUNT.test(text);
-  const money = moneyVerb && hasAmount ? moneyVerb : null;
+  let money = moneyVerb && hasAmount ? moneyVerb : null;
+
+  // Kalimat yang MEMBICARAKAN penipuan (mis. "ciri lowongan palsu biasanya
+  // meminta uang pendaftaran") atau larangan ("jangan transfer uang") bukan
+  // permintaan uang sungguhan, sehingga tidak boleh dihitung sebagai sinyal.
+  if (money) {
+    const clauses = splitClauses(text);
+    const clause = clauseContaining(clauses, money.index);
+    if (!clause || isReportedSpeech(clause) || isProtective(clause)) {
+      money = null;
+    }
+  }
 
   return {
     newNumberClaim: firstMatch(text, NEW_NUMBER_PHRASE),
@@ -82,6 +104,7 @@ export function detectSocialSignals(text: string): SocialSignals {
     repayPromise: firstMatch(text, REPAY_PROMISE),
     urgency: money ? firstMatch(text, URGENCY) : null,
     verificationBlock: firstMatch(text, VERIFICATION_BLOCK),
+    transferToAccount: firstMatch(text, TRANSFER_TO_ACCOUNT),
   };
 }
 
@@ -122,10 +145,18 @@ export function analyzeSocialEngineering(text: string): SocialAnalysis {
   const s = detectSocialSignals(text);
   const findings: Finding[] = [];
 
-  const claimsNewNumber = Boolean(s.newNumberClaim && s.lostPhoneReason);
+  // "Nomor tidak terverifikasi" tidak selalu melibatkan kata "baru": pelaku bisa
+  // mengaku HP-nya hilang/ketinggalan/kebanjiran TANPA menyebut "nomor baru"
+  // (mis. "Ini mama, hp ketinggalan di travel"), atau mengaku "ganti nomor"
+  // tanpa menyebut alasan. Salah satu dari keduanya sudah cukup untuk melemahkan
+  // asumsi bahwa pengirim adalah pemilik kontak lama.
+  const claimsNewNumber = Boolean(s.newNumberClaim || s.lostPhoneReason);
   const blocksVerification = Boolean(s.verificationBlock);
   const impersonationPattern =
-    claimsNewNumber && (Boolean(s.moneyRequest) || blocksVerification);
+    claimsNewNumber &&
+    (Boolean(s.moneyRequest) ||
+      Boolean(s.transferToAccount) ||
+      blocksVerification);
 
   // Klaim nomor baru saja bukan sinyal bahaya. banyak orang memang berganti
   // nomor. Sinyal ini hanya dilaporkan bila muncul bersama permintaan uang

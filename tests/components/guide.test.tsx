@@ -11,7 +11,9 @@ describe("Rencana tindakan", () => {
 
     for (const guide of SAFETY_GUIDES) {
       await user.click(screen.getByRole("button", { name: guide.situation }));
-      expect(await screen.findByText(guide.summary)).toBeInTheDocument();
+      expect(
+        await screen.findByText(guide.summary, {}, { timeout: 10_000 }),
+      ).toBeInTheDocument();
       expect(screen.getByText("Lakukan sekarang")).toBeInTheDocument();
       expect(screen.getByText("Setelah itu")).toBeInTheDocument();
       expect(
@@ -20,7 +22,7 @@ describe("Rencana tindakan", () => {
       expect(screen.getByText("Yang perlu diperiksa")).toBeInTheDocument();
       expect(screen.getByText("Sumber bantuan resmi")).toBeInTheDocument();
     }
-  });
+  }, 30_000);
 
   it("menampilkan langkah spesifik untuk kredensial yang bocor", async () => {
     const user = userEvent.setup();

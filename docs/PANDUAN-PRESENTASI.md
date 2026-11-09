@@ -68,8 +68,9 @@ sinyal yang ditemukan, sepenuhnya di peramban.
 1. Klik menu **Periksa** di sidebar, atau tombol **Buka halaman penuh** dari
    beranda.
 2. Pastikan tab **Periksa Pesan** aktif.
-3. Klik **Muat contoh fiktif** untuk mengisi pesan contoh bawaan aplikasi.
-4. Klik **Periksa pesan**.
+3. Buka **Coba pesan contoh**, lalu pilih salah satu contoh fiktif, misalnya
+   "Minta kode OTP".
+4. Tunjuk bahwa analisis berjalan otomatis begitu contoh dipilih.
 5. Tunjuk bagian "Sinyal yang terdeteksi", lalu buka salah satu temuan.
 6. Gulir ke "Langkah yang disarankan" dan "Yang belum dapat dipastikan".
 
@@ -78,9 +79,11 @@ sinyal yang ditemukan, sepenuhnya di peramban.
 "Pada menu Periksa ada tiga jenis pemeriksaan dalam satu tempat: pesan, nomor
 telepon, dan tautan. Saya mulai dari yang paling sering dipakai, yaitu pesan.
 
-Saya tekan **Muat contoh fiktif** supaya tidak perlu mengetik. Contoh ini memang
-disiapkan aplikasi, bukan data orang lain. Setelah **Periksa pesan** ditekan,
-hasilnya muncul seketika tanpa memuat halaman.
+Saya buka **Coba pesan contoh** dan memilih satu contoh, misalnya "Minta kode
+OTP". Contoh ini memang disiapkan aplikasi, bukan data orang lain. Begitu
+contoh dipilih, analisis langsung berjalan dan hasilnya muncul tanpa memuat
+halaman. Accordion contoh tertutup secara default dan menutup kembali setelah
+dipilih, supaya daftarnya tidak menghalangi hasil di layar sempit.
 
 Yang penting di sini: analisisnya berjalan di peramban. Pesan yang saya tempel
 tidak dikirim ke server dan tidak disimpan. Jadi pengguna tetap aman meskipun
@@ -712,3 +715,136 @@ setelah membaca konteks kontennya. Laporan tidak otomatis menghapus konten.
 Jangan mengarang angka. Jawab apa adanya: aplikasi berjalan di `https://saring.app`
 dan sedang dalam tahap evaluasi. Sebutkan metrik hanya bila benar-benar tersedia
 dan bisa ditunjukkan.
+
+---
+
+## Lampiran 2: Sepuluh Pertanyaan Juri — Jawaban Diturunkan dari Kode
+
+Jawaban di bawah menunjuk file/angka nyata di repositori. Baca ulang (dan bila
+perlu buka filenya) sebelum sesi, supaya saat ditanya Anda tidak mengarang.
+
+### 1. "Bagaimana Anda mengukur kualitas deteksinya?"
+
+Deteksi diukur bukan dengan satu angka klaim, melainkan evaluasi tiga subset yang
+benar-benar dijalankan oleh `tests/unit/analysisEval.test.ts` (dataset di
+`tests/fixtures/analysis-dataset.ts`, metrik di `tests/fixtures/eval-metrics.ts`):
+
+- **development** (88 contoh) — dipakai untuk *menulis dan menala* aturan, jadi
+  angkanya hanya penangkap regresi, bukan bukti generalisasi.
+- **validation** (21) — contoh untuk memantau regresi; sebagian aturan memang
+  diturunkan darinya (sah, sesuai metodenya).
+- **holdout** (24) — dimaksudkan sebagai uji independen, tetapi **tidak
+  sepenuhnya *blind***: satu aturan `upfront-payment` menyerap kosakata khas
+  `hold-prize-01` ("komisi undian", "biaya kirim voucher"). Temuan ini kami
+  temukan dan koreksi dalam audit — lihat `docs/EVALUASI-ANALISIS.md` §4.3.
+
+Angka terkini terdokumentasi di `docs/EVALUASI-ANALISIS.md`: development
+100% presisi/recall (karena memang dipakai tuning), holdout **recall 92,9%**
+(13 TP dari 14), presisi 100%, F1 96,3%. Satu *false negative* holdout
+(`hold-threat-01`, ancaman "layanan kami cabut dalam 2 jam") **tetap ada** dan
+didokumentasikan sebagai batasan.
+
+Jika ditanya "kenapa tidak 100%", jawab persis itu: 100% hanya terjadi pada data
+yang dipakai tuning; recall pada holdout 92,9% — dan kami **tidak mengklaimnya
+sebagai evaluasi *blind*** karena satu aturan memakai kosakata yang hanya muncul
+pada holdout. Untuk bukti generalisasi, kami menyiapkan protokol pengumpulan
+dataset baru yang benar-benar belum tersentuh (`docs/EVALUASI-ANALISIS.md` §7),
+belum dijalankan.
+
+### 2. "Skor yang ditampilkan itu probabilitas penipuan?"
+
+Bukan. Skor adalah **jumlah bobot keparahan indikator**, bukan peluang.
+`lib/analysis/types.ts` mendefinisikan `SEVERITY_WEIGHT = { high: 40, medium: 25,
+low: 15 }`; `engine.ts` menjumlahkan bobot temuan yang sudah dideduplikasi dan
+membatasinya pada 100 (`Math.min(100, …)`). Klasifikasi memakai ambang tetap:
+skor ≥ 70 → "banyak sinyal", 35–69 → "perlu ditinjau", < 35 → "sinyal terbatas".
+
+Satu nomor 40 tidak berarti "40% kemungkinan penipuan". Karena itu setiap temuan
+selalu menampilkan **kutipan teks** dan **alasan**, agar pengguna bisa menilai
+sendiri — bukan menelan sebuah angka.
+
+### 3. "Kenapa tidak pernah ada label 'aman'?"
+
+Karena tidak adanya sinyal bahaya **bukan** bukti bahwa pesan aman. Mesin hanya
+membaca isi teks: ia tidak melihat nomor pengirim, riwayat, atau niat. Memberi
+label "aman" akan mengubah "kami tidak menemukan indikator" menjadi janji yang
+tidak bisa kami buktikan. `DISCLAIMER` di `lib/analysis/types.ts` menyatakan hal
+ini secara eksplisit, dan setiap hasil menyertakan daftar `uncertainties` — hal
+yang tidak dapat dipastikan dari teks saja. Ini keputusan desain yang disengaja
+(lihat juga bagian 16 naskah), bukan keterbatasan yang disembunyikan.
+
+### 4. "Bagaimana Anda memastikan isi Pustaka yang ditampilkan benar?"
+
+Dua lapis. Pertama, **panduan dan sumber bantuan** menunjuk kanal resmi yang
+dicantumkan di `data/guides.ts`, `data/resources.ts`, dan `data/sources.ts`:
+`ojk.go.id`, `iasc.ojk.go.id`, `kontak157.ojk.go.id` (pengaduan OJK),
+`aduannomor.id` (Komdigi), `aduankonten.id`, dan `cekrekening.id`. Kedua,
+**artikel komunitas** melewati moderasi: admin membaca konteks sebelum menyetujui
+(lihat tes moderasi di `tests/e2e/v16.spec.ts`), dan laporan ditangani manusia,
+bukan dihapus otomatis. Saring **tidak mengarang reputasi** apa pun — jika tidak
+ada dasar, ia menyatakan "tidak ada kecocokan", bukan menyimpulkan aman.
+
+### 5. "Apa yang membedakan dari aplikasi pemeriksa lain?"
+
+Tiga hal yang sengaja **tidak** kami lakukan: (1) tidak memberi label aman (§3),
+(2) tidak mengarang hasil saat data tidak tersedia (nomor direputasikan lewat
+perilaku yang dilaporkan pengguna, bukan pangkalan data yang tidak kami miliki),
+dan (3) tidak mengirim isi pesan ke server/AI — pemeriksaan berjalan di peramban.
+Pembeda utamanya bukan daftar fitur, melainkan kejujuran soal ketidakpastian
+sebagai bagian dari desain produk (bagian 16 naskah).
+
+### 6. "Bagaimana mencegah mesin menuduh pesan yang sebenarnya sah?"
+
+Mesin memakai penjaga konteks di `lib/analysis/context.ts` dan
+`lib/analysis/socialEngineering.ts`: kalimat yang **membicarakan** penipuan
+("pelaku biasanya bilang…", "penipu sering mengaku sebagai petugas bank",
+"jangan pernah membayar biaya muka") dikenali sebagai edukasi, bukan sinyal
+penipuan. Aturan janji/ancaman juga punya pengecualian untuk peringatan risiko
+(`engine.ts`: "Keuntungan tidak pernah dijamin" adalah edukasi, bukan tawaran).
+Setiap temuan tetap menampilkan kutipan teks agar pengguna bisa memverifikasi
+secara terpisah. Efeknya terukur: *false positive* biner pada evaluasi = 0.
+
+### 7. "Bagaimana keamanan akun dan permintaan dijaga?"
+
+- **Kata sandi** di-hash dengan bcrypt (`lib/auth/password`), bukan disimpan.
+- **Reset kata sandi** memakai token sekali pakai + kedaluwarsa; respons lupa
+  sandi selalu sama (tidak membocorkan keberadaan akun); reset mencabut sesi.
+- **Pembatasan laju** per rute (`lib/security/rate-limit`) menahan percobaan
+  berulang.
+- **CSRF** ditahan lewat pemeriksaan asal permintaan (`isSameOrigin`).
+- **Role** dibaca ulang dari basis data pada tiap otorisasi, sehingga perubahan
+  role langsung berlaku.
+
+Rincian dan test ada di `tests/unit/password-reset-route.test.ts` dan
+`tests/e2e/password-reset-security.spec.ts`.
+
+### 8. "Bagaimana aksesibilitas dan mode gelap dijaga?"
+
+Pemeriksaan otomatis, bukan klaim kosong: `tests/e2e/contrast.spec.ts` mengaudit
+kontras teks yang **benar-benar dirender** di browser untuk light/dark (ambang
+WCAG 2.2 AA 4.5:1 normal, 3:1 teks besar), termasuk kontrol dan placeholder;
+`npm run audit:contrast` memeriksa palet token. Mode gelap diterapkan **sebelum
+first-paint** (skrip sebaris sinkron di `lib/theme.ts` + `app/layout.tsx`), diuji
+oleh test "tanpa kilatan". Tersedia skip-link, pengumuman hasil untuk pembaca
+layar, dukungan `prefers-reduced-motion`, dan uji tidak ada overflow horizontal di
+seluruh halaman (mobile & desktop).
+
+### 9. "Bagaimana memastikan tidak ada regresi saat menambah aturan?"
+
+Tiga pintu kualitas, semuanya dijalankan lokal: (1) **520 unit/komponen test**
+(`npm run test`) — setiap aturan baru wajib punya unit test di
+`tests/unit/engineImprovements.test.ts`; (2) **pintu evaluasi** di
+`tests/unit/analysisEval.test.ts` yang menegakkan ambang biner (development ≥ 0,90
+presisi/recall/akurasi, holdout ≥ 0,50 recall & ≥ 0,70 presisi) agar perbaikan
+tidak menurunkan kualitas; (3) **286 test Playwright** (chromium + mobile)
+`npm run test:e2e:local`. Ditambah `tsc --noEmit`, `eslint`, dan `git diff --check`.
+
+### 10. "Apakah sudah diuji pada pengguna sungguhan?"
+
+Belum. Pemeriksaan yang kami lakukan adalah evaluasi heuristik, penelusuran
+terpandu, dan pengujian otomatis — bukan studi usability dengan peserta yang
+direkrut. `docs/USER-TESTING.md` bagian 5 menyediakan **paket pelaksanaan** yang
+siap dijalankan (lembar tugas, persetujuan, kuesioner SUS 10 butir skala 1–5 yang
+terpisah dari kemudahan 1–7, dan templat pencatatan), tetapi belum ada peserta.
+Kami tidak mengklaim "sudah diuji N pengguna" atau memakai angka SUS yang belum
+dikumpulkan.

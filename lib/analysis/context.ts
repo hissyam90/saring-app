@@ -55,7 +55,7 @@ export function clauseContaining(clauses: Clause[], index: number): string {
  * bahwa pihak resmi meminta data. Hanya berlaku pada klausa yang sama.
  */
 const PROTECTIVE =
-  /(?:\bjangan(?:\s+pernah)?\b|\bhindari\b|\bwaspada(?:i|lah)?\b|\bhati-?hati\b|\bawas\b|\bdilarang\b|\btolak\b|\btidak\s+(?:pernah|akan)\s+meminta\b|\bkami\s+tidak\s+meminta\b|\btidak\s+perlu\s+(?:memberikan|membagikan|mengirim|mengisi)\b|\btanpa\s+biaya\b|\btidak\s+dipungut\b)/i;
+  /(?:\bjangan(?:\s+pernah)?\b|\bhindari\b|\bwaspada(?:i|lah)?\b|\bhati-?hati\b|\bawas\b|\bdilarang\b|\btolak\b|\btidak\s+(?:pernah|akan)\s+(?:meminta|menelepon|menghubungi|telepon|telpon)\b|\bkami\s+tidak\s+(?:meminta|menelepon|menghubungi)\b|\btidak\s+perlu\s+(?:memberikan|membagikan|mengirim|mengisi)\b|\btanpa\s+biaya\b|\btidak\s+dipungut\b)/i;
 
 /**
  * Penanda kalimat yang membicarakan penipuan (bukan melakukan), mis.
@@ -89,7 +89,7 @@ export function isPastNarrative(clause: string): boolean {
 
 /** Kata kerja/permintaan yang meminta pembaca melakukan sesuatu. */
 export const DEMAND_VERBS =
-  /\b(?:kirim(?:kan)?|berikan|beri|bagikan|berbagi|sebutkan|sebut|infokan|info|kasih\s*(?:tau|tahu)|masukkan|isikan|isi|ketik(?:kan)?|konfirmasi|verifikasi|validasi|aktivasi|share|forward|send|give|enter|input|confirm|verify|type|reply|balas(?:kan)?|minta|diminta|butuh|berapa(?:kah)?)\b/i;
+  /\b(?:kirim(?:kan)?|berikan|beri|bagi(?:kan)?|berbagi|sebutkan|sebut|infokan|info|kasih\s*(?:tau|tahu)|masukkan|isikan|isi|ketik(?:kan)?|konfirmasi|verifikasi|validasi|aktivasi|share|forward|send|give|enter|input|confirm|verify|type|reply|balas(?:kan)?|minta|diminta|butuh|berapa(?:kah)?)\b/i;
 
 export function hasDemandVerb(clause: string): boolean {
   return DEMAND_VERBS.test(clause);

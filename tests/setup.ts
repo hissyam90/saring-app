@@ -74,3 +74,26 @@ for (const proto of [
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
+
+/**
+ * jsdom belum mengimplementasikan `window.matchMedia`. Beberapa komponen klien
+ * memakainya untuk menghormati `prefers-reduced-motion` atau mendeteksi jenis
+ * pointer. Polyfill sederhana ini mengembalikan `matches: false` agar animasi
+ * tetap berjalan pada pengujian komponen; tidak ada kode yang bergantung pada
+ * nilai nyata media query di lingkungan unit test.
+ */
+if (typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}

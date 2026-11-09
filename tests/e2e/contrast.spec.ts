@@ -37,8 +37,12 @@ loadEnvConfig(process.cwd(), true);
 declare global {
   interface Window {
     __themeMarks: {
+      /** `performance.now()` saat `data-theme` dipasang (sinkron, sebelum paint). */
       themeAt: number | null;
+      /** `entry.startTime` first-paint (timestamp paint yang sebenarnya). */
       firstPaint: number | null;
+      /** `performance.now()` saat callback observer dijalankan (diagnosis saja). */
+      paintCallbackAt: number | null;
       /** Nilai `data-theme` saat atribut pertama kali terpasang. */
       value?: string | null;
     };
@@ -185,7 +189,12 @@ async function storeTheme(page: Page, value: "light" | "dark" | "system") {
  */
 async function installThemeMarks(page: Page) {
   await page.addInitScript(() => {
-    window.__themeMarks = { themeAt: null, firstPaint: null, value: null };
+    window.__themeMarks = {
+      themeAt: null,
+      firstPaint: null,
+      paintCallbackAt: null,
+      value: null,
+    };
 
     // Waktu `addInitScript` dieksekusi, `document.documentElement` masih null:
     // dokumen sudah dibuat tetapi elemen <html> belum diurai. Membungkus
@@ -218,7 +227,17 @@ async function installThemeMarks(page: Page) {
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry.name === "first-paint" && window.__themeMarks.firstPaint === null) {
+          // Catat timestamp paint yang SEBENARNYA (`entry.startTime`), bukan
+          // waktu callback ini. Keduanya `DOMHighResTimeStamp` dengan time
+          // origin yang sama (navigation start), sehingga sebanding langsung
+          // dengan `themeAt`. Waktu callback dicatat terpisah sebagai
+          // `paintCallbackAt` untuk diagnosis saja — TIDAK dipakai assertion —
+          // karena callback observer berjalan setelah paint selesai dan nilainya
+          // selalu lebih besar dari timestamp paint sesungguhnya. Memakai waktu
+          // callback untuk assertion akan mengesahkan kilatan (tema bisa
+          // terpasang setelah paint tetapi tetap lolos).
           window.__themeMarks.firstPaint = entry.startTime;
+          window.__themeMarks.paintCallbackAt = performance.now();
         }
       }
     }).observe({ type: "paint", buffered: true });
@@ -471,6 +490,15 @@ test.describe("Kontras halaman", () => {
       page,
       context,
     }) => {
+      // Test ini mengaudit kontras *seluruh DOM* pada setiap halaman di
+      // `mode.pages` (hingga 19 halaman untuk mode "system"), satu per satu.
+      // Di luar beban paralel penuh (`npm run test:e2e:local` dengan 6 worker +
+      // 286 test), satu audit `auditPage` saja bisa memakan beberapa detik
+      // karena menelusuri dan menghitung kontras setiap simpul teks. Timeout
+      // bawaan 30 detik dapat terpotong — kegagalannya adalah jam penguji,
+      // bukan pelanggaran kontras. Timeout hanya dilonggarkan, assertion
+      // `failures === []` tidak diubah.
+      test.setTimeout(120_000);
       await loginAs(context, adminId, "admin");
       await page.emulateMedia({ colorScheme: mode.scheme });
       await primeTheme(page, mode);

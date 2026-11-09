@@ -15,6 +15,7 @@ flowchart LR
 |---|---|---|
 | Rule engine dan URL | `tests/unit/analysis.test.ts` | Lulus |
 | Kualitas deteksi: konteks klausa, false positive, kombinasi sinyal | `tests/unit/analysisQuality.test.ts` | Lulus |
+| Evaluasi dataset tiga subset (development 88 + validation 21 + holdout 24) + ambang regresi | `tests/unit/analysisEval.test.ts`, `tests/fixtures/analysis-dataset.ts`, `tests/fixtures/eval-metrics.ts` | Lulus; laporan di `docs/EVALUASI-ANALISIS.md` |
 | Normalisasi nomor | `tests/unit/phone.test.ts` | Lulus |
 | Google Safe Browsing adapter mock | `tests/unit/googleSafeBrowsing.test.ts` | Lulus; live diuji terpisah |
 | Decoder protobuf | `tests/unit/gsbProtobuf.test.ts` | Lulus, memakai byte nyata |
@@ -26,6 +27,7 @@ flowchart LR
 | Sinkronisasi sidebar (user/admin/logout) | `tests/components/auth-menu.test.tsx` | Lulus |
 | Pengarah hasil pemeriksaan ke `/langkah` | `tests/components/result-view.test.tsx` | Lulus |
 | Analyzer dan mode checker | `tests/components/analyzer.test.tsx`, `checker-modes.test.tsx` | Lulus |
+| UX Periksa Pesan: accordion contoh, analisis otomatis, kedaluwarsa hasil, tombol bersih | `tests/components/analyzer.test.tsx` + blok "Periksa Pesan UX" di `tests/e2e/app.spec.ts` | Lulus |
 | Rute, Pustaka, Latihan, Langkah, mobile | `tests/e2e/app.spec.ts` | Lulus |
 | Reset kata sandi: token, store, template, Resend | `tests/unit/password-reset.test.ts` | Lulus |
 | Route forgot/reset password | `tests/unit/password-reset-route.test.ts` | Lulus |
@@ -435,3 +437,10 @@ diterapkan ke container sementara yang dihapus setelah job selesai.
   `analyzer.test.tsx` dan menegaskan tidak dipanggil.
 - "Tautan diperiksa tanpa difetch" → spy global `fetch` di unit test.
 - "Kontrol penting di viewport seluler" → proyek `mobile` Playwright (Pixel 5).
+
+## Rujukan terkait
+
+- **Evaluasi kualitas deteksi** (tiga subset: development/validation/holdout,
+  metrik presisi/recall/F1 per subset, ambang regresi): `docs/EVALUASI-ANALISIS.md`.
+- **Evaluasi pengalaman pengguna & aksesibilitas** (alur Periksa Pesan, gerak
+  berkurang, fokus keyboard, naskah studi pengguna): `docs/USER-TESTING.md`.

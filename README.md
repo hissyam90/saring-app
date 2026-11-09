@@ -346,6 +346,7 @@ dalam satu transaksi per berkas, dan dicatat pada tabel `schema_migrations`.
 | `0002_submission_rich_body.sql` | kolom `submissions.body_json` (JSONB) |
 | `0003_revisions_drafts_bookmarks_notifications.sql` | kategori `lainnya`, `submission_revisions`, `drafts`, `article_bookmarks`, `notifications` |
 | `0004_submission_archive.sql` | kolom `submissions.archived_at` (soft archive) |
+| `0005_password_reset.sql` | `users.session_version` + tabel `password_reset_tokens` (token di-hash, sekali pakai, kedaluwarsa) |
 
 Seluruh migration bersifat aditif: tidak ada operasi destruktif otomatis.
 
@@ -391,6 +392,11 @@ menyiapkan PostgreSQL uji, menerapkan migration, menjalankan Playwright, lalu
 membersihkan container (lihat `docs/TESTING.md`).
 
 Rincian cakupan pengujian ada di [docs/TESTING.md](docs/TESTING.md).
+
+Kualitas mesin analisis diukur terhadap dataset kurasi (development 88 contoh,
+plus validation/holdout independen) dan dijelaskan
+di [docs/EVALUASI-ANALISIS.md](docs/EVALUASI-ANALISIS.md). Evaluasi pengalaman
+pengguna dan aksesibilitas dicatat di [docs/USER-TESTING.md](docs/USER-TESTING.md).
 
 ---
 
@@ -511,7 +517,9 @@ lebih dulu.
 - **Repositori:** publik — <https://github.com/hissyam90/saring-app>
 - **Panduan presentasi:** [docs/PANDUAN-PRESENTASI.md](docs/PANDUAN-PRESENTASI.md)
 - **Dokumentasi teknis:** [docs/](docs/) — arsitektur, alur data, sumber data,
-  keamanan, pengujian, dan deployment.
+  keamanan, pengujian ([docs/EVALUASI-ANALISIS.md](docs/EVALUASI-ANALISIS.md)
+  untuk evaluasi deteksi, [docs/USER-TESTING.md](docs/USER-TESTING.md) untuk
+  UX & aksesibilitas), dan deployment.
 
 **Atribusi**
 

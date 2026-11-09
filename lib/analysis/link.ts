@@ -86,7 +86,7 @@ const BRAND_TOKEN =
   /\b(bca|bri|bni|mandiri|cimb|bsi|danamon|ovo|gopay|dana|shopeepay|shopee|tokopedia|lazada|gojek|pln|bpjs|pajak|ojk|kominfo|polri|polisi|telkomsel|indosat|xl)\b/i;
 
 const LOOKALIKE_MARKER =
-  /verifikasi|konfirmasi|login|reset|update|secure|keamanan|akun|hadiah|klaim|bonus|dana/i;
+  /verifikasi|konfirmasi|login|reset|update|secure|keamanan|akun|hadiah|klaim|bonus|dana|resmi|official|asli/i;
 
 function tldOf(host: string): string {
   const index = host.lastIndexOf(".");

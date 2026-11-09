@@ -220,6 +220,203 @@ test("analyzer produces an explainable result", async ({ page }) => {
   ).toBeVisible();
 });
 
+test.describe("Periksa Pesan UX", () => {
+  test("contoh fiktif tertutup secara default dan bisa dibuka-tutup", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+
+    const examples = page.locator("details");
+    await expect(examples).toHaveCount(1);
+    // Tertutup: tidak ada atribut `open`.
+    await expect(examples).not.toHaveAttribute("open");
+
+    await page.locator("details > summary").click();
+    await expect(examples).toHaveAttribute("open", "");
+
+    await page.locator("details > summary").click();
+    await expect(examples).not.toHaveAttribute("open");
+  });
+
+  test("sembilan contoh tersedia dan pemilihan menutup accordion lalu menganalisis otomatis", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    await page.locator("details > summary").click();
+
+    const examples = page.locator("details").getByRole("button");
+    await expect(examples).toHaveCount(9);
+    await expect(examples.first()).toBeVisible();
+
+    await page.getByRole("button", { name: /Minta kode OTP/ }).click();
+
+    // Accordion menutup setelah contoh dipilih.
+    await expect(page.locator("details")).not.toHaveAttribute("open");
+
+    // Teks contoh masuk ke textarea dan analisis berjalan tanpa klik kedua.
+    await expect(page.getByLabel("Pesan yang ingin diperiksa")).toHaveValue(/OTP/);
+    await expect(
+      page.getByRole("heading", { name: "Jangan bagikan kode rahasia apa pun" }),
+    ).toBeVisible({ timeout: 8000 });
+  });
+
+  test("hasil muncul sebelum area contoh dalam urutan konten", async ({ page }) => {
+    await page.goto("/periksa");
+    await page.locator("details > summary").click();
+    await page.getByRole("button", { name: /Minta kode OTP/ }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "Jangan bagikan kode rahasia apa pun" }),
+    ).toBeVisible({ timeout: 8000 });
+
+    const order = await page.evaluate(() => {
+      const result = document.querySelector('[aria-label="Hasil pemeriksaan"]');
+      const details = document.querySelector("details");
+      if (!result || !details) return "missing";
+      return result.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_PRECEDING
+        ? "after"
+        : "before";
+    });
+    expect(order).toBe("before");
+  });
+
+  test("mengubah teks setelah ada hasil menandai hasil kedaluwarsa", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    const textarea = page.getByLabel("Pesan yang ingin diperiksa");
+    await textarea.fill("kirim kode OTP Anda sekarang untuk verifikasi");
+    await page.getByRole("button", { name: "Periksa pesan" }).click();
+    await expect(page.getByText(/Permintaan kode rahasia/)).toBeVisible({
+      timeout: 8000,
+    });
+
+    await textarea.fill("balas saja nanti ya, besok ketemu di kantor");
+
+    await expect(
+      page.getByText("Pesan berubah. Periksa ulang untuk mendapatkan hasil terbaru."),
+    ).toBeVisible();
+    // Hasil lama tidak lagi ditampilkan sebagai hasil teks terbaru.
+    await expect(page.getByText(/Permintaan kode rahasia/)).toHaveCount(0);
+  });
+
+  test("tombol Coba contoh lain memuat contoh dan menghasilkan analisis", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    await page.getByRole("button", { name: "Coba contoh lain" }).click();
+
+    await expect(
+      page.getByRole("region", { name: "Hasil pemeriksaan" }),
+    ).toBeVisible({ timeout: 8000 });
+  });
+
+  test("tombol Bersihkan mengembalikan kondisi awal", async ({ page }) => {
+    await page.goto("/periksa");
+    const textarea = page.getByLabel("Pesan yang ingin diperiksa");
+    await textarea.fill("kirim kode OTP Anda sekarang");
+    await page.getByRole("button", { name: "Periksa pesan" }).click();
+    await expect(page.getByText(/Permintaan kode rahasia/)).toBeVisible({
+      timeout: 8000,
+    });
+
+    await page.getByRole("button", { name: "Bersihkan" }).click();
+
+    await expect(textarea).toHaveValue("");
+    await expect(page.getByText("Hasil akan muncul di sini")).toBeVisible();
+    await expect(page.getByText(/Permintaan kode rahasia/)).toHaveCount(0);
+  });
+
+  test("validasi pesan kosong tetap mencegah pemeriksaan", async ({ page }) => {
+    await page.goto("/periksa");
+    await page.getByRole("button", { name: "Periksa pesan" }).click();
+    // Next.js menyisipkan `role="alert"` sendiri (route announcer), jadi
+    // perlu dipersempit ke peringatan validasi.
+    await expect(
+      page.getByRole("alert").filter({ hasText: /Masukkan pesan/ }),
+    ).toBeVisible();
+  });
+
+  test("menampilkan lencana privasi dan catatan pengolahan lokal", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    await expect(page.getByText("Lokal · tanpa kirim data")).toBeVisible();
+    await expect(
+      page.getByText(/Pemeriksaan berjalan sepenuhnya di peramban Anda/),
+    ).toBeVisible();
+  });
+
+  test("accordion contoh menyebut jumlah dan bersifat fiktif", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    await page.locator("details > summary").click();
+    await expect(page.getByText("9 contoh pesan fiktif untuk mencoba fitur pemeriksaan.")).toBeVisible();
+  });
+
+  test("contoh menampilkan catatan pola yang bisa diamati", async ({ page }) => {
+    await page.goto("/periksa");
+    await page.locator("details > summary").click();
+    await expect(
+      page.getByRole("button", { name: /Minta kode OTP/ }),
+    ).toContainText("Menyamar sebagai customer service bank");
+    await expect(
+      page.getByRole("button", { name: /Nomor baru minta pinjam uang/ }),
+    ).toContainText("Klaim nomor baru + permintaan uang + desakan waktu");
+  });
+
+  test("penghitung karakter tampil dan diperbarui", async ({ page }) => {
+    await page.goto("/periksa");
+    const counter = page.locator("#char-count");
+    await expect(counter).toHaveText("0 / 2500 karakter");
+
+    await page.getByLabel("Pesan yang ingin diperiksa").fill("abc");
+    await expect(counter).toHaveText("3 / 2500 karakter");
+  });
+
+  test("textarea membatasi masukan hingga 2500 karakter", async ({ page }) => {
+    await page.goto("/periksa");
+    const textarea = page.getByLabel("Pesan yang ingin diperiksa");
+    await expect(textarea).toHaveAttribute("maxlength", "2500");
+
+    await textarea.fill("a".repeat(2600));
+    await expect(page.locator("#char-count")).toHaveText("2500 / 2500 karakter");
+  });
+
+  test("mengumumkan selesainya analisis untuk pembaca layar", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    await page.getByLabel("Pesan yang ingin diperiksa").fill("kirim kode OTP Anda sekarang");
+    await page.getByRole("button", { name: "Periksa pesan" }).click();
+    await expect(page.locator('[aria-live="polite"]')).toContainText(
+      "Analisis selesai — hasil pemeriksaan tersedia.",
+    );
+  });
+
+  test("hasil penuh menampilkan ringkasan, langkah, dan kutipan bukti", async ({
+    page,
+  }) => {
+    await page.goto("/periksa");
+    await page
+      .getByLabel("Pesan yang ingin diperiksa")
+      .fill("Segera kirim kode OTP Anda atau akun Anda akan diblokir.");
+    await page.getByRole("button", { name: "Periksa pesan" }).click();
+
+    await expect(
+      page.getByRole("region", { name: "Hasil pemeriksaan" }),
+    ).toBeVisible({ timeout: 8000 });
+    await expect(
+      page.getByRole("heading", { name: "Jangan bagikan kode rahasia apa pun" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Langkah yang disarankan" }),
+    ).toBeVisible();
+    await expect(page.getByText("Kutipan dari pesan").first()).toBeVisible();
+  });
+});
+
 test("skip link terlihat saat fokus dan memindahkan fokus ke konten utama", async ({
   page,
 }) => {

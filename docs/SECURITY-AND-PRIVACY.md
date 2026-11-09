@@ -72,7 +72,7 @@ Isi halaman Periksa **tidak pernah** ditulis ke tabel mana pun.
 
 Pada `NODE_ENV=production` ditambahkan:
 
-- `Content-Security-Policy`: `default-src 'self'`, `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob:`, `font-src 'self' data:`, `connect-src 'self' https://challenges.cloudflare.com`, `frame-src https://challenges.cloudflare.com`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`, `upgrade-insecure-requests`.
+- `Content-Security-Policy`: `default-src 'self'`, `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob: https:`, `font-src 'self' data:`, `connect-src 'self' https://challenges.cloudflare.com`, `frame-src https://challenges.cloudflare.com https://imgur.com`, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`, `upgrade-insecure-requests`.
 - `Strict-Transport-Security` **hanya** bila `SARING_ENABLE_HSTS=1` (setelah HTTPS stabil).
 
 `unsafe-inline` pada `script-src` masih diperlukan karena Next.js menyisipkan
@@ -284,6 +284,9 @@ lintas instance (bukan in-memory). Bila penyimpanan gagal, request **ditolak**
 |---|---|---|
 | `login` | 8 | 5 menit |
 | `register` | 5 | 1 jam |
+| `password-reset` | 5 | 15 menit |
+| `password-reset-email` | 3 | 1 jam |
+| `password-reset-confirm` | 10 | 15 menit |
 | `thread-create` | 5 | 10 menit |
 | `reply-create` | 20 | 10 menit |
 | `submission-create` | 4 | 1 jam |

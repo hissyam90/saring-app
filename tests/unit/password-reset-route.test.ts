@@ -20,6 +20,16 @@ const { POST: resetPassword } = await import(
 const OLD_PASSWORD = "sandi-lama-uji-123";
 const NEW_PASSWORD = "kata-sandi-baru-123";
 
+/**
+ * Beberapa test di bawah ini menjalankan hashing bcrypt sungguhan (biaya 12).
+ * Di mesin lokal yang tenang sekali hash memakan ~0,3–0,5 detik, tetapi pada
+ * `npm run test` (49 file jsdom berjalan paralel + saturasi CPU) test yang
+ * memakai dua hash + dua perbandingan dapat melewati batas bawaan 5000 ms.
+ * Timeout dinaikkan per-test — bukan dengan meniru bcrypt — agar tetap
+ * menguji hashing nyata tanpa gagal palsu karena beban paralel.
+ */
+const BCRYPT_TIMEOUT = 30_000;
+
 /** Semua output konsol selama satu test, untuk memeriksa kebocoran. */
 const capturedLogs: string[] = [];
 
@@ -113,34 +123,38 @@ describe("POST /api/auth/reset-password", () => {
     return { user, token };
   }
 
-  it("mengganti kata sandi, memakai token sekali, dan menghapus sesi", async () => {
-    const { token } = await createUserWithToken();
+  it(
+    "mengganti kata sandi, memakai token sekali, dan menghapus sesi",
+    async () => {
+      const { token } = await createUserWithToken();
 
-    const response = await resetPassword(
-      post("/api/auth/reset-password", {
-        token: token.token,
-        password: NEW_PASSWORD,
-      }),
-    );
-    expect(response.status).toBe(200);
-    expect(destroySession).toHaveBeenCalledTimes(1);
+      const response = await resetPassword(
+        post("/api/auth/reset-password", {
+          token: token.token,
+          password: NEW_PASSWORD,
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(destroySession).toHaveBeenCalledTimes(1);
 
-    const stored = await getStore().findUserByEmail("reset@contoh.test");
-    expect(stored!.passwordHash).not.toBe(NEW_PASSWORD);
-    expect(stored!.passwordHash).toMatch(/^\$2[aby]\$/);
-    expect(await verifyPassword(NEW_PASSWORD, stored!.passwordHash)).toBe(true);
-    // Kata sandi lama tidak lagi cocok dengan hash yang tersimpan.
-    expect(await verifyPassword(OLD_PASSWORD, stored!.passwordHash)).toBe(false);
-    expect(await getStore().getSessionVersion(stored!.id)).toBe(1);
+      const stored = await getStore().findUserByEmail("reset@contoh.test");
+      expect(stored!.passwordHash).not.toBe(NEW_PASSWORD);
+      expect(stored!.passwordHash).toMatch(/^\$2[aby]\$/);
+      expect(await verifyPassword(NEW_PASSWORD, stored!.passwordHash)).toBe(true);
+      // Kata sandi lama tidak lagi cocok dengan hash yang tersimpan.
+      expect(await verifyPassword(OLD_PASSWORD, stored!.passwordHash)).toBe(false);
+      expect(await getStore().getSessionVersion(stored!.id)).toBe(1);
 
-    const reuse = await resetPassword(
-      post("/api/auth/reset-password", {
-        token: token.token,
-        password: "kata-sandi-lain-123",
-      }),
-    );
-    expect(reuse.status).toBe(400);
-  });
+      const reuse = await resetPassword(
+        post("/api/auth/reset-password", {
+          token: token.token,
+          password: "kata-sandi-lain-123",
+        }),
+      );
+      expect(reuse.status).toBe(400);
+    },
+    BCRYPT_TIMEOUT,
+  );
 
   it("respons reset hanya memuat ok dan message tanpa token atau kata sandi", async () => {
     const { token } = await createUserWithToken();
@@ -158,7 +172,7 @@ describe("POST /api/auth/reset-password", () => {
     expect(raw).not.toContain(token.token);
     expect(raw).not.toContain(token.tokenHash);
     expect(raw).not.toContain(NEW_PASSWORD);
-  });
+  }, BCRYPT_TIMEOUT);
 
   it("tidak mencatat token, kata sandi, atau tautan reset ke log", async () => {
     await getStore().createUser({
@@ -186,7 +200,7 @@ describe("POST /api/auth/reset-password", () => {
     expect(logs).not.toContain(token.tokenHash);
     expect(logs).not.toContain(NEW_PASSWORD);
     expect(logs).not.toMatch(/bearer/i);
-  });
+  }, BCRYPT_TIMEOUT);
 
   it("menolak token kedaluwarsa dan token yang tidak dikenal", async () => {
     const store = getStore();
@@ -218,7 +232,7 @@ describe("POST /api/auth/reset-password", () => {
     );
     expect(unknownResponse.status).toBe(400);
     expect(destroySession).not.toHaveBeenCalled();
-  });
+  }, BCRYPT_TIMEOUT);
 
   it("menolak kata sandi baru yang terlalu pendek", async () => {
     const { token } = await createUserWithToken();
@@ -226,5 +240,5 @@ describe("POST /api/auth/reset-password", () => {
       post("/api/auth/reset-password", { token: token.token, password: "pendek" }),
     );
     expect(response.status).toBe(400);
-  });
+  }, BCRYPT_TIMEOUT);
 });

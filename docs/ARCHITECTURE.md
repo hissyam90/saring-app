@@ -135,10 +135,23 @@ temuan (dibatasi 100), lalu dipetakan:
 
 Skor bukan probabilitas penipuan. hanya total bobot indikator.
 
+Kualitas deteksi diukur terhadap **dataset kurasi** (development 88 contoh yang
+pernah dipakai tuning, plus subset validation/holdout) yang terpisah dari data
+runtime (`data/examples.ts`); hasil dan catatannya — termasuk status independensi
+holdout yang tidak sepenuhnya *blind* — ada di
+[EVALUASI-ANALISIS.md](EVALUASI-ANALISIS.md).
+
 ## Komponen UI
 
 Komponen feature adalah *client components* (`"use client"`) dengan state lokal
 sederhana. `lib/analysis` adalah modul murni yang di-bundle ke klien.
+
+Mode pesan (`periksa/analyzer.tsx`) menata alur sebagai header → privasi →
+textarea → penghitung karakter → tombol → status → hasil → accordion contoh.
+Accordion contoh memakai `<details>` (tertutup default), memilih contoh menutup
+accordion dan menganalisis otomatis, teks yang diubah menandai hasil lama
+kedaluwarsa, dan hasil selesai diumumkan lewat `aria-live`. Keputusan UX dan
+aksesibilitas ini dicatat di [USER-TESTING.md](USER-TESTING.md).
 
 Satu-satunya pemanggilan jaringan dari klien adalah `POST /api/url-reputation`
 di `link-check.tsx`, dan hanya ketika pengguna mencentang consent. Mode pesan
