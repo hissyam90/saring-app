@@ -124,15 +124,30 @@ function patch(update: (current: NotificationFeed) => NotificationFeed) {
 }
 
 /**
- * Memulihkan snapshot sebelum aksi optimistis lalu menyinkronkan ulang dari
- * server. Dipakai saat penulisan status baca gagal agar state lokal tidak
- * menyimpang dari database.
+ * Memulihkan snapshot sebelum aksi optimistis, lalu menyinkronkan ulang
+ * dengan server.
+ *
+ * Dipakai saat penulisan status baca gagal. Kegagalan POST tidak serta-merta
+ * berarti server tidak berubah: server bisa saja sudah menyimpan perubahan,
+ * tetapi respons gagal diterima browser. Memulihkan snapshot `before` saja
+ * karenanya dapat membuat tampilan berbeda dari database. Urutannya:
+ *   1. Pulihkan snapshot `before` dan tampilkan `READ_ERROR`.
+ *   2. Bila masih ada pemuatan yang berjalan, tunggu ia selesai.
+ *   3. Jalankan `refresh()` baru untuk mengambil kondisi server terkini.
+ *   4. Bila refresh berhasil, pertahankan `READ_ERROR` di atas snapshot hasil
+ *      refresh (jangan kembalikan snapshot lama setelah sinkronisasi).
+ *   5. Bila refresh gagal, biarkan `LOAD_ERROR` sebagai pesan terakhir, karena
+ *      kondisi server belum terbukti.
  */
 async function recoverFromReadFailure(before: NotificationFeed): Promise<void> {
   publish({ ...before, error: READ_ERROR });
-  // Sinkronisasi ulang bersifat otoritatif; bila berhasil, error dibersihkan
-  // oleh `refresh()`.
+
+  if (inFlight) await inFlight;
   await refresh();
+
+  if (snapshot.error === null) {
+    publish({ ...snapshot, error: READ_ERROR });
+  }
 }
 
 async function postRead(body: Record<string, unknown>): Promise<boolean> {

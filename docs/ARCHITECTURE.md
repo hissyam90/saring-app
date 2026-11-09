@@ -71,10 +71,11 @@ lib/reputation/
   phishtank.ts           LEGACY, tidak dipakai runtime
 
 data/               konten fiktif & edukasi yang ditinjau
-  examples.ts       6 contoh pesan fiktif
-  scenarios.ts      8 skenario latihan
+  examples.ts       9 contoh pesan fiktif
+  scenarios.ts      20 skenario latihan
   guides.ts         6 panduan tindakan + sumber OJK
-  resources.ts      7 artikel pustaka
+  resources.ts      14 artikel pustaka
+  sources.ts        kanal resmi AduanNomor (Komdigi)
 
 tests/              unit (tests/unit), komponen (tests/components), e2e (tests/e2e)
 docs/               dokumentasi
@@ -84,7 +85,7 @@ docs/               dokumentasi
 
 Inti produk adalah fungsi murni dan deterministik:
 
-- `analyzeText(text): AnalysisResult`. validasi input, jalankan 7 kategori
+- `analyzeText(text): AnalysisResult`. validasi input, jalankan 10 kategori
   aturan, kumpulkan temuan, hitung skor, dan pilih klasifikasi.
 - `extractUrls(text): DetectedUrl[]`. menemukan URL tanpa pernah mengaksesnya.
 
@@ -158,7 +159,7 @@ dan mode nomor tidak pernah memanggil jaringan.
 
 ## Latihan: bank skenario dan penilaian
 
-- `data/scenarios.ts` memuat `SCENARIOS` (18 objek), `SESSION_MODES`
+- `data/scenarios.ts` memuat `SCENARIOS` (20 objek), `SESSION_MODES`
   (5/10/semua), `createRandom` (mulberry32), `pickSessionScenarios`, dan
   `scoreSession`.
 - `components/latihan/simulator.tsx` mengelola fase `intro`, `question`, dan
@@ -213,5 +214,6 @@ Tiga tingkat yang dipisahkan dengan jelas:
    protobuf oleh `lib/reputation/protobuf.ts`.
 
 Ketiganya **tidak pernah** membuka, mengikuti redirect, mengunduh, atau
-menjalankan isi URL. Status eksternal dibedakan menjadi `match`, `no-match`,
-`rate-limited` (HTTP 509), dan `unavailable`; `no-match` bukan bukti aman.
+menjalankan isi URL. Status eksternal dibedakan menjadi `threat`, `no-match`,
+`not-configured`, `unauthorized`, `quota-exceeded` (HTTP 429), `timeout`,
+`http-error`, dan `invalid-response`; `no-match` bukan bukti aman.

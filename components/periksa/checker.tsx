@@ -46,7 +46,7 @@ export function Checker() {
               aria-selected={active}
               aria-controls={`checker-panel-${tab.id}`}
               onClick={() => setMode(tab.id)}
-              className={`flex min-h-16 items-center gap-2.5 border-2 px-3 py-2.5 text-left transition-colors ${
+              className={`flex min-h-16 items-center gap-2.5 border-2 px-3 py-2.5 text-left ${
                 active
                   ? "border-ink bg-ink text-on-ink"
                   : "border-line-strong bg-surface text-ink hover:border-ink hover:bg-lime-soft"

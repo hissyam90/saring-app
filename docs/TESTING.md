@@ -112,8 +112,8 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 - **Kategori `Lainnya`**: default form, diterima validasi server, tersimpan, dan
   dapat difilter tanpa mengubah kategori pertanyaan lama.
 - **UI**: editor tidak meluap dengan URL panjang (desktop & mobile), search bar
-  Pustaka bergaris empat sisi di mode terang dan gelap, dan warna mengikuti
-  preferensi sistem secara default.
+  Pustaka bergaris empat sisi di mode terang dan gelap, dan default tema adalah
+  **Terang** (bukan mengikuti sistem).
 
 | Validasi & sanitasi konten kaya | `tests/unit/rich-text.test.ts` | Lulus |
 | Endpoint pengajuan artikel (konten, IDOR, status) | `tests/unit/submission-route.test.ts` | Lulus |
@@ -179,7 +179,7 @@ Catatan metodologi: Tailwind v4 mengeluarkan warna dengan opacity sebagai
 
 - **Pustaka**: 14 artikel dengan slug unik, isi substantif, estimasi waktu baca
   yang mengikuti panjang teks, tautan terkait valid, dan seluruh sumber https.
-- **Latihan**: 18 skenario, tepat satu opsi bernilai 100 per skenario, mode sesi
+- **Latihan**: 20 skenario, tepat satu opsi bernilai 100 per skenario, mode sesi
   memilih jumlah soal tanpa duplikasi, pengacak deterministik, dan `scoreSession`
   mencakup poin penuh, poin parsial, 0 poin, ringkasan kategori, serta sesi kosong.
 - **Pusat Bantuan & Pelaporan**: lima bagian tampil untuk setiap kondisi, kondisi

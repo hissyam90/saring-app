@@ -175,6 +175,14 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* `transition-duration` saja tidak menonaktifkan transisi: nilai awal
+       `transition-property` adalah `all`, sehingga elemen tanpa kelas
+       `transition-*` (seperti tab /periksa) tetap menganimasikan `color` dan
+       `background-color` dalam tempo 0,01 ms. Snapshot antar-state semacam itu
+       membuat audit kontras membaca warna lama (mis. teks hitam di atas latar
+       `--color-surface`), bukan warna akhir. Nonaktifkan propertinya agar
+       perubahan warna berlaku seketika. */
+    transition-property: none !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }

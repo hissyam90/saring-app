@@ -107,7 +107,7 @@ ketentuan dokumentasi.
 
 ### Pengujian
 
-- `tests/unit/googleSafeBrowsing.test.ts`: 18 kasus termasuk request shape,
+- `tests/unit/googleSafeBrowsing.test.ts`: 19 kasus termasuk request shape,
   threat, no-match, body kosong, 400/403/429/500, timeout, gangguan jaringan,
   JSON rusak, skema salah, kebocoran key, dan cache.
 - `tests/unit/gsbProtobuf.test.ts`: decoder diuji memakai **byte nyata** hasil

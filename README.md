@@ -386,6 +386,10 @@ Playwright juga menyetel kunci uji resmi Cloudflare Turnstile pada proses web
 server, sehingga alur pengiriman benar-benar melewati Siteverify tanpa mengubah
 konfigurasi produksi. Autentikasi, CAPTCHA, dan validasi tidak dimatikan.
 
+Tanpa Docker Compose, jalur termudah adalah `npm run test:e2e:local` yang
+menyiapkan PostgreSQL uji, menerapkan migration, menjalankan Playwright, lalu
+membersihkan container (lihat `docs/TESTING.md`).
+
 Rincian cakupan pengujian ada di [docs/TESTING.md](docs/TESTING.md).
 
 ---

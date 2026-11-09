@@ -23,8 +23,8 @@ sequenceDiagram
   U->>B: Masukkan URL + consent
   B->>B: inspectLink heuristik
   B->>S: POST URL reputasi
-  S->>P: POST keyless/opsional app key
-  P-->>S: match/no-match/509/error
+  S->>P: GET keyless (tanpa app key)
+  P-->>S: threat/no-match/429/error
   S-->>B: status ternormalisasi
 ```
 

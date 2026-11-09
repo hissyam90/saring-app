@@ -574,11 +574,11 @@ test.describe("Kontras permukaan interaktif", () => {
 test.describe("Kontras interaksi /periksa dan /pustaka", () => {
   for (const scheme of ["light", "dark"] as const) {
     test(`alur penuh terlihat jelas dalam mode ${scheme}`, async ({ page }) => {
-      // `reducedMotion: "reduce"` menjadikan `transition-colors` selesai seketika
-      // (0,01 ms sesuai aturan prefers-reduced-motion), sehingga audit kontras
-      // mengukur warna akhir, bukan warna di tengah animasi 150 ms. Ini tidak
+      // `reducedMotion: "reduce"` menonaktifkan transisi sepenuhnya (aturan
+      // prefers-reduced-motion menetapkan `transition-property: none`), sehingga
+      // audit kontras mengukur warna akhir, bukan warna antar-state. Ini tidak
       // mengubah warna Light/Dark itu sendiri, hanya menghilangkan snapshot
-      // transisi yang menimbulkan kegagalan palsu pada filter Pustaka.
+      // transisi (mis. tab /periksa, filter Pustaka) yang memicu kegagalan palsu.
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
       await storeTheme(page, scheme);
 
