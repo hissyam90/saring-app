@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   },
   description:
     "Periksa pesan, nomor, dan tautan mencurigakan. lalu pahami langkah berikutnya. Seluruhnya berjalan di peramban Anda.",
+  other: {
+  "google-adsense-account": "ca-pub-5933516992423335",
+  },
   keywords: [
     "penipuan daring",
     "phishing",
